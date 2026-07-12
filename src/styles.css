@@ -37,6 +37,8 @@
   --color-spectral: var(--spectral);
   --color-crimson: var(--crimson);
   --color-amber-scry: var(--amber-scry);
+  --color-emerald-elixir: var(--emerald-elixir);
+  --color-violet-deep: var(--violet-deep);
 
   --font-display: "Cinzel", serif;
   --font-sans: "Inter", sans-serif;
