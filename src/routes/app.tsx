@@ -26,17 +26,36 @@ function AppShell() {
 
   return (
     <div className="bg-arcane relative flex min-h-screen text-spectral">
-      {/* Ambient embers */}
+      {/* Starfield */}
+      <div className="bg-arcane-stars pointer-events-none fixed inset-0 z-0 opacity-50" />
+      {/* Ambient embers + sparkles */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        {Array.from({ length: 8 }).map((_, i) => (
+        {Array.from({ length: 12 }).map((_, i) => (
           <span
-            key={i}
-            className="animate-drift absolute h-1 w-1 rounded-full bg-wraith/50"
+            key={`e-${i}`}
+            className="animate-drift absolute h-1 w-1 rounded-full"
             style={{
               top: `${(i * 53) % 100}%`,
               animationDelay: `${i * 2.2}s`,
               animationDuration: `${22 + (i % 4) * 4}s`,
-              boxShadow: "0 0 10px var(--color-wraith)",
+              background: i % 2 === 0 ? "var(--color-wraith)" : "var(--color-gold)",
+              boxShadow: `0 0 10px ${i % 2 === 0 ? "var(--color-wraith)" : "var(--color-gold)"}`,
+            }}
+          />
+        ))}
+        {Array.from({ length: 16 }).map((_, i) => (
+          <Sparkles
+            key={`s-${i}`}
+            className="animate-twinkle absolute"
+            style={{
+              top: `${(i * 61) % 95 + 2}%`,
+              left: `${(i * 41) % 95 + 2}%`,
+              width: `${8 + (i % 3) * 4}px`,
+              height: `${8 + (i % 3) * 4}px`,
+              color: i % 3 === 0 ? "var(--color-gold)" : "var(--color-wraith)",
+              animationDelay: `${(i * 0.29) % 3}s`,
+              animationDuration: `${2.8 + (i % 4) * 0.7}s`,
+              filter: "drop-shadow(0 0 5px currentColor)",
             }}
           />
         ))}
