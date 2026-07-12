@@ -31,21 +31,45 @@ function Landing() {
 
   return (
     <div className="bg-arcane min-h-screen overflow-x-hidden text-spectral">
-      {/* Floating embers */}
+      {/* Starfield */}
+      <div className="bg-arcane-stars pointer-events-none fixed inset-0 z-0 opacity-70" />
+
+      {/* Floating embers + sparkles */}
       <div className="pointer-events-none fixed inset-0 z-0">
-        {Array.from({ length: 14 }).map((_, i) => (
-          <span
-            key={i}
-            className="animate-drift absolute h-1 w-1 rounded-full bg-wraith/60"
+        {Array.from({ length: 22 }).map((_, i) => {
+          const violet = i % 2 === 0;
+          return (
+            <span
+              key={`e-${i}`}
+              className="animate-drift absolute h-1 w-1 rounded-full"
+              style={{
+                top: `${(i * 37) % 100}%`,
+                animationDelay: `${i * 1.1}s`,
+                animationDuration: `${18 + (i % 6) * 3}s`,
+                background: violet ? "var(--color-wraith)" : "var(--color-gold)",
+                boxShadow: `0 0 14px ${violet ? "var(--color-wraith)" : "var(--color-gold)"}`,
+              }}
+            />
+          );
+        })}
+        {Array.from({ length: 26 }).map((_, i) => (
+          <Sparkles
+            key={`s-${i}`}
+            className="animate-twinkle absolute text-wraith"
             style={{
-              top: `${(i * 37) % 100}%`,
-              animationDelay: `${i * 1.4}s`,
-              animationDuration: `${18 + (i % 6) * 3}s`,
-              boxShadow: "0 0 12px var(--color-wraith)",
+              top: `${(i * 71) % 95 + 2}%`,
+              left: `${(i * 53) % 95 + 2}%`,
+              width: `${8 + (i % 4) * 4}px`,
+              height: `${8 + (i % 4) * 4}px`,
+              color: i % 3 === 0 ? "var(--color-gold)" : i % 3 === 1 ? "var(--color-wraith)" : "var(--color-spectral)",
+              animationDelay: `${(i * 0.37) % 3}s`,
+              animationDuration: `${2.4 + (i % 5) * 0.6}s`,
+              filter: "drop-shadow(0 0 6px currentColor)",
             }}
           />
         ))}
       </div>
+
 
       {/* Nav */}
       <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md">
@@ -129,8 +153,8 @@ function Landing() {
             <Sparkles className="h-3 w-3 text-wraith" /> An Ethereal Chemistry Sandbox
           </p>
           <h1 className="font-display text-5xl leading-[1.05] md:text-7xl">
-            Where <span className="text-wraith text-glow">Elements</span>
-            <br /> Whisper Their Secrets.
+            Where <span className="aurora-gradient animate-aurora">Elements</span>
+            <br /> Whisper Their <span className="text-wraith text-glow-violet">Secrets.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-parchment">
             Step into a study of glowing phials and aged parchment. Transmute reagents,

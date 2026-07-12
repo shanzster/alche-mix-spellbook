@@ -37,6 +37,8 @@
   --color-spectral: var(--spectral);
   --color-crimson: var(--crimson);
   --color-amber-scry: var(--amber-scry);
+  --color-emerald-elixir: var(--emerald-elixir);
+  --color-violet-deep: var(--violet-deep);
 
   --font-display: "Cinzel", serif;
   --font-sans: "Inter", sans-serif;
@@ -45,15 +47,17 @@
 :root {
   --radius: 0.5rem;
 
-  /* Brand tokens */
-  --mist: oklch(0.19 0.015 210);            /* #061113 */
-  --slate-sunken: oklch(0.25 0.02 210);     /* #132023 */
-  --wraith: oklch(0.75 0.09 180);           /* #54C2B4 */
-  --parchment: oklch(0.6 0.04 80);          /* #8A7B68 */
-  --gold: oklch(0.72 0.06 85);              /* #B4A582 */
-  --spectral: oklch(0.98 0.02 150);         /* #F0FDF4 */
-  --crimson: oklch(0.55 0.22 20);
-  --amber-scry: oklch(0.75 0.15 70);
+  /* Brand tokens — arcane alchemy */
+  --mist: oklch(0.15 0.04 300);             /* deep violet-black */
+  --slate-sunken: oklch(0.23 0.07 300);     /* twilight indigo */
+  --wraith: oklch(0.72 0.19 310);           /* mystic amethyst */
+  --parchment: oklch(0.62 0.05 80);         /* aged parchment */
+  --gold: oklch(0.8 0.14 85);               /* candle gold */
+  --spectral: oklch(0.98 0.02 300);         /* moonlit white */
+  --crimson: oklch(0.6 0.24 15);            /* dragon crimson */
+  --amber-scry: oklch(0.78 0.16 70);        /* scrying amber */
+  --emerald-elixir: oklch(0.74 0.17 165);   /* elixir teal */
+  --violet-deep: oklch(0.42 0.2 300);       /* deep arcane */
 
   --background: var(--mist);
   --foreground: var(--spectral);
@@ -93,14 +97,28 @@
   }
 }
 
-/* Magical background: aged parchment noise + spectral vignette */
+/* Magical background: violet aether + candle glow */
 @utility bg-arcane {
   background-color: var(--color-background);
   background-image:
-    radial-gradient(ellipse at 20% 10%, color-mix(in oklab, var(--color-wraith) 12%, transparent), transparent 60%),
-    radial-gradient(ellipse at 90% 80%, color-mix(in oklab, var(--color-gold) 8%, transparent), transparent 55%),
-    radial-gradient(ellipse at 50% 100%, color-mix(in oklab, var(--color-wraith) 6%, transparent), transparent 70%);
+    radial-gradient(ellipse at 15% 8%, color-mix(in oklab, var(--color-wraith) 22%, transparent), transparent 55%),
+    radial-gradient(ellipse at 88% 78%, color-mix(in oklab, var(--color-violet-deep) 30%, transparent), transparent 55%),
+    radial-gradient(ellipse at 50% 100%, color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent), transparent 70%),
+    radial-gradient(ellipse at 70% 20%, color-mix(in oklab, var(--color-gold) 8%, transparent), transparent 45%);
 }
+
+@utility bg-arcane-stars {
+  background-image:
+    radial-gradient(1px 1px at 12% 22%, color-mix(in oklab, var(--color-spectral) 80%, transparent) 50%, transparent 100%),
+    radial-gradient(1px 1px at 78% 14%, color-mix(in oklab, var(--color-wraith) 85%, transparent) 50%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 34% 68%, color-mix(in oklab, var(--color-gold) 80%, transparent) 50%, transparent 100%),
+    radial-gradient(1px 1px at 62% 82%, color-mix(in oklab, var(--color-spectral) 70%, transparent) 50%, transparent 100%),
+    radial-gradient(1px 1px at 88% 46%, color-mix(in oklab, var(--color-wraith) 80%, transparent) 50%, transparent 100%),
+    radial-gradient(1.5px 1.5px at 22% 88%, color-mix(in oklab, var(--color-amber-scry) 70%, transparent) 50%, transparent 100%),
+    radial-gradient(1px 1px at 50% 40%, color-mix(in oklab, var(--color-spectral) 80%, transparent) 50%, transparent 100%);
+  background-size: 100% 100%;
+}
+
 
 @utility glow-wraith {
   box-shadow:
@@ -157,11 +175,49 @@
   100% { box-shadow: 0 0 0 18px color-mix(in oklab, var(--color-wraith) 0%, transparent); }
 }
 
+@keyframes twinkle {
+  0%, 100% { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  50% { opacity: 1; transform: scale(1) rotate(180deg); }
+}
+@keyframes sparkle-float {
+  0% { transform: translateY(0) scale(0.6); opacity: 0; }
+  20% { opacity: 1; }
+  100% { transform: translateY(-120px) scale(1.1); opacity: 0; }
+}
+@keyframes aurora-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
 @utility animate-breathing { animation: breathing 3.4s ease-in-out infinite; }
 @utility animate-bubble { animation: bubble 2.2s ease-in-out infinite; }
 @utility animate-float-slow { animation: float-slow 7s ease-in-out infinite; }
 @utility animate-drift { animation: drift 22s linear infinite; }
 @utility animate-pulse-ring { animation: pulse-ring 2s ease-out infinite; }
+@utility animate-twinkle { animation: twinkle 3s ease-in-out infinite; }
+@utility animate-sparkle-float { animation: sparkle-float 6s ease-out infinite; }
+@utility animate-aurora {
+  background-size: 200% 200%;
+  animation: aurora-shift 14s ease-in-out infinite;
+}
+
+@utility text-glow-violet {
+  text-shadow:
+    0 0 12px color-mix(in oklab, var(--color-wraith) 70%, transparent),
+    0 0 32px color-mix(in oklab, var(--color-violet-deep) 55%, transparent);
+}
+
+@utility aurora-gradient {
+  background-image: linear-gradient(120deg,
+    var(--color-wraith),
+    var(--color-emerald-elixir),
+    var(--color-gold),
+    var(--color-wraith));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 
 @utility btn-arcane {
   position: relative;
@@ -174,14 +230,17 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-size: 0.85rem;
-  color: var(--color-mist);
+  color: var(--color-spectral);
   background: linear-gradient(135deg,
-    color-mix(in oklab, var(--color-wraith) 92%, white),
-    color-mix(in oklab, var(--color-wraith) 78%, black));
-  border: 1px solid color-mix(in oklab, var(--color-wraith) 60%, white);
+    color-mix(in oklab, var(--color-violet-deep) 85%, white 10%),
+    color-mix(in oklab, var(--color-wraith) 85%, black 5%));
+  border: 1px solid color-mix(in oklab, var(--color-wraith) 70%, white);
   border-radius: 0.5rem;
   transition: transform 200ms cubic-bezier(.34,1.56,.64,1), box-shadow 300ms ease, filter 200ms;
-  box-shadow: 0 6px 20px -8px color-mix(in oklab, var(--color-wraith) 60%, transparent);
+  box-shadow:
+    0 0 24px -4px color-mix(in oklab, var(--color-wraith) 65%, transparent),
+    0 6px 20px -6px color-mix(in oklab, var(--color-violet-deep) 60%, transparent),
+    inset 0 1px 0 color-mix(in oklab, var(--color-spectral) 30%, transparent);
 }
 @utility btn-arcane-hover {
   &:hover { transform: translateY(-2px) scale(1.02); filter: brightness(1.08); box-shadow: 0 12px 40px -8px color-mix(in oklab, var(--color-wraith) 70%, transparent); }
