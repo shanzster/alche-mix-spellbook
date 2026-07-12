@@ -230,14 +230,17 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-size: 0.85rem;
-  color: var(--color-mist);
+  color: var(--color-spectral);
   background: linear-gradient(135deg,
-    color-mix(in oklab, var(--color-wraith) 92%, white),
-    color-mix(in oklab, var(--color-wraith) 78%, black));
-  border: 1px solid color-mix(in oklab, var(--color-wraith) 60%, white);
+    color-mix(in oklab, var(--color-violet-deep) 85%, white 10%),
+    color-mix(in oklab, var(--color-wraith) 85%, black 5%));
+  border: 1px solid color-mix(in oklab, var(--color-wraith) 70%, white);
   border-radius: 0.5rem;
   transition: transform 200ms cubic-bezier(.34,1.56,.64,1), box-shadow 300ms ease, filter 200ms;
-  box-shadow: 0 6px 20px -8px color-mix(in oklab, var(--color-wraith) 60%, transparent);
+  box-shadow:
+    0 0 24px -4px color-mix(in oklab, var(--color-wraith) 65%, transparent),
+    0 6px 20px -6px color-mix(in oklab, var(--color-violet-deep) 60%, transparent),
+    inset 0 1px 0 color-mix(in oklab, var(--color-spectral) 30%, transparent);
 }
 @utility btn-arcane-hover {
   &:hover { transform: translateY(-2px) scale(1.02); filter: brightness(1.08); box-shadow: 0 12px 40px -8px color-mix(in oklab, var(--color-wraith) 70%, transparent); }
