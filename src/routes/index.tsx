@@ -153,8 +153,8 @@ function Landing() {
             <Sparkles className="h-3 w-3 text-wraith" /> An Ethereal Chemistry Sandbox
           </p>
           <h1 className="font-display text-5xl leading-[1.05] md:text-7xl">
-            Where <span className="text-wraith text-glow">Elements</span>
-            <br /> Whisper Their Secrets.
+            Where <span className="aurora-gradient animate-aurora">Elements</span>
+            <br /> Whisper Their <span className="text-wraith text-glow-violet">Secrets.</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-parchment">
             Step into a study of glowing phials and aged parchment. Transmute reagents,
