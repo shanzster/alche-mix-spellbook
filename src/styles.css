@@ -45,15 +45,17 @@
 :root {
   --radius: 0.5rem;
 
-  /* Brand tokens */
-  --mist: oklch(0.19 0.015 210);            /* #061113 */
-  --slate-sunken: oklch(0.25 0.02 210);     /* #132023 */
-  --wraith: oklch(0.75 0.09 180);           /* #54C2B4 */
-  --parchment: oklch(0.6 0.04 80);          /* #8A7B68 */
-  --gold: oklch(0.72 0.06 85);              /* #B4A582 */
-  --spectral: oklch(0.98 0.02 150);         /* #F0FDF4 */
-  --crimson: oklch(0.55 0.22 20);
-  --amber-scry: oklch(0.75 0.15 70);
+  /* Brand tokens — arcane alchemy */
+  --mist: oklch(0.15 0.04 300);             /* deep violet-black */
+  --slate-sunken: oklch(0.23 0.07 300);     /* twilight indigo */
+  --wraith: oklch(0.72 0.19 310);           /* mystic amethyst */
+  --parchment: oklch(0.62 0.05 80);         /* aged parchment */
+  --gold: oklch(0.8 0.14 85);               /* candle gold */
+  --spectral: oklch(0.98 0.02 300);         /* moonlit white */
+  --crimson: oklch(0.6 0.24 15);            /* dragon crimson */
+  --amber-scry: oklch(0.78 0.16 70);        /* scrying amber */
+  --emerald-elixir: oklch(0.74 0.17 165);   /* elixir teal */
+  --violet-deep: oklch(0.42 0.2 300);       /* deep arcane */
 
   --background: var(--mist);
   --foreground: var(--spectral);
