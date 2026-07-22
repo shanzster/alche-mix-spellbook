@@ -136,15 +136,28 @@ function CrystalThree() {
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
-    const W = mount.clientWidth, H = mount.clientHeight;
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+
+    // Guard: wait for element to have actual dimensions
+    const W = mount.clientWidth || 420;
+    const H = mount.clientHeight || 420;
+
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    } catch {
+      // WebGL not available (e.g. some mobile/server environments) — fail silently
+      return;
+    }
+
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(W, H);
     renderer.setClearColor(0x000000, 0);
     mount.appendChild(renderer.domElement);
+
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
     camera.position.set(0, 0, 5);
+
     const geo = new THREE.OctahedronGeometry(1.5, 0);
     const solidMat = new THREE.MeshPhongMaterial({
       color: new THREE.Color("#7c3aed"), emissive: new THREE.Color("#4c1d95"),
@@ -153,40 +166,70 @@ function CrystalThree() {
     });
     const solidMesh = new THREE.Mesh(geo, solidMat);
     scene.add(solidMesh);
+
     const wireMat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#a78bfa"), wireframe: true, transparent: true, opacity: 0.75 });
     const wireMesh = new THREE.Mesh(geo, wireMat);
-    wireMesh.scale.setScalar(1.01); scene.add(wireMesh);
+    wireMesh.scale.setScalar(1.01);
+    scene.add(wireMesh);
+
     const glowGeo = new THREE.OctahedronGeometry(1.9, 1);
     const glowMat = new THREE.MeshBasicMaterial({ color: new THREE.Color("#c4b5fd"), wireframe: true, transparent: true, opacity: 0.18 });
-    const glowMesh = new THREE.Mesh(glowGeo, glowMat); scene.add(glowMesh);
+    const glowMesh = new THREE.Mesh(glowGeo, glowMat);
+    scene.add(glowMesh);
+
     scene.add(new THREE.AmbientLight(0x4c1d95, 1.2));
-    const pointA = new THREE.PointLight(0xa78bfa, 6, 12); pointA.position.set(3, 3, 3); scene.add(pointA);
-    scene.add(Object.assign(new THREE.PointLight(0xd4af37, 3, 10), { position: new THREE.Vector3(-3, -2, 2) }));
-    scene.add(Object.assign(new THREE.PointLight(0x60a5fa, 2.5, 8), { position: new THREE.Vector3(0, -3, -2) }));
+    const pointA = new THREE.PointLight(0xa78bfa, 6, 12);
+    pointA.position.set(3, 3, 3);
+    scene.add(pointA);
+    const pointB = new THREE.PointLight(0xd4af37, 3, 10);
+    pointB.position.set(-3, -2, 2);
+    scene.add(pointB);
+    const pointC = new THREE.PointLight(0x60a5fa, 2.5, 8);
+    pointC.position.set(0, -3, -2);
+    scene.add(pointC);
+
     const onResize = () => {
-      const w = mount.clientWidth, h = mount.clientHeight;
-      camera.aspect = w / h; camera.updateProjectionMatrix(); renderer.setSize(w, h);
+      const w = mount.clientWidth || W;
+      const h = mount.clientHeight || H;
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      renderer.setSize(w, h);
     };
     window.addEventListener("resize", onResize);
-    let frameId: number, t = 0;
+
+    let frameId: number;
+    let t = 0;
     const animate = () => {
-      frameId = requestAnimationFrame(animate); t += 0.008;
+      frameId = requestAnimationFrame(animate);
+      t += 0.008;
       solidMesh.rotation.y += 0.006;
       solidMesh.rotation.x = Math.sin(t * 0.7) * 0.25;
       solidMesh.rotation.z = Math.cos(t * 0.5) * 0.15;
-      wireMesh.rotation.copy(solidMesh.rotation); wireMesh.rotation.y += 0.002;
-      glowMesh.rotation.y -= 0.003; glowMesh.rotation.x = Math.cos(t * 0.4) * 0.2;
+      wireMesh.rotation.copy(solidMesh.rotation);
+      wireMesh.rotation.y += 0.002;
+      glowMesh.rotation.y -= 0.003;
+      glowMesh.rotation.x = Math.cos(t * 0.4) * 0.2;
       const pulse = 0.85 + Math.sin(t * 1.6) * 0.15;
-      solidMat.opacity = 0.45 + pulse * 0.15; pointA.intensity = 5 + pulse * 3;
-      pointA.position.x = Math.sin(t) * 3.5; pointA.position.z = Math.cos(t) * 3.5;
+      solidMat.opacity = 0.45 + pulse * 0.15;
+      pointA.intensity = 5 + pulse * 3;
+      pointA.position.x = Math.sin(t) * 3.5;
+      pointA.position.z = Math.cos(t) * 3.5;
       renderer.render(scene, camera);
     };
     animate();
+
     return () => {
-      cancelAnimationFrame(frameId); window.removeEventListener("resize", onResize);
-      renderer.dispose(); if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
+      cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", onResize);
+      try {
+        renderer.dispose();
+        geo.dispose(); glowGeo.dispose();
+        solidMat.dispose(); wireMat.dispose(); glowMat.dispose();
+        if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
+      } catch { /* ignore cleanup errors */ }
     };
   }, []);
+
   return <div ref={mountRef} className="w-full h-full" style={{ minHeight: "420px" }} />;
 }
 

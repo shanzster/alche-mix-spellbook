@@ -19,11 +19,16 @@ function CrystalThree() {
     const mount = mountRef.current;
     if (!mount) return;
 
-    const W = mount.clientWidth;
-    const H = mount.clientHeight;
+    const W = mount.clientWidth || 420;
+    const H = mount.clientHeight || 420;
 
-    // Renderer
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    // Renderer — bail silently if WebGL unavailable
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    } catch {
+      return;
+    }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setSize(W, H);
     renderer.setClearColor(0x000000, 0);
@@ -90,7 +95,8 @@ function CrystalThree() {
 
     // Resize handler
     const onResize = () => {
-      const w = mount.clientWidth, h = mount.clientHeight;
+      const w = mount.clientWidth || W;
+      const h = mount.clientHeight || H;
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
@@ -131,8 +137,12 @@ function CrystalThree() {
     return () => {
       cancelAnimationFrame(frameId);
       window.removeEventListener("resize", onResize);
-      renderer.dispose();
-      if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
+      try {
+        renderer.dispose();
+        geo.dispose(); glowGeo.dispose();
+        solidMat.dispose(); wireMat.dispose(); glowMat.dispose();
+        if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
+      } catch { /* ignore cleanup errors */ }
     };
   }, []);
 
