@@ -140,11 +140,121 @@ function useScrollY() {
   return y;
 }
 
+// ── Base element data ─────────────────────────────────────────────────────────
+const BASE_ELEMENTS = [
+  { sym:"H",  name:"Hydrogen",  num:1,  electrons:"1",          c:"#60a5fa", nc:"#93c5fd" },
+  { sym:"O",  name:"Oxygen",    num:8,  electrons:"2,6",        c:"#f87171", nc:"#fca5a5" },
+  { sym:"C",  name:"Carbon",    num:6,  electrons:"2,4",        c:"#a3a3a3", nc:"#d4d4d4" },
+  { sym:"N",  name:"Nitrogen",  num:7,  electrons:"2,5",        c:"#93c5fd", nc:"#bfdbfe" },
+  { sym:"Fe", name:"Iron",      num:26, electrons:"2,8,14,2",   c:"#a78bfa", nc:"#c4b5fd" },
+  { sym:"Au", name:"Gold",      num:79, electrons:"2,8,18,32,18,1", c:"#fbbf24", nc:"#fde68a" },
+  { sym:"Na", name:"Sodium",    num:11, electrons:"2,8,1",      c:"#f87171", nc:"#fca5a5" },
+  { sym:"Cl", name:"Chlorine",  num:17, electrons:"2,8,7",      c:"#4ade80", nc:"#86efac" },
+  { sym:"Ca", name:"Calcium",   num:20, electrons:"2,8,8,2",    c:"#fb923c", nc:"#fdba74" },
+  { sym:"U",  name:"Uranium",   num:92, electrons:"2,8,18,32,21,9,2", c:"#4ade80", nc:"#6ee7b7" },
+  { sym:"Mg", name:"Magnesium", num:12, electrons:"2,8,2",      c:"#34d399", nc:"#6ee7b7" },
+  { sym:"S",  name:"Sulfur",    num:16, electrons:"2,8,6",      c:"#facc15", nc:"#fde68a" },
+];
+
+// ── Shared selected-element state (lifted so both components share it) ─────
+import { createContext, useContext } from "react";
+const ElementCtx = createContext<{
+  selected: typeof BASE_ELEMENTS[0];
+  setSelected: (e: typeof BASE_ELEMENTS[0]) => void;
+}>({ selected: BASE_ELEMENTS[5], setSelected: () => {} });
+
+function ElementSelector() {
+  const { selected, setSelected } = useContext(ElementCtx);
+  return (
+    <>
+      <div className="flex flex-wrap gap-2 mb-6">
+        {BASE_ELEMENTS.map((el, i) => {
+          const isActive = selected.sym === el.sym;
+          return (
+            <button
+              key={el.sym}
+              onClick={() => setSelected(el)}
+              className="relative flex items-center justify-center rounded-lg font-display text-sm transition-all duration-200 hover:scale-110"
+              style={{
+                width: 44, height: 44,
+                background: `radial-gradient(circle at 35% 35%, color-mix(in oklab, ${el.c} ${isActive ? 80 : 55}%, white 15%), color-mix(in oklab, ${el.c} ${isActive ? 50 : 25}%, transparent))`,
+                border: `${isActive ? "2px" : "1.5px"} solid color-mix(in oklab, ${el.c} ${isActive ? 90 : 45}%, transparent)`,
+                boxShadow: isActive ? `0 0 20px -2px ${el.c}, 0 0 40px -8px ${el.c}` : `0 0 8px -4px ${el.c}`,
+                color: "white",
+                animationDelay: `${i * 0.22}s`,
+              }}
+              aria-label={el.name}
+              aria-pressed={isActive}
+            >
+              {el.sym}
+              {isActive && (
+                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full"
+                  style={{ background: el.c, boxShadow: `0 0 6px 2px ${el.c}` }} />
+              )}
+            </button>
+          );
+        })}
+        <div className="flex items-center justify-center rounded-lg text-xs text-parchment/50 border border-parchment/20"
+          style={{ width: 44, height: 44 }}>+106</div>
+      </div>
+      <Link to="/elements" className="btn-arcane btn-arcane-hover">
+        <Atom className="h-4 w-4" /> Browse All Elements
+      </Link>
+    </>
+  );
+}
+
+function BohrModelPanel() {
+  const { selected } = useContext(ElementCtx);
+  return (
+    <div className="relative rounded-2xl overflow-hidden"
+      style={{
+        background: "radial-gradient(ellipse at 50% 40%, color-mix(in oklab, var(--color-violet-deep) 40%, transparent), color-mix(in oklab, var(--color-slate-sunken) 80%, transparent))",
+        border: `1px solid color-mix(in oklab, ${selected.c} 35%, transparent)`,
+        boxShadow: `0 0 60px -20px color-mix(in oklab, ${selected.c} 45%, transparent)`,
+        minHeight: "420px",
+        transition: "border-color 0.4s, box-shadow 0.4s",
+      }}>
+      {/* Background rings */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {[0.85, 0.65, 0.45].map((s, i) => (
+          <div key={i} className="absolute rounded-full"
+            style={{
+              width: `${s * 100}%`, height: `${s * 100}%`,
+              border: `1px solid color-mix(in oklab, ${selected.c} 12%, transparent)`,
+              animation: `float-slow ${7 + i * 2}s ease-in-out infinite`,
+              animationDelay: `${i * 1.2}s`,
+              transition: "border-color 0.4s",
+            }} />
+        ))}
+      </div>
+
+      {/* Re-mount the model when element changes by using sym as key */}
+      <BohrModel3D
+        key={selected.sym}
+        electrons={selected.electrons}
+        color={selected.c}
+        nucleusColor={selected.nc}
+        label={selected.sym}
+      />
+
+      {/* Label */}
+      <div className="absolute bottom-0 left-0 right-0 px-4 py-3 text-center pointer-events-none"
+        style={{ background: "linear-gradient(180deg, transparent, color-mix(in oklab, var(--color-mist) 80%, transparent))" }}>
+        <span className="font-display text-lg" style={{ color: selected.c }}>{selected.sym}</span>
+        <span className="text-parchment/60 text-xs ml-2 tracking-[0.2em] uppercase">{selected.name} · {selected.num}p</span>
+      </div>
+    </div>
+  );
+}
+
 function Landing() {
+  const [selectedEl, setSelectedEl] = useState(BASE_ELEMENTS[5]); // Gold default
   const y = useScrollY();
   const heroRef = useRef<HTMLDivElement>(null);
 
   return (
+    <ElementCtx.Provider value={{ selected: selectedEl, setSelected: setSelectedEl }}>
     <div className="bg-arcane min-h-screen overflow-x-hidden text-spectral">
       {/* Starfield */}
       <div className="bg-arcane-stars pointer-events-none fixed inset-0 z-0 opacity-70" />
@@ -435,7 +545,7 @@ function Landing() {
         </div>
       </section>
 
-      {/* ── SECTION 4: Elements intro + Three.js crystal ── */}
+      {/* ── SECTION 4: Elements intro + Bohr model ── */}
       <section className="relative z-10 py-24">
         <div className="mx-auto max-w-6xl px-6">
           <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -450,60 +560,22 @@ function Landing() {
                 Every element has its own story — an electron shell diagram, a category, a set of
                 chemical behaviours that make it unique.
               </p>
-              <p className="text-parchment leading-relaxed mb-8">
+              <p className="text-parchment leading-relaxed mb-6">
                 You start with 12 physical Grimoire cards: the base elements. From there, every
                 combination you attempt in the Reaction Sandbox can unlock a new element — building
                 your collection one discovery at a time.
               </p>
-              <div className="flex flex-wrap gap-2 mb-8">
-                {[
-                  { sym: "H",  c: "#60a5fa" },{ sym: "O",  c: "#f87171" },
-                  { sym: "C",  c: "#a3a3a3" },{ sym: "N",  c: "#93c5fd" },
-                  { sym: "Fe", c: "#a78bfa" },{ sym: "Au", c: "#fbbf24" },
-                  { sym: "Na", c: "#f87171" },{ sym: "Cl", c: "#4ade80" },
-                  { sym: "Ca", c: "#fb923c" },{ sym: "U",  c: "#4ade80" },
-                  { sym: "Pt", c: "#e2e8f0" },{ sym: "Pu", c: "#fb7185" },
-                ].map(({ sym, c }, i) => (
-                  <div key={sym} className="flex items-center justify-center rounded-lg font-display text-sm animate-breathing"
-                    style={{
-                      width: 44, height: 44,
-                      background: `radial-gradient(circle at 35% 35%, color-mix(in oklab, ${c} 60%, white 15%), color-mix(in oklab, ${c} 30%, transparent))`,
-                      border: `1.5px solid color-mix(in oklab, ${c} 50%, transparent)`,
-                      boxShadow: `0 0 12px -3px ${c}`, color: "white",
-                      animationDelay: `${i * 0.22}s`, animationDuration: `${2.4 + (i % 4) * 0.4}s`,
-                    }}>{sym}</div>
-                ))}
-                <div className="flex items-center justify-center rounded-lg text-xs text-parchment/60 border border-parchment/20"
-                  style={{ width: 44, height: 44 }}>+106</div>
-              </div>
-              <Link to="/elements" className="btn-arcane btn-arcane-hover">
-                <Atom className="h-4 w-4" /> Browse the Elements
-              </Link>
+
+              {/* Interactive element selector */}
+              <p className="text-[10px] tracking-[0.3em] text-parchment/50 uppercase mb-3">
+                Select an element to preview its Bohr model →
+              </p>
+              <ElementSelector />
             </Reveal>
+
+            {/* Bohr model panel — driven by ElementSelector state via context */}
             <Reveal delay={150}>
-              <div className="relative rounded-2xl overflow-hidden"
-                style={{
-                  background: "radial-gradient(ellipse at 50% 40%, color-mix(in oklab, var(--color-violet-deep) 40%, transparent), color-mix(in oklab, var(--color-slate-sunken) 80%, transparent))",
-                  border: "1px solid color-mix(in oklab, var(--color-wraith) 30%, transparent)",
-                  boxShadow: "0 0 60px -20px color-mix(in oklab, var(--color-wraith) 50%, transparent)",
-                  minHeight: "420px",
-                }}>
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  {[0.85, 0.65, 0.45].map((s, i) => (
-                    <div key={i} className="absolute rounded-full border border-wraith/10"
-                      style={{ width: `${s*100}%`, height: `${s*100}%`, animation: `float-slow ${7+i*2}s ease-in-out infinite`, animationDelay: `${i*1.2}s` }} />
-                  ))}
-                </div>
-                <BohrModel3D
-                  electrons="2,8,18,32,18,1"
-                  color="#a78bfa"
-                  nucleusColor="#fbbf24"
-                  label="Au"
-                />
-                <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
-                  <span className="text-[10px] tracking-[0.35em] uppercase text-wraith/60">✦ Gold · Au · 79 ✦</span>
-                </div>
-              </div>
+              <BohrModelPanel />
             </Reveal>
           </div>
         </div>
@@ -651,6 +723,7 @@ function Landing() {
         ✦ AlcheMix AR — Augmented Chemistry Education ✦
       </footer>
     </div>
+    </ElementCtx.Provider>
   );
 }
 // ── Crystal + Magnifying Lens (hero canvas) ───────────────────────────────────
