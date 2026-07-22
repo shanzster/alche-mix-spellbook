@@ -7,6 +7,10 @@ import {
 import { FloatingNav } from "../components/FloatingNav";
 import { BohrModel3D } from "../components/BohrModel3D";
 
+export const Route = createFileRoute("/about")({
+  component: AboutPage,
+});
+
 // ── Animated molecule node canvas ──────────────────────────────────────────
 function MoleculeCanvas({ color = "var(--color-wraith)" }: { color?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
