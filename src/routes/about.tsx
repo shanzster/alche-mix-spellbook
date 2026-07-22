@@ -4,156 +4,8 @@ import {
   FlaskConical, GraduationCap, Atom, Sparkles,
   BookOpen, Eye, Zap, Camera, ArrowRight,
 } from "lucide-react";
-import * as THREE from "three";
 import { FloatingNav } from "../components/FloatingNav";
-
-export const Route = createFileRoute("/about")({
-  component: AboutPage,
-});
-
-// ── 3D Crystal (Three.js) ───────────────────────────────────────────────────
-function CrystalThree() {
-  const mountRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const mount = mountRef.current;
-    if (!mount) return;
-
-    const W = mount.clientWidth || 420;
-    const H = mount.clientHeight || 420;
-
-    // Renderer — bail silently if WebGL unavailable
-    let renderer: THREE.WebGLRenderer;
-    try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    } catch {
-      return;
-    }
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.setSize(W, H);
-    renderer.setClearColor(0x000000, 0);
-    mount.appendChild(renderer.domElement);
-
-    // Scene & camera
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, W / H, 0.1, 100);
-    camera.position.set(0, 0, 5);
-
-    // Crystal geometry — stacked octahedrons for a multi-facet feel
-    const geo = new THREE.OctahedronGeometry(1.5, 0);
-
-    // Solid inner crystal — translucent violet
-    const solidMat = new THREE.MeshPhongMaterial({
-      color: new THREE.Color("#7c3aed"),
-      emissive: new THREE.Color("#4c1d95"),
-      specular: new THREE.Color("#e9d5ff"),
-      shininess: 120,
-      transparent: true,
-      opacity: 0.55,
-      side: THREE.DoubleSide,
-    });
-    const solidMesh = new THREE.Mesh(geo, solidMat);
-    scene.add(solidMesh);
-
-    // Wireframe overlay — bright amethyst edges
-    const wireMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color("#a78bfa"),
-      wireframe: true,
-      transparent: true,
-      opacity: 0.75,
-    });
-    const wireMesh = new THREE.Mesh(geo, wireMat);
-    wireMesh.scale.setScalar(1.01);
-    scene.add(wireMesh);
-
-    // Outer glow shell — larger, very transparent
-    const glowGeo = new THREE.OctahedronGeometry(1.9, 1);
-    const glowMat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color("#c4b5fd"),
-      wireframe: true,
-      transparent: true,
-      opacity: 0.18,
-    });
-    const glowMesh = new THREE.Mesh(glowGeo, glowMat);
-    scene.add(glowMesh);
-
-    // Lights
-    const ambient = new THREE.AmbientLight(0x4c1d95, 1.2);
-    scene.add(ambient);
-
-    const pointA = new THREE.PointLight(0xa78bfa, 6, 12);
-    pointA.position.set(3, 3, 3);
-    scene.add(pointA);
-
-    const pointB = new THREE.PointLight(0xd4af37, 3, 10);
-    pointB.position.set(-3, -2, 2);
-    scene.add(pointB);
-
-    const pointC = new THREE.PointLight(0x60a5fa, 2.5, 8);
-    pointC.position.set(0, -3, -2);
-    scene.add(pointC);
-
-    // Resize handler
-    const onResize = () => {
-      const w = mount.clientWidth || W;
-      const h = mount.clientHeight || H;
-      camera.aspect = w / h;
-      camera.updateProjectionMatrix();
-      renderer.setSize(w, h);
-    };
-    window.addEventListener("resize", onResize);
-
-    // Animation loop
-    let frameId: number;
-    let t = 0;
-    const animate = () => {
-      frameId = requestAnimationFrame(animate);
-      t += 0.008;
-
-      // Main spin + wobble
-      solidMesh.rotation.y += 0.006;
-      solidMesh.rotation.x = Math.sin(t * 0.7) * 0.25;
-      solidMesh.rotation.z = Math.cos(t * 0.5) * 0.15;
-
-      wireMesh.rotation.copy(solidMesh.rotation);
-      wireMesh.rotation.y += 0.002; // slight offset from solid
-
-      glowMesh.rotation.y -= 0.003;
-      glowMesh.rotation.x = Math.cos(t * 0.4) * 0.2;
-
-      // Pulsing glow
-      const pulse = 0.85 + Math.sin(t * 1.6) * 0.15;
-      solidMat.opacity = 0.45 + pulse * 0.15;
-      pointA.intensity = 5 + pulse * 3;
-
-      // Orbit the bright point light
-      pointA.position.x = Math.sin(t) * 3.5;
-      pointA.position.z = Math.cos(t) * 3.5;
-
-      renderer.render(scene, camera);
-    };
-    animate();
-
-    return () => {
-      cancelAnimationFrame(frameId);
-      window.removeEventListener("resize", onResize);
-      try {
-        renderer.dispose();
-        geo.dispose(); glowGeo.dispose();
-        solidMat.dispose(); wireMat.dispose(); glowMat.dispose();
-        if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
-      } catch { /* ignore cleanup errors */ }
-    };
-  }, []);
-
-  return (
-    <div
-      ref={mountRef}
-      className="w-full h-full"
-      style={{ minHeight: "420px" }}
-    />
-  );
-}
+import { BohrModel3D } from "../components/BohrModel3D";
 
 // ── Animated molecule node canvas ──────────────────────────────────────────
 function MoleculeCanvas({ color = "var(--color-wraith)" }: { color?: string }) {
@@ -547,7 +399,7 @@ function AboutPage() {
             <Reveal>
               <p className="text-xs tracking-[0.4em] text-gold uppercase mb-3">The Main Stage</p>
               <h2 className="font-display text-4xl mb-6">
-                118 elements.<br />
+                12 elements.<br />
                 <span className="text-wraith text-glow-violet">All waiting to be forged.</span>
               </h2>
               <p className="text-parchment leading-relaxed mb-5">
@@ -632,7 +484,12 @@ function AboutPage() {
                     />
                   ))}
                 </div>
-                <CrystalThree />
+                <BohrModel3D
+                  electrons="2,8,18,32,18,1"
+                  color="#a78bfa"
+                  nucleusColor="#fbbf24"
+                  label="Au"
+                />
                 {/* Bottom label */}
                 <div className="absolute bottom-4 left-0 right-0 text-center pointer-events-none">
                   <span className="text-[10px] tracking-[0.35em] uppercase text-wraith/60">
