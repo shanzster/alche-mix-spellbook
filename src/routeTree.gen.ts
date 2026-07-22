@@ -9,12 +9,36 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as LearnRouteImport } from './routes/learn'
+import { Route as GrimoireRouteImport } from './routes/grimoire'
+import { Route as ElementsRouteImport } from './routes/elements'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
+const LearnRoute = LearnRouteImport.update({
+  id: '/learn',
+  path: '/learn',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GrimoireRoute = GrimoireRouteImport.update({
+  id: '/grimoire',
+  path: '/grimoire',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ElementsRoute = ElementsRouteImport.update({
+  id: '/elements',
+  path: '/elements',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -25,37 +49,82 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/app': typeof AppRoute
+  '/elements': typeof ElementsRoute
+  '/grimoire': typeof GrimoireRoute
+  '/learn': typeof LearnRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/app': typeof AppRoute
+  '/elements': typeof ElementsRoute
+  '/grimoire': typeof GrimoireRoute
+  '/learn': typeof LearnRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/app': typeof AppRoute
+  '/elements': typeof ElementsRoute
+  '/grimoire': typeof GrimoireRoute
+  '/learn': typeof LearnRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app'
+  fullPaths: '/' | '/about' | '/app' | '/elements' | '/grimoire' | '/learn'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app'
-  id: '__root__' | '/' | '/app'
+  to: '/' | '/about' | '/app' | '/elements' | '/grimoire' | '/learn'
+  id:
+    '__root__' | '/' | '/about' | '/app' | '/elements' | '/grimoire' | '/learn'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
   AppRoute: typeof AppRoute
+  ElementsRoute: typeof ElementsRoute
+  GrimoireRoute: typeof GrimoireRoute
+  LearnRoute: typeof LearnRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/learn': {
+      id: '/learn'
+      path: '/learn'
+      fullPath: '/learn'
+      preLoaderRoute: typeof LearnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/grimoire': {
+      id: '/grimoire'
+      path: '/grimoire'
+      fullPath: '/grimoire'
+      preLoaderRoute: typeof GrimoireRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/elements': {
+      id: '/elements'
+      path: '/elements'
+      fullPath: '/elements'
+      preLoaderRoute: typeof ElementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app': {
       id: '/app'
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -70,8 +139,22 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
   AppRoute: AppRoute,
+  ElementsRoute: ElementsRoute,
+  GrimoireRoute: GrimoireRoute,
+  LearnRoute: LearnRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
