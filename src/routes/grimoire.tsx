@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BookOpen, Camera, Sparkles, Star, Zap, FlaskConical, CheckCircle } from "lucide-react";
+import { BookOpen, Camera, Sparkles, Star, Zap, FlaskConical, CheckCircle, ShoppingCart } from "lucide-react";
 import { FloatingNav } from "../components/FloatingNav";
 
 export const Route = createFileRoute("/grimoire")({
@@ -220,9 +220,31 @@ function GrimoirePage() {
           <FlaskConical className="mx-auto h-10 w-10 text-wraith animate-float-slow mb-6" />
           <h2 className="font-display text-3xl mb-4">Get the Grimoire</h2>
           <p className="text-parchment mb-8 max-w-md mx-auto">
-            The base card set is available through your educational institution. Once you have the cards,
-            open the platform to start forging the rest of the periodic table.
+            The base card set is available now. Order yours and start forging
+            the rest of the periodic table inside the platform.
           </p>
+
+          {/* Primary buy CTA */}
+          <a
+            href="https://shopee.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-3 rounded-xl px-8 py-4 font-display text-base tracking-[0.12em] uppercase transition-all duration-300 hover:-translate-y-1 hover:scale-105 mb-6"
+            style={{
+              background: "linear-gradient(135deg, color-mix(in oklab, var(--color-gold) 70%, var(--color-amber-scry)), color-mix(in oklab, var(--color-gold) 85%, black))",
+              border: "1px solid color-mix(in oklab, var(--color-gold) 80%, white)",
+              color: "#1D1D1B",
+              boxShadow: "0 0 32px -6px color-mix(in oklab, var(--color-gold) 65%, transparent), inset 0 1px 0 rgba(255,255,255,0.3)",
+            }}
+          >
+            <ShoppingCart className="h-5 w-5" />
+            Buy on Shopee
+          </a>
+
+          <p className="text-parchment/40 text-xs tracking-[0.2em] uppercase mb-8">
+            Ships via Shopee · Secure checkout
+          </p>
+
           <div className="flex flex-wrap justify-center gap-4">
             <Link to="/elements" className="btn-arcane btn-arcane-hover">
               Explore All Elements
