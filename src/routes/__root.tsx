@@ -11,6 +11,8 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+// Initialise Firebase + Analytics (side-effect import — runs once on load)
+import "../lib/firebase";
 
 function NotFoundComponent() {
   return (
