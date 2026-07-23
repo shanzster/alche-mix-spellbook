@@ -449,12 +449,7 @@ function AboutPage() {
                     {sym}
                   </div>
                 ))}
-                <div
-                  className="flex items-center justify-center rounded-lg text-xs text-parchment/60 border border-parchment/20"
-                  style={{ width: 44, height: 44 }}
-                >
-                  +106
-                </div>
+                
               </div>
 
               <Link to="/elements" className="btn-arcane btn-arcane-hover">

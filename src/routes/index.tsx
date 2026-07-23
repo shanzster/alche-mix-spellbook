@@ -552,7 +552,7 @@ function Landing() {
             <Reveal>
               <p className="text-xs tracking-[0.4em] text-gold uppercase mb-3">The Main Stage</p>
               <h2 className="font-display text-4xl mb-6">
-                118 elements.<br />
+                42 elements.<br />
                 <span className="text-wraith text-glow-violet">All waiting to be forged.</span>
               </h2>
               <p className="text-parchment leading-relaxed mb-5">
@@ -673,7 +673,7 @@ function Landing() {
           <div className="grid grid-cols-1 gap-px md:grid-cols-3 rounded-2xl overflow-hidden"
             style={{ border: "1px solid color-mix(in oklab, var(--color-parchment) 15%, transparent)" }}>
             {[
-              { stat: "118", label: "Elements in the explorer", sub: "Every element on the periodic table" },
+              { stat: "42", label: "Elements in the explorer", sub: "Every element on the periodic table" },
               { stat: "3D AR", label: "Molecular visualisation", sub: "Rendered in your physical space" },
               { stat: "AI-Graded", label: "Evidence submissions", sub: "Instant feedback on real-world samples" },
             ].map(({ stat, label, sub }) => (

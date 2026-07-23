@@ -320,7 +320,7 @@ function ElementsPage() {
         {/* Header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 rounded-full border border-wraith/30 bg-wraith/10 px-4 py-1.5 text-xs tracking-[0.3em] text-wraith uppercase mb-4">
-            <Atom className="h-3 w-3" /> All 118 Elements
+            <Atom className="h-3 w-3" /> All 12 Elements
           </div>
           <h1 className="font-display text-4xl md:text-5xl mb-4">The Periodic Table</h1>
           <p className="text-parchment max-w-xl mx-auto">Click any element to learn more. Each blob represents a unique element — colour-coded by category.</p>
