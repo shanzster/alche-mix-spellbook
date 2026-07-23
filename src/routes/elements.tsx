@@ -175,7 +175,11 @@ const CATEGORIES = Array.from(new Set(ELEMENTS.map(e => e.category)));
 
 function ElementBlob({ el, onClick }: { el: Element; onClick: () => void }) {
   const color = CATEGORY_COLORS[el.category];
-  const size = 52 + (el.number % 5) * 6;
+  // Slightly larger base size so symbols have more room
+  const size = 58 + (el.number % 5) * 6;
+  // Symbol font scales with blob size — bigger and tighter tracking
+  const symSize = size < 68 ? 13 : size < 74 ? 15 : 17;
+  const numSize = size < 68 ? 9 : 10;
   return (
     <button
       onClick={onClick}
@@ -189,11 +193,14 @@ function ElementBlob({ el, onClick }: { el: Element; onClick: () => void }) {
         animationDuration: `${2.8 + (el.number % 5) * 0.4}s`,
       }}
     >
-      <span className="font-display text-xs font-bold text-white drop-shadow-sm leading-none"
-        style={{ fontSize: size < 62 ? "10px" : "12px" }}>
+      <span
+        className="font-display font-bold text-white drop-shadow leading-none"
+        style={{ fontSize: symSize, letterSpacing: "0.02em" }}
+      >
         {el.symbol}
       </span>
-      <span className="text-white/60 leading-none mt-0.5" style={{ fontSize: "8px" }}>{el.number}</span>
+      <span className="text-white/70 leading-none mt-0.5 font-sans"
+        style={{ fontSize: numSize }}>{el.number}</span>
       {/* Hover glow ring */}
       <span className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200"
         style={{ boxShadow: `0 0 28px 4px ${color}` }} />
