@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";
+import { getAuth } from "firebase/auth";
 
 const firebaseConfig = {
   apiKey:            "AIzaSyB3waPbnSaS0tKQqwmCkhMGZlsdpPc4dvw",
@@ -11,10 +12,10 @@ const firebaseConfig = {
   measurementId:     "G-FRY33QTGXJ",
 };
 
-// Prevent re-initialising on hot reload
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 
-// Analytics only runs in the browser (not SSR / Node)
+export const auth = getAuth(app);
+
 export const analyticsPromise = isSupported().then((ok) =>
   ok ? getAnalytics(app) : null
 );

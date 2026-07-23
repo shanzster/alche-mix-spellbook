@@ -9,6 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as GrimoireRouteImport } from './routes/grimoire'
 import { Route as ElementsRouteImport } from './routes/elements'
@@ -16,6 +18,16 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LearnRoute = LearnRouteImport.update({
   id: '/learn',
   path: '/learn',
@@ -54,6 +66,8 @@ export interface FileRoutesByFullPath {
   '/elements': typeof ElementsRoute
   '/grimoire': typeof GrimoireRoute
   '/learn': typeof LearnRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +76,8 @@ export interface FileRoutesByTo {
   '/elements': typeof ElementsRoute
   '/grimoire': typeof GrimoireRoute
   '/learn': typeof LearnRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,14 +87,40 @@ export interface FileRoutesById {
   '/elements': typeof ElementsRoute
   '/grimoire': typeof GrimoireRoute
   '/learn': typeof LearnRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/about' | '/app' | '/elements' | '/grimoire' | '/learn'
+  fullPaths:
+    | '/'
+    | '/about'
+    | '/app'
+    | '/elements'
+    | '/grimoire'
+    | '/learn'
+    | '/login'
+    | '/signup'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/about' | '/app' | '/elements' | '/grimoire' | '/learn'
+  to:
+    | '/'
+    | '/about'
+    | '/app'
+    | '/elements'
+    | '/grimoire'
+    | '/learn'
+    | '/login'
+    | '/signup'
   id:
-    '__root__' | '/' | '/about' | '/app' | '/elements' | '/grimoire' | '/learn'
+    | '__root__'
+    | '/'
+    | '/about'
+    | '/app'
+    | '/elements'
+    | '/grimoire'
+    | '/learn'
+    | '/login'
+    | '/signup'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -88,10 +130,26 @@ export interface RootRouteChildren {
   ElementsRoute: typeof ElementsRoute
   GrimoireRoute: typeof GrimoireRoute
   LearnRoute: typeof LearnRoute
+  LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/learn': {
       id: '/learn'
       path: '/learn'
@@ -144,6 +202,8 @@ const rootRouteChildren: RootRouteChildren = {
   ElementsRoute: ElementsRoute,
   GrimoireRoute: GrimoireRoute,
   LearnRoute: LearnRoute,
+  LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
