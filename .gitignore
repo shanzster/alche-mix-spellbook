@@ -16,6 +16,12 @@ dist-ssr
 .nitro
 *.local
 
+# Secrets / env
+.env
+.env.*
+!.env.example
+ADMIN_CREDENTIALS.MD
+
 # Wrangler / Cloudflare
 .wrangler/
 .dev.vars
@@ -33,3 +39,7 @@ dist-ssr
 
 # Large assets — keep locally, don't commit
 public/images/alchemix-hero-banner.png
+
+# Build output
+.output/
+.wrangler/

@@ -54,26 +54,69 @@
   --color-crimson: var(--crimson);
   --color-amber-scry: var(--amber-scry);
   --color-emerald-elixir: var(--emerald-elixir);
+  --color-teal: var(--emerald-elixir);
   --color-violet-deep: var(--violet-deep);
 
   --font-display: "Cyberjunkies", serif;
   --font-sans: "EB Garamond", serif;
 }
 
-:root {
-  --radius: 0.5rem;
+/*
+  Theme tokens.
+  The legacy brand names are kept (mist, slate-sunken, wraith, parchment, gold,
+  spectral, emerald-elixir, …) so every existing class keeps working — they are
+  simply re-pointed at the teal / violet / gold palette and given a light + dark
+  value. teal = primary, violet (wraith) = secondary, gold = tertiary accent.
+*/
 
-  /* Brand tokens — arcane alchemy */
-  --mist: oklch(0.15 0.04 300);             /* deep violet-black */
-  --slate-sunken: oklch(0.23 0.07 300);     /* twilight indigo */
-  --wraith: oklch(0.72 0.19 310);           /* mystic amethyst */
-  --parchment: oklch(0.62 0.05 80);         /* aged parchment */
-  --gold: oklch(0.8 0.14 85);               /* candle gold */
-  --spectral: oklch(0.98 0.02 300);         /* moonlit white */
-  --crimson: oklch(0.6 0.24 15);            /* dragon crimson */
-  --amber-scry: oklch(0.78 0.16 70);        /* scrying amber */
-  --emerald-elixir: oklch(0.74 0.17 165);   /* elixir teal */
-  --violet-deep: oklch(0.42 0.2 300);       /* deep arcane */
+/* ── ☀️ Light mode — daylight alchemy ── */
+:root {
+  --radius: 0.625rem;
+
+  --mist: #ffffff;            /* background — bright */
+  --slate-sunken: #f4f1ea;   /* warm parchment surface */
+  --wraith: #7c3aed;         /* violet — secondary accent */
+  --parchment: #55606f;      /* muted foreground — readable slate */
+  --gold: #a1670a;           /* candle gold — tertiary accent (dark enough for white) */
+  --spectral: #111826;       /* high-contrast foreground — deep ink */
+  --crimson: #dc2626;
+  --amber-scry: #b7791f;
+  --emerald-elixir: #0d9488; /* teal — primary accent (readable on white) */
+  --violet-deep: #6d28d9;
+
+  --background: var(--mist);
+  --foreground: var(--spectral);
+  --card: #ffffff;
+  --card-foreground: var(--spectral);
+  --popover: #ffffff;
+  --popover-foreground: var(--spectral);
+  --primary: var(--emerald-elixir);
+  --primary-foreground: #ffffff;
+  --secondary: var(--slate-sunken);
+  --secondary-foreground: var(--spectral);
+  --muted: var(--slate-sunken);
+  --muted-foreground: var(--parchment);
+  --accent: var(--wraith);
+  --accent-foreground: #ffffff;
+  --destructive: var(--crimson);
+  --destructive-foreground: #ffffff;
+  --border: color-mix(in oklab, var(--spectral) 12%, transparent);
+  --input: color-mix(in oklab, var(--spectral) 18%, transparent);
+  --ring: var(--emerald-elixir);
+}
+
+/* ── 🌙 Dark mode — studying magic under the night sky ── */
+.dark {
+  --mist: #0b1220;           /* background — deep night */
+  --slate-sunken: #141d2e;   /* twilight navy surface */
+  --wraith: #a855f7;         /* violet — secondary accent */
+  --parchment: #9aa7bd;      /* muted foreground — cool moonlit grey */
+  --gold: #e0b457;           /* candle gold — tertiary accent */
+  --spectral: #eaf0fa;       /* high-contrast foreground — moonlit white */
+  --crimson: #f87171;
+  --amber-scry: #e8b563;
+  --emerald-elixir: #2dd4bf; /* teal — primary accent */
+  --violet-deep: #6d28d9;
 
   --background: var(--mist);
   --foreground: var(--spectral);
@@ -81,19 +124,19 @@
   --card-foreground: var(--spectral);
   --popover: var(--slate-sunken);
   --popover-foreground: var(--spectral);
-  --primary: var(--wraith);
-  --primary-foreground: oklch(0.15 0.02 210);
+  --primary: var(--emerald-elixir);
+  --primary-foreground: #04211d;
   --secondary: var(--slate-sunken);
   --secondary-foreground: var(--spectral);
   --muted: var(--slate-sunken);
-  --muted-foreground: var(--gold);
+  --muted-foreground: var(--parchment);
   --accent: var(--wraith);
-  --accent-foreground: var(--mist);
+  --accent-foreground: #150726;
   --destructive: var(--crimson);
-  --destructive-foreground: var(--spectral);
-  --border: color-mix(in oklab, var(--parchment) 40%, transparent);
-  --input: color-mix(in oklab, var(--parchment) 30%, transparent);
-  --ring: var(--wraith);
+  --destructive-foreground: #1a0606;
+  --border: color-mix(in oklab, var(--parchment) 28%, transparent);
+  --input: color-mix(in oklab, var(--parchment) 22%, transparent);
+  --ring: var(--emerald-elixir);
 }
 
 @layer base {
@@ -113,28 +156,72 @@
   }
 }
 
-/* Magical background: violet aether + candle glow */
+/*
+  The compressed display font is hard to read for element symbols and dense data.
+  On the Elements page only, swap headings + `.font-display` text for the
+  secondary font (EB Garamond) so symbols, numbers, and stats are easy to scan.
+*/
+.elements-readable :is(h1, h2, h3, h4, h5, h6, .font-display):not(header *) {
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+}
+
+/* Respect users who prefer reduced motion — neutralise every decorative loop. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Page backdrop ── */
+/* Light: a soft, warm daylight wash (teal + gold + a hint of violet). */
 @utility bg-arcane {
   background-color: var(--color-background);
   background-image:
-    radial-gradient(ellipse at 15% 8%, color-mix(in oklab, var(--color-wraith) 22%, transparent), transparent 55%),
-    radial-gradient(ellipse at 88% 78%, color-mix(in oklab, var(--color-violet-deep) 30%, transparent), transparent 55%),
-    radial-gradient(ellipse at 50% 100%, color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent), transparent 70%),
-    radial-gradient(ellipse at 70% 20%, color-mix(in oklab, var(--color-gold) 8%, transparent), transparent 45%);
+    radial-gradient(ellipse at 12% 6%, color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent), transparent 55%),
+    radial-gradient(ellipse at 88% 10%, color-mix(in oklab, var(--color-gold) 12%, transparent), transparent 52%),
+    radial-gradient(ellipse at 50% 104%, color-mix(in oklab, var(--color-wraith) 8%, transparent), transparent 70%);
+}
+/* Dark: deep violet aether + teal candle glow. */
+.dark .bg-arcane {
+  background-image:
+    radial-gradient(ellipse at 15% 8%, color-mix(in oklab, var(--color-wraith) 20%, transparent), transparent 55%),
+    radial-gradient(ellipse at 88% 78%, color-mix(in oklab, var(--color-violet-deep) 28%, transparent), transparent 55%),
+    radial-gradient(ellipse at 50% 100%, color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent), transparent 70%);
 }
 
+/* Starfield — the dark-mode signature (night sky). Silent in light mode. */
 @utility bg-arcane-stars {
+  background-image: none;
+}
+.dark .bg-arcane-stars {
   background-image:
     radial-gradient(1px 1px at 12% 22%, color-mix(in oklab, var(--color-spectral) 80%, transparent) 50%, transparent 100%),
     radial-gradient(1px 1px at 78% 14%, color-mix(in oklab, var(--color-wraith) 85%, transparent) 50%, transparent 100%),
     radial-gradient(1.5px 1.5px at 34% 68%, color-mix(in oklab, var(--color-gold) 80%, transparent) 50%, transparent 100%),
     radial-gradient(1px 1px at 62% 82%, color-mix(in oklab, var(--color-spectral) 70%, transparent) 50%, transparent 100%),
-    radial-gradient(1px 1px at 88% 46%, color-mix(in oklab, var(--color-wraith) 80%, transparent) 50%, transparent 100%),
+    radial-gradient(1px 1px at 88% 46%, color-mix(in oklab, var(--color-emerald-elixir) 70%, transparent) 50%, transparent 100%),
     radial-gradient(1.5px 1.5px at 22% 88%, color-mix(in oklab, var(--color-amber-scry) 70%, transparent) 50%, transparent 100%),
     radial-gradient(1px 1px at 50% 40%, color-mix(in oklab, var(--color-spectral) 80%, transparent) 50%, transparent 100%);
   background-size: 100% 100%;
 }
 
+/* Light-mode signature — a faint sun-ray wash from the top. Silent in dark. */
+@utility bg-sun-rays {
+  background-image:
+    conic-gradient(from 210deg at 50% -10%,
+      transparent 0deg,
+      color-mix(in oklab, var(--color-gold) 10%, transparent) 20deg,
+      transparent 40deg,
+      color-mix(in oklab, var(--color-emerald-elixir) 8%, transparent) 60deg,
+      transparent 80deg);
+}
+.dark .bg-sun-rays {
+  background-image: none;
+}
 
 @utility glow-wraith {
   box-shadow:
@@ -145,6 +232,10 @@
 
 @utility glow-wraith-soft {
   box-shadow: 0 0 30px -8px color-mix(in oklab, var(--color-wraith) 40%, transparent);
+}
+
+@utility glow-teal-soft {
+  box-shadow: 0 0 30px -8px color-mix(in oklab, var(--color-emerald-elixir) 45%, transparent);
 }
 
 @utility text-glow {
@@ -166,8 +257,8 @@
 }
 
 @keyframes breathing {
-  0%, 100% { opacity: 0.75; filter: drop-shadow(0 0 10px color-mix(in oklab, var(--color-wraith) 40%, transparent)); }
-  50% { opacity: 1; filter: drop-shadow(0 0 22px color-mix(in oklab, var(--color-wraith) 70%, transparent)); }
+  0%, 100% { opacity: 0.78; filter: drop-shadow(0 0 8px color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 18px color-mix(in oklab, var(--color-emerald-elixir) 55%, transparent)); }
 }
 @keyframes bubble {
   0%, 100% { transform: scale(1); }
@@ -187,8 +278,8 @@
   100% { background-position: 200% 0; }
 }
 @keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-wraith) 55%, transparent); }
-  100% { box-shadow: 0 0 0 18px color-mix(in oklab, var(--color-wraith) 0%, transparent); }
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-emerald-elixir) 55%, transparent); }
+  100% { box-shadow: 0 0 0 18px color-mix(in oklab, var(--color-emerald-elixir) 0%, transparent); }
 }
 
 @keyframes twinkle {
@@ -219,22 +310,29 @@
 
 @utility text-glow-violet {
   text-shadow:
-    0 0 12px color-mix(in oklab, var(--color-wraith) 70%, transparent),
-    0 0 32px color-mix(in oklab, var(--color-violet-deep) 55%, transparent);
+    0 0 12px color-mix(in oklab, var(--color-wraith) 55%, transparent),
+    0 0 32px color-mix(in oklab, var(--color-violet-deep) 40%, transparent);
 }
 
+@utility text-glow-teal {
+  text-shadow:
+    0 0 12px color-mix(in oklab, var(--color-emerald-elixir) 55%, transparent),
+    0 0 32px color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent);
+}
+
+/* Aurora wordmark — teal → violet → gold (primary-led, dual identity). */
 @utility aurora-gradient {
   background-image: linear-gradient(120deg,
-    var(--color-wraith),
     var(--color-emerald-elixir),
+    var(--color-wraith),
     var(--color-gold),
-    var(--color-wraith));
+    var(--color-emerald-elixir));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
 }
 
-
+/* Primary CTA — teal → violet gradient (teal leads). */
 @utility btn-arcane {
   position: relative;
   display: inline-flex;
@@ -246,23 +344,24 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-size: 0.85rem;
-  color: var(--color-spectral);
+  color: #ffffff;
   background: linear-gradient(135deg,
-    color-mix(in oklab, var(--color-violet-deep) 85%, white 10%),
-    color-mix(in oklab, var(--color-wraith) 85%, black 5%));
-  border: 1px solid color-mix(in oklab, var(--color-wraith) 70%, white);
-  border-radius: 0.5rem;
+    color-mix(in oklab, var(--color-emerald-elixir) 90%, white 6%),
+    color-mix(in oklab, var(--color-wraith) 85%, black 4%));
+  border: 1px solid color-mix(in oklab, var(--color-emerald-elixir) 55%, white 20%);
+  border-radius: 0.625rem;
   transition: transform 200ms cubic-bezier(.34,1.56,.64,1), box-shadow 300ms ease, filter 200ms;
   box-shadow:
-    0 0 24px -4px color-mix(in oklab, var(--color-wraith) 65%, transparent),
-    0 6px 20px -6px color-mix(in oklab, var(--color-violet-deep) 60%, transparent),
-    inset 0 1px 0 color-mix(in oklab, var(--color-spectral) 30%, transparent);
+    0 0 24px -6px color-mix(in oklab, var(--color-emerald-elixir) 55%, transparent),
+    0 6px 20px -6px color-mix(in oklab, var(--color-wraith) 50%, transparent),
+    inset 0 1px 0 color-mix(in oklab, white 25%, transparent);
 }
 @utility btn-arcane-hover {
-  &:hover { transform: translateY(-2px) scale(1.02); filter: brightness(1.08); box-shadow: 0 12px 40px -8px color-mix(in oklab, var(--color-wraith) 70%, transparent); }
+  &:hover { transform: translateY(-2px) scale(1.02); filter: brightness(1.06); box-shadow: 0 12px 40px -8px color-mix(in oklab, var(--color-emerald-elixir) 60%, transparent); }
   &:active { transform: translateY(1px) scale(0.98); }
 }
 
+/* Secondary CTA — quiet ghost that adapts to both themes. */
 @utility btn-ghost-arcane {
   display: inline-flex;
   align-items: center;
@@ -273,11 +372,11 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   font-size: 0.85rem;
-  color: var(--color-gold);
+  color: var(--color-foreground);
   background: transparent;
-  border: 1px solid color-mix(in oklab, var(--color-parchment) 55%, transparent);
-  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.625rem;
   transition: all 200ms cubic-bezier(.34,1.56,.64,1);
-  &:hover { color: var(--color-spectral); border-color: color-mix(in oklab, var(--color-wraith) 60%, transparent); transform: translateY(-1px); }
+  &:hover { color: var(--color-emerald-elixir); border-color: color-mix(in oklab, var(--color-emerald-elixir) 55%, transparent); transform: translateY(-1px); }
   &:active { transform: translateY(1px); }
 }

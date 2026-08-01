@@ -1,6 +1,9 @@
 {
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": {
-    "public": "y",
+    "public": ".output/public",
     "ignore": [
       "firebase.json",
       "**/.*",

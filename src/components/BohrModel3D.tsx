@@ -7,6 +7,10 @@ interface BohrModel3DProps {
   nucleusColor?: string;
   label?: string;
   className?: string;
+  /** When true, the user can drag to spin the atom (grab cursor + pointer control). */
+  interactive?: boolean;
+  /** When true, the atom continuously tumbles on all three axes (as if being spun). */
+  tumble?: boolean;
 }
 
 // Deterministic tilts spread evenly across 3D space for up to 7 shells.
@@ -27,6 +31,8 @@ export function BohrModel3D({
   nucleusColor = "#fbbf24",
   label      = "Au",
   className  = "",
+  interactive = false,
+  tumble = false,
 }: BohrModel3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -47,6 +53,36 @@ export function BohrModel3D({
     renderer.setSize(W, H);
     renderer.setClearColor(0x000000, 0);
     mount.appendChild(renderer.domElement);
+
+    // ── Drag-to-spin (opt-in) ────────────────────────────────────────────────
+    let dragging = false;
+    let lastX = 0, lastY = 0;
+    if (interactive) {
+      renderer.domElement.style.cursor = "grab";
+      renderer.domElement.style.touchAction = "none";
+    }
+    const onPointerDown = (e: PointerEvent) => {
+      dragging = true;
+      lastX = e.clientX; lastY = e.clientY;
+      renderer.domElement.style.cursor = "grabbing";
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      if (!dragging) return;
+      const dx = e.clientX - lastX, dy = e.clientY - lastY;
+      lastX = e.clientX; lastY = e.clientY;
+      scene.rotation.y += dx * 0.01;
+      scene.rotation.x = Math.max(-1.2, Math.min(1.2, scene.rotation.x + dy * 0.01));
+    };
+    const onPointerUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      if (interactive) renderer.domElement.style.cursor = "grab";
+    };
+    if (interactive) {
+      renderer.domElement.addEventListener("pointerdown", onPointerDown);
+      window.addEventListener("pointermove", onPointerMove);
+      window.addEventListener("pointerup", onPointerUp);
+    }
 
     // ── Scene & camera ───────────────────────────────────────────────────────
     const scene  = new THREE.Scene();
@@ -194,9 +230,20 @@ export function BohrModel3D({
       nucMat.emissiveIntensity = 0.45 + Math.sin(t * 2.5) * 0.3;
       fill.intensity = 1.4 + Math.sin(t * 2.5) * 0.6;
 
-      // Slow global drift so you see the 3D structure from different angles
-      scene.rotation.y += 0.0035;
-      scene.rotation.x = Math.sin(t * 0.15) * 0.2;
+      // Global rotation. While the user is dragging, hand control to their pointer.
+      if (!dragging) {
+        if (tumble) {
+          // Continuous 3-axis tumble — as if someone is spinning it by hand.
+          scene.rotation.y += 0.009;
+          scene.rotation.x += 0.005;
+          scene.rotation.z += 0.0025;
+        } else {
+          // Gentle single-axis drift with a slight idle wobble.
+          scene.rotation.y += 0.0035;
+          const idleX = Math.sin(t * 0.15) * 0.2;
+          scene.rotation.x += (idleX - scene.rotation.x) * 0.04;
+        }
+      }
 
       // Spin the electron pivots around their orbital plane
       for (let s = 0; s < shellCount; s++) {
@@ -210,12 +257,15 @@ export function BohrModel3D({
     return () => {
       cancelAnimationFrame(frameId);
       window.removeEventListener("resize", onResize);
+      renderer.domElement.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
       try {
         renderer.dispose();
         if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
       } catch { /* ignore */ }
     };
-  }, [electrons, color, nucleusColor, label]);
+  }, [electrons, color, nucleusColor, label, interactive, tumble]);
 
   return (
     <div

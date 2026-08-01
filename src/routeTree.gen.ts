@@ -9,18 +9,41 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TeacherRouteImport } from './routes/teacher'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as QuizRouteImport } from './routes/quiz'
+import { Route as PeriodicTableRouteImport } from './routes/periodic-table'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as GrimoireRouteImport } from './routes/grimoire'
+import { Route as GasLawsRouteImport } from './routes/gas-laws'
+import { Route as EquationBalancerRouteImport } from './routes/equation-balancer'
 import { Route as ElementsRouteImport } from './routes/elements'
+import { Route as CardsRouteImport } from './routes/cards'
+import { Route as AtomicBuilderRouteImport } from './routes/atomic-builder'
 import { Route as AppRouteImport } from './routes/app'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TeacherRoute = TeacherRouteImport.update({
+  id: '/teacher',
+  path: '/teacher',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QuizRoute = QuizRouteImport.update({
+  id: '/quiz',
+  path: '/quiz',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PeriodicTableRoute = PeriodicTableRouteImport.update({
+  id: '/periodic-table',
+  path: '/periodic-table',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -38,14 +61,39 @@ const GrimoireRoute = GrimoireRouteImport.update({
   path: '/grimoire',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GasLawsRoute = GasLawsRouteImport.update({
+  id: '/gas-laws',
+  path: '/gas-laws',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EquationBalancerRoute = EquationBalancerRouteImport.update({
+  id: '/equation-balancer',
+  path: '/equation-balancer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ElementsRoute = ElementsRouteImport.update({
   id: '/elements',
   path: '/elements',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CardsRoute = CardsRouteImport.update({
+  id: '/cards',
+  path: '/cards',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AtomicBuilderRoute = AtomicBuilderRouteImport.update({
+  id: '/atomic-builder',
+  path: '/atomic-builder',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -62,85 +110,162 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
   '/app': typeof AppRoute
+  '/atomic-builder': typeof AtomicBuilderRoute
+  '/cards': typeof CardsRoute
   '/elements': typeof ElementsRoute
+  '/equation-balancer': typeof EquationBalancerRoute
+  '/gas-laws': typeof GasLawsRoute
   '/grimoire': typeof GrimoireRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/periodic-table': typeof PeriodicTableRoute
+  '/quiz': typeof QuizRoute
   '/signup': typeof SignupRoute
+  '/teacher': typeof TeacherRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
   '/app': typeof AppRoute
+  '/atomic-builder': typeof AtomicBuilderRoute
+  '/cards': typeof CardsRoute
   '/elements': typeof ElementsRoute
+  '/equation-balancer': typeof EquationBalancerRoute
+  '/gas-laws': typeof GasLawsRoute
   '/grimoire': typeof GrimoireRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/periodic-table': typeof PeriodicTableRoute
+  '/quiz': typeof QuizRoute
   '/signup': typeof SignupRoute
+  '/teacher': typeof TeacherRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/admin': typeof AdminRoute
   '/app': typeof AppRoute
+  '/atomic-builder': typeof AtomicBuilderRoute
+  '/cards': typeof CardsRoute
   '/elements': typeof ElementsRoute
+  '/equation-balancer': typeof EquationBalancerRoute
+  '/gas-laws': typeof GasLawsRoute
   '/grimoire': typeof GrimoireRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/periodic-table': typeof PeriodicTableRoute
+  '/quiz': typeof QuizRoute
   '/signup': typeof SignupRoute
+  '/teacher': typeof TeacherRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/about'
+    | '/admin'
     | '/app'
+    | '/atomic-builder'
+    | '/cards'
     | '/elements'
+    | '/equation-balancer'
+    | '/gas-laws'
     | '/grimoire'
     | '/learn'
     | '/login'
+    | '/periodic-table'
+    | '/quiz'
     | '/signup'
+    | '/teacher'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
+    | '/admin'
     | '/app'
+    | '/atomic-builder'
+    | '/cards'
     | '/elements'
+    | '/equation-balancer'
+    | '/gas-laws'
     | '/grimoire'
     | '/learn'
     | '/login'
+    | '/periodic-table'
+    | '/quiz'
     | '/signup'
+    | '/teacher'
   id:
     | '__root__'
     | '/'
     | '/about'
+    | '/admin'
     | '/app'
+    | '/atomic-builder'
+    | '/cards'
     | '/elements'
+    | '/equation-balancer'
+    | '/gas-laws'
     | '/grimoire'
     | '/learn'
     | '/login'
+    | '/periodic-table'
+    | '/quiz'
     | '/signup'
+    | '/teacher'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
+  AdminRoute: typeof AdminRoute
   AppRoute: typeof AppRoute
+  AtomicBuilderRoute: typeof AtomicBuilderRoute
+  CardsRoute: typeof CardsRoute
   ElementsRoute: typeof ElementsRoute
+  EquationBalancerRoute: typeof EquationBalancerRoute
+  GasLawsRoute: typeof GasLawsRoute
   GrimoireRoute: typeof GrimoireRoute
   LearnRoute: typeof LearnRoute
   LoginRoute: typeof LoginRoute
+  PeriodicTableRoute: typeof PeriodicTableRoute
+  QuizRoute: typeof QuizRoute
   SignupRoute: typeof SignupRoute
+  TeacherRoute: typeof TeacherRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/teacher': {
+      id: '/teacher'
+      path: '/teacher'
+      fullPath: '/teacher'
+      preLoaderRoute: typeof TeacherRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/quiz': {
+      id: '/quiz'
+      path: '/quiz'
+      fullPath: '/quiz'
+      preLoaderRoute: typeof QuizRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/periodic-table': {
+      id: '/periodic-table'
+      path: '/periodic-table'
+      fullPath: '/periodic-table'
+      preLoaderRoute: typeof PeriodicTableRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -164,6 +289,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GrimoireRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gas-laws': {
+      id: '/gas-laws'
+      path: '/gas-laws'
+      fullPath: '/gas-laws'
+      preLoaderRoute: typeof GasLawsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/equation-balancer': {
+      id: '/equation-balancer'
+      path: '/equation-balancer'
+      fullPath: '/equation-balancer'
+      preLoaderRoute: typeof EquationBalancerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/elements': {
       id: '/elements'
       path: '/elements'
@@ -171,11 +310,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ElementsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cards': {
+      id: '/cards'
+      path: '/cards'
+      fullPath: '/cards'
+      preLoaderRoute: typeof CardsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/atomic-builder': {
+      id: '/atomic-builder'
+      path: '/atomic-builder'
+      fullPath: '/atomic-builder'
+      preLoaderRoute: typeof AtomicBuilderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app': {
       id: '/app'
       path: '/app'
       fullPath: '/app'
       preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -198,12 +358,20 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
+  AdminRoute: AdminRoute,
   AppRoute: AppRoute,
+  AtomicBuilderRoute: AtomicBuilderRoute,
+  CardsRoute: CardsRoute,
   ElementsRoute: ElementsRoute,
+  EquationBalancerRoute: EquationBalancerRoute,
+  GasLawsRoute: GasLawsRoute,
   GrimoireRoute: GrimoireRoute,
   LearnRoute: LearnRoute,
   LoginRoute: LoginRoute,
+  PeriodicTableRoute: PeriodicTableRoute,
+  QuizRoute: QuizRoute,
   SignupRoute: SignupRoute,
+  TeacherRoute: TeacherRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

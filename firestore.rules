@@ -1,0 +1,65 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function isApprovedTeacher() {
+      return signedIn() && me().role == 'teacher' && me().status == 'approved';
+    }
+    // The seeded admin(s) — keep this list in sync with src/lib/admin.ts.
+    function isAdmin() {
+      return signedIn() && request.auth.token.email in ['ramalusubov@gmail.com'];
+    }
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    // ── User profiles ──
+    match /users/{userId} {
+      allow read: if signedIn() && (request.auth.uid == userId || isApprovedTeacher() || isAdmin());
+
+      // Only the seeded admin may create an admin profile.
+      allow create: if request.auth.uid == userId
+                    && (request.resource.data.role != 'admin' || isAdmin());
+
+      // - Admin: may change anything (e.g. approve a teacher's status).
+      // - Owner: may edit their profile but NOT their grades/mastery/role/status.
+      // - Approved teacher: may edit ONLY grades/mastery (on any student).
+      allow update: if isAdmin()
+                    || (request.auth.uid == userId && !changedKeys().hasAny(['grades', 'mastery', 'role', 'status']))
+                    || (isApprovedTeacher() && changedKeys().hasOnly(['grades', 'mastery']));
+
+      allow delete: if false;
+    }
+
+    // ── Teacher identity verifications ──
+    match /verifications/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create, update: if request.auth.uid == uid || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── Classes (doc id = the 6-char join code) ──
+    match /classes/{classId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.teacherId == request.auth.uid;
+      allow update, delete: if signedIn() && resource.data.teacherId == request.auth.uid;
+
+      match /roster/{studentId} {
+        function classTeacher() {
+          return get(/databases/$(database)/documents/classes/$(classId)).data.teacherId;
+        }
+        allow read: if signedIn() && (request.auth.uid == studentId || classTeacher() == request.auth.uid);
+        allow create, update: if request.auth.uid == studentId;
+        allow delete: if request.auth.uid == studentId || classTeacher() == request.auth.uid;
+      }
+    }
+
+    // Everything else denied by default.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

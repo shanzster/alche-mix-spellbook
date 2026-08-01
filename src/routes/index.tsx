@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import { onAuthChange } from "../lib/auth";
 import {
   FlaskConical,
   Eye,
@@ -14,6 +15,7 @@ import {
   BookMarked,
 } from "lucide-react";
 import { BohrModel3D } from "../components/BohrModel3D";
+import { FloatingNav } from "../components/FloatingNav";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -156,6 +158,17 @@ const BASE_ELEMENTS = [
   { sym:"S",  name:"Sulfur",    num:16, electrons:"2,8,6",      c:"#facc15", nc:"#fde68a" },
 ];
 
+// The AlcheMix signature element — a fictional "brand atom" for the hero.
+// 6 protons, electron shells 2,4 — it spins on its own.
+const ALCHEMIX_ELEMENT = {
+  sym: "Ax",
+  name: "AlcheMix",
+  protons: 6,
+  electrons: "2,4",
+  color: "#2dd4bf",        // teal — primary
+  nucleusColor: "#a855f7", // violet — secondary
+};
+
 // ── Shared selected-element state (lifted so both components share it) ─────
 import { createContext, useContext } from "react";
 const ElementCtx = createContext<{
@@ -195,7 +208,7 @@ function ElementSelector() {
           );
         })}
         <div className="flex items-center justify-center rounded-lg text-xs text-parchment/50 border border-parchment/20"
-          style={{ width: 44, height: 44 }}>+106</div>
+          style={{ width: 44, height: 44 }}>+30</div>
       </div>
       <Link to="/elements" className="btn-arcane btn-arcane-hover">
         <Atom className="h-4 w-4" /> Browse All Elements
@@ -253,140 +266,127 @@ function Landing() {
   const y = useScrollY();
   const heroRef = useRef<HTMLDivElement>(null);
 
+  // Signed-in students skip the marketing page and go straight to the dashboard.
+  const navigate = useNavigate();
+  const [authReady, setAuthReady] = useState(false);
+  useEffect(() => onAuthChange((u) => {
+    if (u) navigate({ to: "/app" });
+    else setAuthReady(true);
+  }), [navigate]);
+
+  const heroEl = ALCHEMIX_ELEMENT;
+
+  // Hold the page until we know whether to redirect — avoids flashing the
+  // landing to a logged-in student before the bounce to /app.
+  if (!authReady) {
+    return <div className="bg-arcane min-h-screen flex items-center justify-center">
+      <FlaskConical className="h-8 w-8 text-teal animate-spin" />
+    </div>;
+  }
+
   return (
     <ElementCtx.Provider value={{ selected: selectedEl, setSelected: setSelectedEl }}>
     <div className="bg-arcane min-h-screen overflow-x-hidden text-spectral">
       {/* Starfield */}
       <div className="bg-arcane-stars pointer-events-none fixed inset-0 z-0 opacity-70" />
 
-      {/* Floating embers */}
-      <div className="pointer-events-none fixed inset-0 z-0">
-        {Array.from({ length: 22 }).map((_, i) => {
-          const violet = i % 2 === 0;
-          return (
-            <span
-              key={`e-${i}`}
-              className="animate-drift absolute h-1 w-1 rounded-full"
-              style={{
-                top: `${(i * 37) % 100}%`,
-                animationDelay: `${i * 1.1}s`,
-                animationDuration: `${18 + (i % 6) * 3}s`,
-                background: violet ? "var(--color-wraith)" : "var(--color-gold)",
-                boxShadow: `0 0 14px ${violet ? "var(--color-wraith)" : "var(--color-gold)"}`,
-              }}
-            />
-          );
-        })}
-      </div>
+      {/* Floating Pill Nav (shared across the app) */}
+      <FloatingNav />
 
-
-      {/* Floating Pill Nav */}
-      <header className="fixed top-5 left-0 right-0 z-50 flex justify-center pointer-events-none">
-        {/* Outer wrapper — taller than pill to let orb overflow without clipping */}
-        <div className="pointer-events-auto relative flex items-center justify-center" style={{ height: "68px" }}>
-
-          {/* The single pill — all items in one row with a gap in the middle for the orb */}
-          <div
-            className="flex items-center h-12 rounded-full backdrop-blur-xl"
-            style={{
-              background: "color-mix(in oklab, var(--color-slate-sunken) 88%, transparent)",
-              border: "1px solid color-mix(in oklab, var(--color-parchment) 22%, transparent)",
-              boxShadow:
-                "0 8px 40px -8px color-mix(in oklab, var(--color-wraith) 30%, transparent), inset 0 1px 0 color-mix(in oklab, var(--color-spectral) 8%, transparent)",
-              padding: "0 12px",
-              gap: "6px",
-            }}
-          >
-            {/* Left: 2 scroll links */}
-            <NavScrollLink href="/about" label="About" isRoute />
-            <NavScrollLink href="/elements" label="Elements" isRoute />
-
-            {/* Center gap — exactly wide enough so the orb doesn't overlap the icons */}
-            <div style={{ width: "72px", flexShrink: 0 }} />
-
-            {/* Right: 2 scroll links */}
-            <NavScrollLink href="/grimoire" label="Grimoire" isRoute />
-            <NavScrollLink href="/learn" label="How It Works" isRoute />
-          </div>
-
-          {/* Logo orb — sits on top of the pill, centered, non-interactive for the pill row */}
-          <Link
-            to="/"
-            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-20 flex items-center justify-center rounded-full animate-breathing group"
-            style={{
-              width: "60px",
-              height: "60px",
-              background: "#1D1D1B",
-              border: "4px solid color-mix(in oklab, var(--color-slate-sunken) 100%, transparent)",
-              boxShadow:
-                "0 0 0 1px color-mix(in oklab, var(--color-wraith) 55%, transparent), 0 0 28px -4px color-mix(in oklab, var(--color-wraith) 70%, transparent), 0 0 50px -10px color-mix(in oklab, var(--color-wraith) 40%, transparent)",
-              flexShrink: 0,
-            }}
-          >
-            <img
-              src="/images/logo-outline.png"
-              alt="AlcheMix"
-              style={{ width: "36px", height: "36px", objectFit: "contain", filter: "drop-shadow(0 0 6px color-mix(in oklab, var(--color-wraith) 80%, transparent))" }}
-            />
-            <span className="pointer-events-none absolute -bottom-6 left-1/2 -translate-x-1/2 whitespace-nowrap font-display text-[9px] tracking-[0.2em] uppercase text-spectral/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              AlcheMix
-            </span>
-          </Link>
-
-        </div>
-      </header>
-
-      {/* HERO — parallax */}
+      {/* HERO — living atom */}
       <section
         ref={heroRef}
-        className="relative flex min-h-screen items-center justify-center overflow-hidden pt-24"
-        style={{ cursor: "none" }}
+        className="relative flex min-h-screen items-center overflow-hidden pt-28 pb-16"
       >
-        {/* Half-circle gradient rising from the bottom */}
+        {/* Single ambient glow behind the atom */}
         <div
           className="absolute inset-0 z-0"
           style={{
-            background:
-              "radial-gradient(ellipse 120% 70% at 50% 110%, color-mix(in oklab, var(--color-wraith) 30%, transparent) 0%, color-mix(in oklab, var(--color-violet-deep) 18%, transparent) 45%, transparent 70%)",
+            background: `radial-gradient(ellipse 85% 65% at 62% 52%, color-mix(in oklab, ${heroEl.color} 20%, transparent) 0%, color-mix(in oklab, var(--color-wraith) 10%, transparent) 45%, transparent 70%)`,
           }}
         />
 
-        {/* Floating crystals + gold magnifying lens with zoom */}
-        <CrystalLens />
+        <div className="relative z-20 mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-8 px-6 md:grid-cols-2 md:gap-10">
+          {/* Left — copy */}
+          <div
+            className="order-2 text-center md:order-1 md:text-left"
+            style={{ transform: `translateY(${y * -0.25}px)`, opacity: Math.max(0, 1 - y / 700) }}
+          >
+            <h1 className="font-display text-5xl leading-[1.05] md:text-6xl lg:text-7xl">
+              Where <span className="aurora-gradient animate-aurora">Elements</span>
+              <br /> Whisper Their <span className="text-wraith text-glow-violet">Secrets.</span>
+            </h1>
+            <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-parchment md:mx-0">
+              An augmented-reality chemistry platform for secondary and tertiary
+              education. Students turn, inspect, and forge molecular structures in 3D —
+              while educators track every step in real time.
+            </p>
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-4 md:justify-start">
+              <Link to="/app" className="btn-arcane btn-arcane-hover">
+                <FlaskConical className="h-4 w-4" /> Start Learning
+              </Link>
+              <a href="#discover" className="btn-ghost-arcane">
+                <ScrollText className="h-4 w-4" /> Explore Features
+              </a>
+            </div>
+          </div>
 
-        {/* Foreground copy */}
-        <div
-          className="relative z-20 mx-auto max-w-4xl px-6 text-center"
-          style={{ transform: `translateY(${y * -0.4}px)`, opacity: Math.max(0, 1 - y / 600) }}
-        >
-          <h1 className="font-display text-5xl leading-[1.05] md:text-7xl">
-            Where <span className="aurora-gradient animate-aurora">Elements</span>
-            <br /> Whisper Their <span className="text-wraith text-glow-violet">Secrets.</span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-parchment leading-relaxed">
-            AlcheMix AR is an augmented reality chemistry platform designed for
-            secondary and tertiary education. Students interact with molecular structures
-            in 3D, conduct guided experiments, and build evidence-based understanding
-            — while educators track every step of the journey in real time.
-          </p>
-          <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
-            <Link to="/app" className="btn-arcane btn-arcane-hover">
-              <FlaskConical className="h-4 w-4" /> Start Learning
-            </Link>
-            <a href="#sandbox" className="btn-ghost-arcane">
-              <ScrollText className="h-4 w-4" /> Explore Features
-            </a>
+          {/* Right — the AlcheMix signature atom (spins on its own, drag to spin) */}
+          <div
+            className="order-1 relative flex items-center justify-center md:order-2"
+            style={{ transform: `translateY(${y * -0.1}px)` }}
+          >
+            {/* Faint orbital rings behind the atom */}
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+              {[1, 0.78].map((s, i) => (
+                <div
+                  key={i}
+                  className="absolute rounded-full"
+                  style={{
+                    width: `min(${s * 100}%, ${s * 500}px)`,
+                    aspectRatio: "1",
+                    border: `1px solid color-mix(in oklab, ${heroEl.color} ${14 - i * 5}%, transparent)`,
+                  }}
+                />
+              ))}
+            </div>
+
+            <div className="relative w-full max-w-[460px]">
+              <div className="h-[380px] md:h-[480px]">
+                <BohrModel3D
+                  interactive
+                  tumble
+                  electrons={heroEl.electrons}
+                  color={heroEl.color}
+                  nucleusColor={heroEl.nucleusColor}
+                  label={heroEl.sym}
+                />
+              </div>
+
+              {/* Element caption */}
+              <div className="pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 text-center">
+                <div className="font-display text-2xl" style={{ color: heroEl.color }}>{heroEl.name}</div>
+                <div className="text-[10px] uppercase tracking-[0.25em] text-parchment/70">
+                  The AlcheMix Element · {heroEl.protons} protons
+                </div>
+              </div>
+
+              {/* Interaction hint */}
+              <div className="pointer-events-none absolute right-1 top-1 text-[9px] uppercase tracking-[0.2em] text-parchment/50">
+                drag to spin ⟳
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Scroll hint */}
-        <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 text-xs tracking-[0.3em] text-gold/70 uppercase animate-breathing">
-          Descend ▾
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 text-[10px] tracking-[0.3em] text-gold/70 uppercase">
+          Scroll to explore ▾
         </div>
-      </section> 
+      </section>
 
       {/* ── SECTION 1: Hook — molecule canvas backdrop ── */}
-      <section className="relative z-10 py-24 overflow-hidden">
+      <section id="discover" className="relative z-10 py-24 overflow-hidden">
         <div className="absolute inset-0 opacity-25 pointer-events-none">
           <MoleculeCanvas />
         </div>
@@ -630,7 +630,7 @@ function Landing() {
           <div className="grid md:grid-cols-3 gap-6">
             {[
               { icon: <Atom className="h-7 w-7" />, label: "Element Explorer", desc: "All 118 elements, colour-coded by category. Bohr model diagrams, electron shells, and curated facts — filterable and searchable.", tag: "Guest Access", tagColor: "var(--color-wraith)", to: "/elements", btnLabel: "Explore Now" },
-              { icon: <BookMarked className="h-7 w-7" />, label: "Grimoire Cards", desc: "A physical card set of the 12 essential base elements — each one AR-scannable, unlocking 3D molecular models. The remaining 106 elements must be forged.", tag: "Physical + Digital", tagColor: "var(--color-gold)", to: "/grimoire", btnLabel: "View Collection" },
+              { icon: <BookMarked className="h-7 w-7" />, label: "Grimoire Cards", desc: "A physical card set of the 12 essential base elements — each one AR-scannable, unlocking 3D molecular models. The remaining 30 elements must be forged.", tag: "Physical + Digital", tagColor: "var(--color-gold)", to: "/grimoire", btnLabel: "View Collection" },
               { icon: <Zap className="h-7 w-7" />, label: "The Platform", desc: "The full AlcheMix experience — Reaction Sandbox, Educator Astrolabe, and AI Evidence Journal, all in one AR-powered web app.", tag: "Full Platform", tagColor: "var(--color-emerald-elixir)", to: "/app", btnLabel: "Open Platform" },
             ].map(({ icon, label, desc, tag, tagColor, to, btnLabel }) => (
               <Reveal key={label}>
@@ -658,12 +658,12 @@ function Landing() {
         </div>
       </section>
 
-      {/* ── Molecule canvas divider ── */}
-      <section className="relative z-10 h-52 overflow-hidden">
-        <div className="absolute inset-0 opacity-30"><MoleculeCanvas color="var(--color-gold)" /></div>
-        <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, var(--color-mist), transparent 30%, transparent 70%, var(--color-mist))" }} />
-        <div className="relative z-10 h-full flex items-center justify-center">
-          <p className="font-display text-xl text-gold/70 tracking-[0.4em] uppercase animate-breathing">✦ Every element tells a story ✦</p>
+      {/* ── Quiet divider ── */}
+      <section className="relative z-10 py-16">
+        <div className="mx-auto flex max-w-5xl items-center gap-5 px-6">
+          <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, transparent, var(--color-border))" }} />
+          <p className="font-display text-sm text-gold tracking-[0.35em] uppercase whitespace-nowrap">Every element tells a story</p>
+          <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, var(--color-border), transparent)" }} />
         </div>
       </section>
 
@@ -726,233 +726,3 @@ function Landing() {
     </ElementCtx.Provider>
   );
 }
-// ── Crystal + Magnifying Lens (hero canvas) ───────────────────────────────────
-
-function drawCrystal(
-  ctx: CanvasRenderingContext2D,
-  cx: number, cy: number,
-  size: number, rotation: number,
-  color: string, alpha: number
-) {
-  ctx.save();
-  ctx.globalAlpha = alpha;
-  ctx.translate(cx, cy);
-  ctx.rotate(rotation);
-  const pts: [number, number][] = [
-    [0, -size], [size*0.55, -size*0.3], [size*0.55, size*0.5],
-    [0, size*0.85], [-size*0.55, size*0.5], [-size*0.55, -size*0.3],
-  ];
-  ctx.beginPath();
-  pts.forEach(([x, y], i) => i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y));
-  ctx.closePath();
-  ctx.fillStyle = color;
-  ctx.fill();
-  ctx.strokeStyle = "rgba(255,255,255,0.18)";
-  ctx.lineWidth = 0.8;
-  [[pts[0], pts[2]], [pts[0], pts[4]], [pts[3], pts[1]], [pts[3], pts[5]]].forEach(([a, b]) => {
-    ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
-  });
-  ctx.beginPath();
-  pts.forEach(([x, y], i) => i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y));
-  ctx.closePath();
-  ctx.strokeStyle = "rgba(255,255,255,0.25)";
-  ctx.lineWidth = 1;
-  ctx.stroke();
-  ctx.restore();
-}
-
-const CRYSTAL_COLORS = [
-  "rgba(168,85,247,0.55)",
-  "rgba(99,102,241,0.55)",
-  "rgba(45,212,191,0.45)",
-  "rgba(212,175,55,0.45)",
-  "rgba(236,72,153,0.40)",
-];
-
-interface Crystal {
-  x: number; y: number; size: number;
-  rot: number; rotSpeed: number;
-  vy: number; vx: number;
-  color: string; alpha: number;
-}
-
-function CrystalLens() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const offscreenRef = useRef<HTMLCanvasElement | null>(null);
-  const animRef = useRef<number>(0);
-  const target = useRef({ x: -999, y: -999 });
-  const pos = useRef({ x: -999, y: -999 });
-  const isInside = useRef(false);
-  const isPressed = useRef(false);
-  const zoomScale = useRef(1);
-  const crystals = useRef<Crystal[]>([]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const off = document.createElement("canvas");
-    offscreenRef.current = off;
-
-    const resize = () => {
-      canvas.width = canvas.offsetWidth;
-      canvas.height = canvas.offsetHeight;
-      off.width = canvas.width;
-      off.height = canvas.height;
-      crystals.current = Array.from({ length: 14 }, () => spawnCrystal(canvas.width, canvas.height, true));
-    };
-    resize();
-    window.addEventListener("resize", resize);
-
-    function spawnCrystal(w: number, h: number, anywhere = false): Crystal {
-      return {
-        x: Math.random() * w,
-        y: anywhere ? Math.random() * h : h + 60,
-        size: 18 + Math.random() * 32,
-        rot: Math.random() * Math.PI * 2,
-        rotSpeed: (Math.random() - 0.5) * 0.012,
-        vy: -(0.15 + Math.random() * 0.35),
-        vx: (Math.random() - 0.5) * 0.18,
-        color: CRYSTAL_COLORS[Math.floor(Math.random() * CRYSTAL_COLORS.length)],
-        alpha: 0.35 + Math.random() * 0.5,
-      };
-    }
-
-    const onMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      const inside = e.clientX >= rect.left && e.clientX <= rect.right && e.clientY >= rect.top && e.clientY <= rect.bottom;
-      isInside.current = inside;
-      if (inside) target.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
-    };
-    const onDown = (e: MouseEvent) => { if (e.button === 0) isPressed.current = true; };
-    const onUp = (e: MouseEvent) => { if (e.button === 0) isPressed.current = false; };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mousedown", onDown);
-    window.addEventListener("mouseup", onUp);
-
-    const R = 42, BORDER = 4, HANDLE_LEN = 30, HANDLE_W = 7;
-    const ANGLE = Math.PI / 4, ZOOM_MAX = 2.8, ZOOM_SPEED = 0.12;
-
-    function drawGlass(tgt: CanvasRenderingContext2D, x: number, y: number, r: number, zoom: number, offscreen: HTMLCanvasElement) {
-      tgt.save();
-      if (zoom > 1.02) {
-        tgt.save();
-        tgt.beginPath(); tgt.arc(x, y, r - BORDER / 2, 0, Math.PI * 2); tgt.clip();
-        const srcR = r / zoom;
-        tgt.drawImage(offscreen, x - srcR, y - srcR, srcR * 2, srcR * 2, x - r, y - r, r * 2, r * 2);
-        tgt.restore();
-      } else {
-        tgt.beginPath(); tgt.arc(x, y, r, 0, Math.PI * 2);
-        tgt.fillStyle = "rgba(212,175,55,0.05)"; tgt.fill();
-      }
-      tgt.beginPath(); tgt.arc(x, y, r + BORDER / 2, 0, Math.PI * 2);
-      tgt.strokeStyle = zoom > 1.5 ? "rgba(212,175,55,0.55)" : "rgba(212,175,55,0.28)";
-      tgt.lineWidth = BORDER + 8; tgt.stroke();
-      const lg = tgt.createLinearGradient(x - r, y - r, x + r, y + r);
-      lg.addColorStop(0, "#f5e17a"); lg.addColorStop(0.5, "#d4af37"); lg.addColorStop(1, "#a07820");
-      tgt.beginPath(); tgt.arc(x, y, r, 0, Math.PI * 2);
-      tgt.strokeStyle = lg; tgt.lineWidth = BORDER; tgt.stroke();
-      tgt.beginPath(); tgt.arc(x, y, r - BORDER, Math.PI * 1.1, Math.PI * 1.6);
-      tgt.strokeStyle = "rgba(255,245,180,0.5)"; tgt.lineWidth = 1.5; tgt.stroke();
-      const hx1 = x + Math.cos(ANGLE) * (r - 2), hy1 = y + Math.sin(ANGLE) * (r - 2);
-      const hx2 = x + Math.cos(ANGLE) * (r + HANDLE_LEN), hy2 = y + Math.sin(ANGLE) * (r + HANDLE_LEN);
-      tgt.beginPath(); tgt.moveTo(hx1, hy1); tgt.lineTo(hx2, hy2);
-      tgt.strokeStyle = "rgba(212,175,55,0.25)"; tgt.lineWidth = HANDLE_W + 6; tgt.lineCap = "round"; tgt.stroke();
-      const hg = tgt.createLinearGradient(hx1, hy1, hx2, hy2);
-      hg.addColorStop(0, "#f5e17a"); hg.addColorStop(0.4, "#d4af37"); hg.addColorStop(1, "#7a5c10");
-      tgt.beginPath(); tgt.moveTo(hx1, hy1); tgt.lineTo(hx2, hy2);
-      tgt.strokeStyle = hg; tgt.lineWidth = HANDLE_W; tgt.lineCap = "round"; tgt.stroke();
-      tgt.beginPath(); tgt.arc(hx2, hy2, HANDLE_W / 2 + 1, 0, Math.PI * 2);
-      tgt.fillStyle = "#a07820"; tgt.fill();
-      tgt.restore();
-    }
-
-    const BOND_LABELS = ["H₂O","NaCl","CO₂","O₂","H₂","Fe","Au","Na","He","Ca","NH₃","CH₄","HCl","KBr","Mg"];
-
-    const draw = () => {
-      const w = canvas.width, h = canvas.height;
-      const offCtx = off.getContext("2d")!;
-      zoomScale.current += ((isPressed.current ? ZOOM_MAX : 1) - zoomScale.current) * ZOOM_SPEED;
-      pos.current.x += (target.current.x - pos.current.x) * 0.15;
-      pos.current.y += (target.current.y - pos.current.y) * 0.15;
-      offCtx.clearRect(0, 0, w, h);
-      const cs = crystals.current;
-      for (const c of cs) {
-        c.rot += c.rotSpeed; c.x += c.vx; c.y += c.vy;
-        if (c.y < -80) {
-          const nc = spawnCrystal(w, h, false);
-          Object.assign(c, nc);
-        }
-      }
-      for (let i = 0; i < cs.length; i++) {
-        for (let j = i + 1; j < cs.length; j++) {
-          const dx = cs[j].x - cs[i].x, dy = cs[j].y - cs[i].y;
-          const dist = Math.sqrt(dx*dx + dy*dy);
-          if (dist < 180) {
-            const strength = 1 - dist / 180;
-            offCtx.beginPath(); offCtx.moveTo(cs[i].x, cs[i].y); offCtx.lineTo(cs[j].x, cs[j].y);
-            offCtx.strokeStyle = `rgba(168,130,255,${strength * 0.75})`; offCtx.lineWidth = strength * 2.5; offCtx.stroke();
-            offCtx.beginPath(); offCtx.arc(cs[i].x, cs[i].y, 2.5 * strength, 0, Math.PI * 2);
-            offCtx.fillStyle = `rgba(212,175,55,${strength * 0.9})`; offCtx.fill();
-            if (strength > 0.35) {
-              const mx = (cs[i].x + cs[j].x) / 2, my = (cs[i].y + cs[j].y) / 2;
-              const label = BOND_LABELS[(i * 3 + j * 7) % BOND_LABELS.length];
-              offCtx.font = `600 9px "EB Garamond", serif`;
-              const bw = offCtx.measureText(label).width + 8, bh = 13;
-              offCtx.save(); offCtx.globalAlpha = strength * 0.85;
-              offCtx.beginPath(); offCtx.roundRect(mx - bw/2, my - bh/2, bw, bh, 3);
-              offCtx.fillStyle = "rgba(18,10,49,0.82)"; offCtx.fill();
-              offCtx.strokeStyle = `rgba(168,130,255,${strength * 0.6})`; offCtx.lineWidth = 0.8; offCtx.stroke();
-              offCtx.fillStyle = `rgba(212,175,55,${strength})`; offCtx.textAlign = "center"; offCtx.textBaseline = "middle";
-              offCtx.fillText(label, mx, my); offCtx.restore();
-            }
-          }
-        }
-      }
-      for (const c of cs) drawCrystal(offCtx, c.x, c.y, c.size, c.rot, c.color, c.alpha);
-      ctx.clearRect(0, 0, w, h); ctx.drawImage(off, 0, 0);
-      if (isInside.current || pos.current.x > 0) drawGlass(ctx, pos.current.x, pos.current.y, R, zoomScale.current, off);
-      animRef.current = requestAnimationFrame(draw);
-    };
-    animRef.current = requestAnimationFrame(draw);
-
-    return () => {
-      cancelAnimationFrame(animRef.current);
-      window.removeEventListener("resize", resize);
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mousedown", onDown);
-      window.removeEventListener("mouseup", onUp);
-    };
-  }, []);
-
-  return <canvas ref={canvasRef} className="absolute inset-0 z-20 w-full h-full" style={{ pointerEvents: "none" }} />;
-}
-
-function NavScrollLink({ href, label, isRoute = false }: { href: string; label: string; isRoute?: boolean }) {
-  const inner = (
-    <>
-      <ScrollText className="h-3.5 w-3.5 text-gold group-hover:text-spectral transition-colors duration-200" />
-      <span className="pointer-events-none absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-2 py-0.5 font-display text-[10px] tracking-[0.15em] uppercase text-spectral opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-        style={{ background: "color-mix(in oklab, var(--color-mist) 90%, transparent)", border: "1px solid color-mix(in oklab, var(--color-wraith) 40%, transparent)" }}>
-        {label}
-      </span>
-    </>
-  );
-  const sharedClass = "group relative flex items-center justify-center h-9 w-9 rounded-full transition-all duration-200 hover:scale-110";
-  const sharedStyle = { background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid color-mix(in oklab, var(--color-parchment) 20%, transparent)" };
-  const hoverHandlers = {
-    onMouseEnter: (e: React.MouseEvent<HTMLElement>) => {
-      (e.currentTarget as HTMLElement).style.borderColor = "color-mix(in oklab, var(--color-wraith) 55%, transparent)";
-      (e.currentTarget as HTMLElement).style.boxShadow = "0 0 14px -4px color-mix(in oklab, var(--color-wraith) 50%, transparent)";
-    },
-    onMouseLeave: (e: React.MouseEvent<HTMLElement>) => {
-      (e.currentTarget as HTMLElement).style.borderColor = "color-mix(in oklab, var(--color-parchment) 20%, transparent)";
-      (e.currentTarget as HTMLElement).style.boxShadow = "none";
-    },
-  };
-  if (isRoute) return <Link to={href as any} className={sharedClass} style={sharedStyle} {...hoverHandlers}>{inner}</Link>;
-  return <a href={href} className={sharedClass} style={sharedStyle} {...hoverHandlers}>{inner}</a>;
-}
-
-

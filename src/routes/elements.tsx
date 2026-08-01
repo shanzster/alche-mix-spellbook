@@ -318,7 +318,7 @@ function ElementsPage() {
   });
 
   return (
-    <div className="bg-arcane min-h-screen overflow-x-hidden text-spectral">
+    <div className="elements-readable bg-arcane min-h-screen overflow-x-hidden text-spectral">
       <div className="bg-arcane-stars pointer-events-none fixed inset-0 z-0 opacity-60" />
 
       <FloatingNav />

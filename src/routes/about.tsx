@@ -11,73 +11,6 @@ export const Route = createFileRoute("/about")({
   component: AboutPage,
 });
 
-// ── Animated molecule node canvas ──────────────────────────────────────────
-function MoleculeCanvas({ color = "var(--color-wraith)" }: { color?: string }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d")!;
-    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
-    resize();
-    window.addEventListener("resize", resize);
-
-    type Node = { x: number; y: number; vx: number; vy: number; r: number; label: string };
-    const LABELS = ["H₂O","NaCl","CO₂","O₂","CH₄","Fe","Au","Na","NH₃","HCl","Ca","Mg"];
-    const nodes: Node[] = Array.from({ length: 10 }, (_, i) => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.4,
-      vy: (Math.random() - 0.5) * 0.4,
-      r: 18 + Math.random() * 14,
-      label: LABELS[i % LABELS.length],
-    }));
-
-    let raf: number;
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (const n of nodes) {
-        n.x += n.vx; n.y += n.vy;
-        if (n.x < n.r || n.x > canvas.width - n.r) n.vx *= -1;
-        if (n.y < n.r || n.y > canvas.height - n.r) n.vy *= -1;
-      }
-      for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-          const dx = nodes[j].x - nodes[i].x, dy = nodes[j].y - nodes[i].y;
-          const d = Math.sqrt(dx*dx + dy*dy);
-          if (d < 180) {
-            const a = (1 - d / 180) * 0.55;
-            ctx.beginPath();
-            ctx.moveTo(nodes[i].x, nodes[i].y);
-            ctx.lineTo(nodes[j].x, nodes[j].y);
-            ctx.strokeStyle = `color-mix(in oklab, ${color} ${Math.round(a*100)}%, transparent)`;
-            ctx.lineWidth = (1 - d / 180) * 2;
-            ctx.stroke();
-          }
-        }
-      }
-      for (const n of nodes) {
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-        ctx.fillStyle = `color-mix(in oklab, ${color} 14%, transparent)`;
-        ctx.fill();
-        ctx.strokeStyle = `color-mix(in oklab, ${color} 45%, transparent)`;
-        ctx.lineWidth = 1.2;
-        ctx.stroke();
-        ctx.fillStyle = `color-mix(in oklab, ${color} 80%, transparent)`;
-        ctx.font = `600 10px "EB Garamond", serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(n.label, n.x, n.y);
-      }
-      raf = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
-  }, [color]);
-  return <canvas ref={ref} className="w-full h-full" style={{ pointerEvents: "none" }} />;
-}
-
 // ── Electron orbit ring ─────────────────────────────────────────────────────
 function OrbitRing({ size = 220, color = "var(--color-wraith)", icon }: {
   size?: number; color?: string; icon: React.ReactNode;
@@ -161,30 +94,13 @@ function AboutPage() {
     <div className="bg-arcane min-h-screen overflow-x-hidden text-spectral">
       <div className="bg-arcane-stars pointer-events-none fixed inset-0 z-0 opacity-60" />
 
-      {/* Floating embers */}
-      <div className="pointer-events-none fixed inset-0 z-0">
-        {Array.from({ length: 14 }).map((_, i) => (
-          <span key={i} className="animate-drift absolute h-1 w-1 rounded-full"
-            style={{
-              top: `${(i * 43) % 100}%`,
-              animationDelay: `${i * 1.4}s`,
-              animationDuration: `${20 + (i % 5) * 3}s`,
-              background: i % 2 === 0 ? "var(--color-wraith)" : "var(--color-gold)",
-              boxShadow: `0 0 10px ${i % 2 === 0 ? "var(--color-wraith)" : "var(--color-gold)"}`,
-            }} />
-        ))}
-      </div>
-
       <FloatingNav />
 
       {/* ── HERO ── */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-        {/* Full-bleed molecule canvas behind copy */}
-        <div className="absolute inset-0 z-0 opacity-40">
-          <MoleculeCanvas />
-        </div>
+        {/* Single soft accent glow behind the copy */}
         <div className="absolute inset-0 z-0"
-          style={{ background: "radial-gradient(ellipse 100% 70% at 50% 60%, color-mix(in oklab, var(--color-wraith) 22%, transparent), transparent 65%)" }} />
+          style={{ background: "radial-gradient(ellipse 100% 70% at 50% 60%, color-mix(in oklab, var(--color-emerald-elixir) 18%, transparent), color-mix(in oklab, var(--color-wraith) 12%, transparent) 45%, transparent 68%)" }} />
 
         <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
           <Reveal>
@@ -432,18 +348,16 @@ function AboutPage() {
                   { sym: "U",  color: "#4ade80" },
                   { sym: "Pt", color: "#e2e8f0" },
                   { sym: "Pu", color: "#fb7185" },
-                ].map(({ sym, color }, i) => (
+                ].map(({ sym, color }) => (
                   <div
                     key={sym}
-                    className="flex items-center justify-center rounded-lg font-display text-sm animate-breathing"
+                    className="flex items-center justify-center rounded-lg font-display text-sm transition-transform duration-200 hover:scale-110"
                     style={{
                       width: 44, height: 44,
                       background: `radial-gradient(circle at 35% 35%, color-mix(in oklab, ${color} 60%, white 15%), color-mix(in oklab, ${color} 30%, transparent))`,
                       border: `1.5px solid color-mix(in oklab, ${color} 50%, transparent)`,
                       boxShadow: `0 0 12px -3px ${color}`,
                       color: "white",
-                      animationDelay: `${i * 0.22}s`,
-                      animationDuration: `${2.4 + (i % 4) * 0.4}s`,
                     }}
                   >
                     {sym}
@@ -551,17 +465,12 @@ function AboutPage() {
         </div>
       </section>
 
-      {/* ── MOLECULE CANVAS DIVIDER ── */}
-      <section className="relative z-10 h-52 overflow-hidden">
-        <div className="absolute inset-0 opacity-30">
-          <MoleculeCanvas color="var(--color-gold)" />
-        </div>
-        <div className="absolute inset-0"
-          style={{ background: "linear-gradient(180deg, var(--color-mist), transparent 30%, transparent 70%, var(--color-mist))" }} />
-        <div className="relative z-10 h-full flex items-center justify-center">
-          <p className="font-display text-xl text-gold/70 tracking-[0.4em] uppercase animate-breathing">
-            ✦ Every element tells a story ✦
-          </p>
+      {/* ── Quiet divider ── */}
+      <section className="relative z-10 py-16">
+        <div className="mx-auto flex max-w-5xl items-center gap-5 px-6">
+          <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, transparent, var(--color-border))" }} />
+          <p className="font-display text-sm text-gold tracking-[0.35em] uppercase whitespace-nowrap">Every element tells a story</p>
+          <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, var(--color-border), transparent)" }} />
         </div>
       </section>
 

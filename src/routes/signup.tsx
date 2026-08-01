@@ -26,6 +26,9 @@ function SignupPage() {
   const [showPw, setShowPw]     = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
+  const [role, setRole]         = useState<"student" | "teacher">("student");
+
+  const destination = role === "teacher" ? "/teacher" : "/app";
 
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,8 +37,8 @@ function SignupPage() {
     if (password.length < 6)  { setError("Password must be at least 6 characters."); return; }
     setLoading(true);
     try {
-      await signUpWithEmail(email, password);
-      navigate({ to: "/app" });
+      await signUpWithEmail(email, password, role);
+      navigate({ to: destination });
     } catch (err: any) {
       setError(friendlyError(err.code));
     } finally { setLoading(false); }
@@ -44,8 +47,8 @@ function SignupPage() {
   const handleGoogle = async () => {
     setError(""); setLoading(true);
     try {
-      await signInWithGoogle();
-      navigate({ to: "/app" });
+      await signInWithGoogle(role);
+      navigate({ to: destination });
     } catch (err: any) {
       if (err.code !== "auth/popup-closed-by-user") setError(friendlyError(err.code));
     } finally { setLoading(false); }
@@ -94,6 +97,23 @@ function SignupPage() {
             border: "1px solid color-mix(in oklab, var(--color-parchment) 20%, transparent)",
             boxShadow: "0 0 60px -20px color-mix(in oklab, var(--color-wraith) 35%, transparent)",
           }}>
+
+          {/* Role selector */}
+          <div className="mb-6">
+            <p className="text-[10px] tracking-[0.25em] uppercase text-parchment/60 mb-2 text-center">I am signing up as a</p>
+            <div className="flex rounded-full p-1" style={{ background: "color-mix(in oklab, var(--color-mist) 60%, transparent)", border: "1px solid var(--color-border)" }}>
+              {(["student", "teacher"] as const).map((r) => (
+                <button key={r} type="button" onClick={() => setRole(r)}
+                  className="flex-1 rounded-full py-2 text-xs tracking-[0.12em] uppercase transition font-display"
+                  style={role === r ? { background: "color-mix(in oklab, var(--color-emerald-elixir) 20%, transparent)", color: "var(--color-emerald-elixir)" } : { color: "var(--color-parchment)" }}>
+                  {r}
+                </button>
+              ))}
+            </div>
+            {role === "teacher" && (
+              <p className="text-[11px] text-gold/80 mt-2 text-center">Educator accounts require admin approval before access.</p>
+            )}
+          </div>
 
           {/* Google button */}
           <button onClick={handleGoogle} disabled={loading}

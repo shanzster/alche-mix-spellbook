@@ -10,6 +10,7 @@ import {
 import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
+import { NO_FLASH_SCRIPT } from "../lib/theme";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 // Initialise Firebase + Analytics (side-effect import — runs once on load)
 import "../lib/firebase";
@@ -116,6 +117,8 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
+        {/* Apply saved theme before first paint to avoid a flash of the wrong mode. */}
+        <script dangerouslySetInnerHTML={{ __html: NO_FLASH_SCRIPT }} />
         <HeadContent />
       </head>
       <body>

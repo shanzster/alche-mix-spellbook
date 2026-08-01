@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.next/
+.out/
+
+# Cache
+.cache/
+.vite/
+
+# Git
+.git/
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.*
+
+# OS files
+.DS_Store
+
+# Large assets (optional)
+*.zip
+*.mp4
+*.mov
+*.psd
