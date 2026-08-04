@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   GraduationCap, Users, ClipboardCheck, Plus, Copy, Check, LogOut, BookOpen,
-  Camera, Layers, Sparkles, ChevronLeft,
+  Camera, Layers, Sparkles, ChevronLeft, ScanSearch, Clock, X, ImageOff, Loader2,
 } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { RequireRole } from "../components/RequireRole";
@@ -13,6 +13,9 @@ import {
   createClass, useTeacherClasses, useRoster, getStudentGrades, setStudentGrade,
   GRADE_TOPICS, type ClassInfo, type RosterEntry,
 } from "../lib/teacher";
+import {
+  useClassEvidence, reviewEvidence, isPendingReview, type TeacherEvidenceEntry,
+} from "../lib/scavenger";
 
 export const Route = createFileRoute("/teacher")({
   component: () => (
@@ -198,23 +201,163 @@ function GradebookTab({ classes }: { classes: ClassInfo[] }) {
   );
 }
 
+// ── Evidence review inbox (AI Scavenger Hunt) ───────────────────────────────
+const T_ACCENT = "var(--color-emerald-elixir)";
+
+function EvidenceReviewCard({ e }: { e: TeacherEvidenceEntry }) {
+  const [busy, setBusy] = useState(false);
+  const pending = isPendingReview(e);
+  const good = e.correct || e.teacherApproved === true;
+  const tone = pending ? "var(--color-gold)" : good ? T_ACCENT : "var(--color-crimson)";
+  const StatusIcon = pending ? Clock : good ? Check : X;
+
+  const review = async (approved: boolean) => {
+    setBusy(true);
+    try { await reviewEvidence(e.studentUid, e.id, approved); }
+    catch (err) { console.error("reviewEvidence failed:", err); }
+    setBusy(false);
+  };
+
+  return (
+    <div className="rounded-2xl overflow-hidden flex flex-col" style={{ border: `1px solid color-mix(in oklab, ${tone} 32%, transparent)` }}>
+      <div className="relative bg-slate-sunken" style={{ aspectRatio: "4/3" }}>
+        {e.image
+          ? <img src={e.image} alt={`${e.elementName} find`} className="h-full w-full object-cover" />
+          : <div className="h-full w-full flex items-center justify-center text-parchment/30"><ImageOff className="h-7 w-7" /></div>}
+        <span className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-display backdrop-blur-sm"
+          style={{ background: "color-mix(in oklab, #000 45%, transparent)", color: "#fff" }}>
+          <span style={{ color: e.correct || e.teacherApproved ? T_ACCENT : "var(--color-gold)" }}>{e.element}</span> {e.elementName}
+        </span>
+        <span className="absolute top-2 right-2 flex h-7 w-7 items-center justify-center rounded-full backdrop-blur-sm"
+          style={{ background: `color-mix(in oklab, ${tone} 55%, #000 25%)`, color: "#fff" }}>
+          <StatusIcon className="h-4 w-4" />
+        </span>
+      </div>
+
+      <div className="p-4 flex flex-col flex-1" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)" }}>
+        <div className="flex items-center justify-between mb-2">
+          <span className="font-display text-sm truncate">{e.studentName ?? "Student"}</span>
+          <span className="text-[9px] tracking-[0.18em] uppercase flex-shrink-0"
+            style={{ color: e.source === "gemini" ? T_ACCENT : "var(--color-gold)" }}>
+            {e.source === "gemini" ? "AI-graded" : "Needs review"}
+          </span>
+        </div>
+        {e.answer && <p className="text-xs text-parchment/70 mb-1">“{e.answer}”</p>}
+        <p className="text-xs text-parchment/55 leading-relaxed flex-1">{e.feedback}</p>
+
+        {pending ? (
+          <div className="mt-3 flex gap-2">
+            <button onClick={() => review(true)} disabled={busy}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-display tracking-[0.1em] uppercase transition disabled:opacity-60"
+              style={{ background: `color-mix(in oklab, ${T_ACCENT} 18%, transparent)`, color: T_ACCENT, border: `1px solid color-mix(in oklab, ${T_ACCENT} 40%, transparent)` }}>
+              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Approve
+            </button>
+            <button onClick={() => review(false)} disabled={busy}
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-display tracking-[0.1em] uppercase transition disabled:opacity-60"
+              style={{ background: "color-mix(in oklab, var(--color-crimson) 14%, transparent)", color: "var(--color-crimson)", border: "1px solid color-mix(in oklab, var(--color-crimson) 35%, transparent)" }}>
+              <X className="h-3.5 w-3.5" /> Reject
+            </button>
+          </div>
+        ) : (
+          <div className="mt-3 flex items-center justify-between">
+            <span className="text-[10px] tracking-[0.15em] uppercase" style={{ color: tone }}>
+              {good ? "Approved" : "Rejected"}
+            </span>
+            {e.needsManualReview && (
+              <button onClick={() => review(!good)} disabled={busy}
+                className="text-[10px] tracking-[0.12em] uppercase text-parchment/50 hover:text-teal transition">
+                {busy ? "…" : good ? "Undo → reject" : "Undo → approve"}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EvidenceTab({ classes }: { classes: ClassInfo[] }) {
+  const [classId, setClassId] = useState<string | null>(classes[0]?.id ?? null);
+  const [filter, setFilter] = useState<"pending" | "all">("pending");
+  const roster = useRoster(classId);
+  const evidence = useClassEvidence(roster);
+
+  if (classes.length === 0)
+    return <p className="text-sm text-parchment/60">Create a class first to review student evidence.</p>;
+
+  const pendingCount = evidence.filter(isPendingReview).length;
+  const shown = filter === "pending" ? evidence.filter(isPendingReview) : evidence;
+
+  return (
+    <div>
+      {/* Class selector */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {classes.map((c) => (
+          <button key={c.id} onClick={() => setClassId(c.id)}
+            className="rounded-full px-4 py-1.5 text-xs tracking-[0.1em] uppercase transition"
+            style={classId === c.id ? { background: `color-mix(in oklab, ${T_ACCENT} 18%, transparent)`, color: T_ACCENT } : { color: "var(--color-parchment)", border: "1px solid var(--color-border)" }}>
+            {c.name}
+          </button>
+        ))}
+      </div>
+
+      {/* Filter toggle */}
+      <div className="flex items-center gap-3 mb-5">
+        <div className="inline-flex rounded-full p-1" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }}>
+          {(["pending", "all"] as const).map((f) => (
+            <button key={f} onClick={() => setFilter(f)}
+              className="rounded-full px-3.5 py-1 text-[11px] tracking-[0.12em] uppercase transition"
+              style={filter === f ? { background: `color-mix(in oklab, ${T_ACCENT} 18%, transparent)`, color: T_ACCENT } : { color: "var(--color-parchment)" }}>
+              {f === "pending" ? "Needs review" : "All finds"}
+            </button>
+          ))}
+        </div>
+        {pendingCount > 0 && (
+          <span className="inline-flex items-center gap-1.5 text-xs text-gold">
+            <Clock className="h-3.5 w-3.5" /> {pendingCount} awaiting review
+          </span>
+        )}
+      </div>
+
+      {roster.length === 0 ? (
+        <p className="text-sm text-parchment/50">No students enrolled in this class yet.</p>
+      ) : shown.length === 0 ? (
+        <div className="rounded-2xl px-5 py-12 text-center" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px dashed color-mix(in oklab, var(--color-parchment) 30%, transparent)" }}>
+          <ScanSearch className="h-8 w-8 text-parchment/50 mx-auto mb-3" />
+          <p className="font-display text-base mb-1">{filter === "pending" ? "Nothing to review" : "No finds yet"}</p>
+          <p className="text-sm text-parchment/60">
+            {filter === "pending"
+              ? "Scavenger-hunt submissions that need a human decision will appear here."
+              : "When students photograph elements in the Scavenger Hunt, their finds show up here."}
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {shown.map((e) => <EvidenceReviewCard key={`${e.studentUid}/${e.id}`} e={e} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Scaffolded (AI / later) tools ───────────────────────────────────────────
 const SOON = [
   { icon: Layers, title: "Quiz Builder", desc: "Configure bonding targets, timed balancing & 3D identification quizzes (§2)." },
-  { icon: Camera, title: "Mission Configurator", desc: "Build AR scavenger hunts and lock/unlock simulation modules (§3)." },
-  { icon: Sparkles, title: "AI Evaluation Review", desc: "Review AI pre-grading of AR frames & Time-Attack, with manual override (§4)." },
+  { icon: Camera, title: "Mission Configurator", desc: "Assign specific elements per lesson & lock/unlock simulation modules (§3)." },
+  { icon: Sparkles, title: "Class Performance Matrix", desc: "Aggregate accuracy per module with high-error concept flags (§4)." },
 ];
 
 function TeacherConsole() {
   const { uid, profile } = useUserProfile();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"classes" | "gradebook" | "tools">("classes");
+  const [tab, setTab] = useState<"classes" | "gradebook" | "evidence" | "tools">("classes");
   const { classes } = useTeacherClasses(uid);
   const name = profile?.displayName?.split(" ")[0] ?? profile?.email?.split("@")[0] ?? "Educator";
 
   const TABS = [
     { key: "classes", label: "Classes", icon: Users },
     { key: "gradebook", label: "Gradebook", icon: ClipboardCheck },
+    { key: "evidence", label: "Evidence", icon: ScanSearch },
     { key: "tools", label: "More Tools", icon: BookOpen },
   ] as const;
 
@@ -252,6 +395,7 @@ function TeacherConsole() {
 
         {tab === "classes" && <ClassesTab teacherId={uid ?? ""} teacherName={profile?.displayName ?? profile?.email ?? null} classes={classes} />}
         {tab === "gradebook" && <GradebookTab classes={classes} />}
+        {tab === "evidence" && <EvidenceTab classes={classes} />}
         {tab === "tools" && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {SOON.map((s) => (

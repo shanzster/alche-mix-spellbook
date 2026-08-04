@@ -220,9 +220,8 @@ function ElementSelector() {
 function BohrModelPanel() {
   const { selected } = useContext(ElementCtx);
   return (
-    <div className="relative rounded-2xl overflow-hidden"
+    <div className="atom-stage-panel relative rounded-2xl overflow-hidden"
       style={{
-        background: "radial-gradient(ellipse at 50% 40%, color-mix(in oklab, var(--color-violet-deep) 40%, transparent), color-mix(in oklab, var(--color-slate-sunken) 80%, transparent))",
         border: `1px solid color-mix(in oklab, ${selected.c} 35%, transparent)`,
         boxShadow: `0 0 60px -20px color-mix(in oklab, ${selected.c} 45%, transparent)`,
         minHeight: "420px",
@@ -253,9 +252,9 @@ function BohrModelPanel() {
 
       {/* Label */}
       <div className="absolute bottom-0 left-0 right-0 px-4 py-3 text-center pointer-events-none"
-        style={{ background: "linear-gradient(180deg, transparent, color-mix(in oklab, var(--color-mist) 80%, transparent))" }}>
+        style={{ background: "linear-gradient(180deg, transparent, color-mix(in oklab, #0b1220 80%, transparent))" }}>
         <span className="font-display text-lg" style={{ color: selected.c }}>{selected.sym}</span>
-        <span className="text-parchment/60 text-xs ml-2 tracking-[0.2em] uppercase">{selected.name} · {selected.num}p</span>
+        <span className="text-white/60 text-xs ml-2 tracking-[0.2em] uppercase">{selected.name} · {selected.num}p</span>
       </div>
     </div>
   );
@@ -352,7 +351,13 @@ function Landing() {
             </div>
 
             <div className="relative w-full max-w-[460px]">
-              <div className="h-[380px] md:h-[480px]">
+              {/* Dark stage so the luminous atom reads on the light-mode page.
+                  Invisible (transparent) in dark mode — the night sky is stage enough. */}
+              <div
+                className="atom-stage-orb pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+                style={{ width: "min(116%, 520px)", aspectRatio: "1" }}
+              />
+              <div className="relative h-[380px] md:h-[480px]">
                 <BohrModel3D
                   interactive
                   tumble

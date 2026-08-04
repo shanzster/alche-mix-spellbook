@@ -2,12 +2,26 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import {
   BookMarked, Camera, ScanLine, Sparkles, Lock, Check, FlaskConical, Combine, X,
+  Skull, Droplets, Flame, FlameKindling, AlertTriangle, ShieldCheck, Zap,
 } from "lucide-react";
 import { ModuleShell } from "../components/ModuleShell";
 import { RequireAuth } from "../components/RequireAuth";
 import { BohrModel3D } from "../components/BohrModel3D";
 import { useUserProfile, scanCard, recordCompound, logPractice } from "../lib/profile";
-import { BASE_CARDS, combineCards, type Card, type MixResult } from "../lib/cards";
+import {
+  BASE_CARDS, combine, POLYATOMIC_IONS, isIon,
+  type Card, type MixResult, type Reagent, type Hazard,
+} from "../lib/cards";
+
+// Hazard badge styling (reuses the GHS language from the Lab Safety module).
+const HAZARD_STYLE: Record<Hazard, { label: string; color: string; icon: typeof Flame }> = {
+  toxic:     { label: "Toxic",     color: "var(--color-crimson)",         icon: Skull },
+  corrosive: { label: "Corrosive", color: "#fb923c",                      icon: Droplets },
+  flammable: { label: "Flammable", color: "#f97316",                      icon: Flame },
+  oxidiser:  { label: "Oxidiser",  color: "#eab308",                      icon: FlameKindling },
+  harmful:   { label: "Harmful",   color: "var(--color-gold)",            icon: AlertTriangle },
+  none:      { label: "Safe",      color: "var(--color-emerald-elixir)",  icon: ShieldCheck },
+};
 
 export const Route = createFileRoute("/cards")({
   component: () => (
@@ -167,20 +181,20 @@ function Collection({ collected, compounds }: { collected: string[]; compounds: 
 // ── Tab 3: Mix & Match ──────────────────────────────────────────────────────
 function Mixer({ collected, discovered, onDiscover }: { collected: string[]; discovered: string[]; onDiscover: (f: string) => void }) {
   const cards = BASE_CARDS.filter((c) => collected.includes(c.symbol));
-  const [a, setA] = useState<Card | null>(null);
-  const [b, setB] = useState<Card | null>(null);
+  const [a, setA] = useState<Reagent | null>(null);
+  const [b, setB] = useState<Reagent | null>(null);
   const [saved, setSaved] = useState(false);
 
-  const result: MixResult | null = a && b ? combineCards(a, b) : null;
+  const result: MixResult | null = a && b ? combine(a, b) : null;
   const isNew = result?.valid && result.formula ? !discovered.includes(result.formula) : false;
 
-  const pick = (card: Card) => {
+  const pick = (r: Reagent) => {
     setSaved(false);
-    if (a?.symbol === card.symbol) { setA(b); setB(null); return; }
-    if (b?.symbol === card.symbol) { setB(null); return; }
-    if (!a) setA(card);
-    else if (!b) setB(card);
-    else { setA(card); setB(null); }
+    if (a?.symbol === r.symbol) { setA(b); setB(null); return; }
+    if (b?.symbol === r.symbol) { setB(null); return; }
+    if (!a) setA(r);
+    else if (!b) setB(r);
+    else { setA(r); setB(null); }
   };
 
   const save = () => { if (result?.valid && result.formula) { onDiscover(result.formula); setSaved(true); } };
@@ -190,34 +204,60 @@ function Mixer({ collected, discovered, onDiscover }: { collected: string[]; dis
       <div className="rounded-2xl p-10 text-center" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px dashed color-mix(in oklab, var(--color-parchment) 30%, transparent)" }}>
         <ScanLine className="h-8 w-8 text-parchment/50 mx-auto mb-3" />
         <p className="font-display text-base mb-1">Scan more cards first</p>
-        <p className="text-sm text-parchment/60 max-w-sm mx-auto">You need at least two element cards in your Grimoire before you can mix them. Head to the Scan tab.</p>
+        <p className="text-sm text-parchment/60 max-w-sm mx-auto">You need at least two element cards in your Grimoire before you can mix. Head to the Scan tab — then try adding a compound ion.</p>
       </div>
     );
   }
 
-  const Slot = ({ card }: { card: Card | null }) => (
+  const active = (r: Reagent) => a?.symbol === r.symbol || b?.symbol === r.symbol;
+  const Slot = ({ r }: { r: Reagent | null }) => (
     <div className="flex h-24 w-[4.5rem] items-center justify-center rounded-xl"
-      style={{ border: `1.5px dashed color-mix(in oklab, ${card ? card.color : "var(--color-parchment)"} 45%, transparent)`, background: card ? `color-mix(in oklab, ${card.color} 10%, transparent)` : "transparent" }}>
-      {card ? <span className="font-sans font-semibold text-xl" style={{ color: card.color }}>{card.symbol}</span> : <span className="text-parchment/40 text-2xl">+</span>}
+      style={{ border: `1.5px dashed color-mix(in oklab, ${r ? r.color : "var(--color-parchment)"} 45%, transparent)`, background: r ? `color-mix(in oklab, ${r.color} 10%, transparent)` : "transparent" }}>
+      {r ? <span className="font-sans font-semibold text-xl" style={{ color: r.color }}><Sub text={r.symbol} /></span> : <span className="text-parchment/40 text-2xl">+</span>}
     </div>
   );
+
+  const hz = result?.valid ? HAZARD_STYLE[result.hazard ?? "none"] : null;
+  const tone = result?.unstable ? "var(--color-crimson)" : hz ? hz.color : "var(--color-parchment)";
 
   return (
     <div>
       {/* Slots + result */}
-      <div className="flex flex-col items-center gap-5 rounded-2xl p-6"
-        style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 62%, transparent)", border: `1px solid color-mix(in oklab, ${result?.valid ? "var(--color-emerald-elixir)" : "var(--color-parchment)"} 28%, transparent)` }}>
+      <div className="flex flex-col items-center gap-5 rounded-2xl p-6 transition-colors"
+        style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 62%, transparent)", border: `1px solid color-mix(in oklab, ${result?.valid ? tone : "var(--color-parchment)"} 30%, transparent)`, boxShadow: result?.valid ? `0 0 50px -28px ${tone}` : "none" }}>
         <div className="flex items-center gap-4">
-          <Slot card={a} />
+          <Slot r={a} />
           <Combine className="h-5 w-5 text-gold" />
-          <Slot card={b} />
+          <Slot r={b} />
         </div>
 
         {result && (result.valid ? (
-          <div className="text-center">
+          <div className="text-center max-w-sm">
             <span className="text-[10px] tracking-[0.3em] uppercase" style={{ color: result.bond === "ionic" ? "var(--color-gold)" : "var(--color-emerald-elixir)" }}>{result.bond} bond</span>
-            <div className="font-display text-5xl my-1"><Sub text={result.formula!} /></div>
-            <p className="text-parchment text-sm">{result.name}</p>
+            <div className={`font-display text-5xl my-1 ${result.unstable ? "animate-hazard-shake" : ""}`} style={result.unstable ? { color: "var(--color-crimson)" } : undefined}>
+              <Sub text={result.formula!} />
+            </div>
+            <p className="font-display text-base">{result.commonName ?? result.name}</p>
+
+            {/* Hazard + unstable badges */}
+            <div className="mt-2 flex flex-wrap items-center justify-center gap-2">
+              {result.unstable && (
+                <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] tracking-[0.15em] uppercase animate-hazard-shake"
+                  style={{ background: "color-mix(in oklab, var(--color-crimson) 18%, transparent)", color: "var(--color-crimson)", border: "1px solid color-mix(in oklab, var(--color-crimson) 45%, transparent)" }}>
+                  <Zap className="h-3 w-3" /> Unstable
+                </span>
+              )}
+              {hz && (
+                <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] tracking-[0.15em] uppercase"
+                  style={{ background: `color-mix(in oklab, ${hz.color} 14%, transparent)`, color: hz.color, border: `1px solid color-mix(in oklab, ${hz.color} 40%, transparent)` }}>
+                  <hz.icon className="h-3 w-3" /> {hz.label}
+                </span>
+              )}
+            </div>
+
+            {result.uses && <p className="mt-3 text-xs text-parchment/70 leading-relaxed">{result.uses}</p>}
+            {result.note && <p className="mt-1.5 text-xs leading-relaxed" style={{ color: tone }}>{result.note}</p>}
+
             <button onClick={save} disabled={saved} className="btn-arcane btn-arcane-hover mt-4 disabled:opacity-60">
               {saved ? <><Check className="h-4 w-4" /> Added to Grimoire</> : isNew ? <><Sparkles className="h-4 w-4" /> Forge & save</> : <><FlaskConical className="h-4 w-4" /> Already forged</>}
             </button>
@@ -225,14 +265,31 @@ function Mixer({ collected, discovered, onDiscover }: { collected: string[]; dis
         ) : (
           <p className="text-sm text-parchment/70 text-center max-w-xs">{result.reason}</p>
         ))}
-        {!result && <p className="text-sm text-parchment/50">Pick two cards below to mix them.</p>}
+        {!result && <p className="text-sm text-parchment/50">Pick two things below to mix them.</p>}
       </div>
 
-      {/* Palette of collected cards */}
-      <p className="text-[10px] tracking-[0.2em] uppercase text-parchment/50 mt-6 mb-3">Your cards</p>
+      {/* Palette of collected element cards */}
+      <p className="text-[10px] tracking-[0.2em] uppercase text-parchment/50 mt-6 mb-3">Your element cards</p>
       <div className="flex flex-wrap gap-2">
         {cards.map((card) => (
-          <CardFace key={card.symbol} card={card} size="sm" active={a?.symbol === card.symbol || b?.symbol === card.symbol} onClick={() => pick(card)} />
+          <CardFace key={card.symbol} card={card} size="sm" active={active(card)} onClick={() => pick(card)} />
+        ))}
+      </div>
+
+      {/* Palette of polyatomic ions — always available */}
+      <p className="text-[10px] tracking-[0.2em] uppercase text-parchment/50 mt-6 mb-3">Compound ions <span className="text-parchment/35 normal-case tracking-normal">· groups that act as one</span></p>
+      <div className="flex flex-wrap gap-2">
+        {POLYATOMIC_IONS.map((ion) => (
+          <button key={ion.symbol} onClick={() => pick(ion)}
+            className="flex h-16 w-16 flex-col items-center justify-center rounded-xl flex-shrink-0 transition-all duration-200 hover:scale-105"
+            style={{
+              background: `radial-gradient(circle at 40% 25%, color-mix(in oklab, ${ion.color} 26%, transparent), color-mix(in oklab, var(--color-slate-sunken) 78%, transparent))`,
+              border: `1.5px solid color-mix(in oklab, ${ion.color} ${active(ion) ? 85 : 40}%, transparent)`,
+              boxShadow: active(ion) ? `0 0 18px -4px ${ion.color}` : `0 0 14px -8px ${ion.color}`,
+            }}>
+            <span className="font-sans font-semibold text-sm leading-none" style={{ color: ion.color }}>{ion.display}</span>
+            <span className="text-[8px] text-parchment/60 mt-1 truncate max-w-full px-1">{ion.name}</span>
+          </button>
         ))}
       </div>
     </div>

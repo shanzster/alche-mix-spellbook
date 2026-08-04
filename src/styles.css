@@ -193,6 +193,41 @@
     radial-gradient(ellipse at 50% 100%, color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent), transparent 70%);
 }
 
+/* Unstable-compound jitter — used on hazardous/unstable mix results. */
+@keyframes hazard-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-2px) rotate(-0.5deg); }
+  60% { transform: translateX(2px) rotate(0.5deg); }
+}
+.animate-hazard-shake { animation: hazard-shake 0.35s ease-in-out infinite; }
+
+/* ── Atom stage ──────────────────────────────────────────────────────────────
+   The Bohr models are luminous, emissive 3D atoms rendered on a transparent
+   WebGL canvas — they were drawn to sit on the dark night sky. On the bright
+   light-mode page their glow, halos, and faint orbital rings have nothing to
+   read against and wash out. These give each atom its own dark "stage" in light
+   mode so it stays legible; in dark mode the page already is the stage. */
+
+/* Soft dark orb behind the free-floating hero atom (fades into the page). */
+@utility atom-stage-orb {
+  background: radial-gradient(circle at 50% 46%,
+    #0b1220 0%,
+    color-mix(in oklab, #0b1220 90%, transparent) 40%,
+    color-mix(in oklab, #0b1220 55%, transparent) 58%,
+    transparent 74%);
+}
+.dark .atom-stage-orb {
+  background: none;
+}
+
+/* Solid dark fill for the framed Bohr-model preview panel. */
+@utility atom-stage-panel {
+  background:
+    radial-gradient(ellipse at 50% 40%,
+      color-mix(in oklab, var(--color-violet-deep) 45%, #0b1220),
+      #0e1626) !important;
+}
+
 /* Starfield — the dark-mode signature (night sky). Silent in light mode. */
 @utility bg-arcane-stars {
   background-image: none;

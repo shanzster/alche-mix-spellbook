@@ -1,6 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  Home, Atom, Grid3x3, BookMarked, Scale, Gauge, ClipboardList, LogOut, MoreHorizontal,
+  Home, Atom, Grid3x3, BookMarked, Scale, Gauge, ClipboardList, LogOut, MoreHorizontal, ScanSearch, Brain,
+  Shapes, ShieldAlert, Beaker, Radiation,
 } from "lucide-react";
 import { useState, type ComponentType, type ReactNode } from "react";
 import { signOut } from "../lib/auth";
@@ -16,10 +17,17 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { to: "/app",               label: "Home",             icon: Home,          primary: true },
+  { to: "/study",             label: "The Study",        icon: Brain,         primary: true },
   { to: "/cards",             label: "Grimoire",         icon: BookMarked,    primary: true },
   { to: "/atomic-builder",    label: "Atomic Builder",   icon: Atom,          primary: true },
-  { to: "/periodic-table",    label: "Periodic Table",   icon: Grid3x3,       primary: true },
-  { to: "/quiz",              label: "3D Quiz",          icon: ClipboardList, primary: true },
+  { to: "/periodic-table",    label: "Periodic Table",   icon: Grid3x3 },
+  { to: "/quiz",              label: "3D Quiz",          icon: ClipboardList },
+  { to: "/scavenger",         label: "Scavenger Hunt",   icon: ScanSearch },
+  { to: "/molecules",         label: "Molecule Shapes",  icon: Shapes },
+  { to: "/reactions",         label: "Reaction Theatre", icon: Atom },
+  { to: "/titration",         label: "Titration Lab",    icon: Beaker },
+  { to: "/decay",             label: "Radioactive Decay",icon: Radiation },
+  { to: "/lab-safety",        label: "Lab Safety",       icon: ShieldAlert },
   { to: "/equation-balancer", label: "Equation Balancer",icon: Scale },
   { to: "/gas-laws",          label: "Gas Laws",         icon: Gauge },
 ];

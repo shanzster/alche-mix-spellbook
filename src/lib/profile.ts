@@ -38,6 +38,32 @@ export interface StudentProfile {
   grimoire?: string[];
   /** Compound formulas the student has forged by mixing cards. */
   compounds?: string[];
+  /** Guided-lesson-path progress, keyed by topic id (see lib/learning.ts). */
+  pathProgress?: Record<string, PathProgress>;
+  /** Spaced-repetition schedule, keyed by concept id (see lib/learning.ts). */
+  reviews?: Record<string, ReviewState>;
+}
+
+/** Furthest stage a student has reached on a topic's guided path. */
+export type PathStage = "learn" | "practise" | "assess" | "done";
+export interface PathProgress {
+  stage: PathStage;
+  /** Best assessment score (0..1) the student has achieved on this topic. */
+  best?: number;
+}
+
+/** Per-concept spaced-repetition state (a lightweight SM-2). */
+export interface ReviewState {
+  /** Ease factor — grows with success, shrinks on a lapse. */
+  ease: number;
+  /** Current interval in days. */
+  intervalDays: number;
+  /** When this concept next becomes due, in epoch ms. */
+  dueAt: number;
+  /** Successful reviews in a row. */
+  reps: number;
+  /** Times the student has forgotten it. */
+  lapses: number;
 }
 
 // ── Live profile subscription ───────────────────────────────────────────────

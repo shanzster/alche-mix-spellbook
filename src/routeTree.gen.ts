@@ -9,16 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TitrationRouteImport } from './routes/titration'
 import { Route as TeacherRouteImport } from './routes/teacher'
+import { Route as StudyRouteImport } from './routes/study'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as ScavengerRouteImport } from './routes/scavenger'
+import { Route as ReactionsRouteImport } from './routes/reactions'
 import { Route as QuizRouteImport } from './routes/quiz'
 import { Route as PeriodicTableRouteImport } from './routes/periodic-table'
+import { Route as MoleculesRouteImport } from './routes/molecules'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LearnRouteImport } from './routes/learn'
+import { Route as LabSafetyRouteImport } from './routes/lab-safety'
 import { Route as GrimoireRouteImport } from './routes/grimoire'
 import { Route as GasLawsRouteImport } from './routes/gas-laws'
 import { Route as EquationBalancerRouteImport } from './routes/equation-balancer'
 import { Route as ElementsRouteImport } from './routes/elements'
+import { Route as DecayRouteImport } from './routes/decay'
 import { Route as CardsRouteImport } from './routes/cards'
 import { Route as AtomicBuilderRouteImport } from './routes/atomic-builder'
 import { Route as AppRouteImport } from './routes/app'
@@ -26,14 +33,34 @@ import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TitrationRoute = TitrationRouteImport.update({
+  id: '/titration',
+  path: '/titration',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TeacherRoute = TeacherRouteImport.update({
   id: '/teacher',
   path: '/teacher',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StudyRoute = StudyRouteImport.update({
+  id: '/study',
+  path: '/study',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScavengerRoute = ScavengerRouteImport.update({
+  id: '/scavenger',
+  path: '/scavenger',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReactionsRoute = ReactionsRouteImport.update({
+  id: '/reactions',
+  path: '/reactions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const QuizRoute = QuizRouteImport.update({
@@ -46,6 +73,11 @@ const PeriodicTableRoute = PeriodicTableRouteImport.update({
   path: '/periodic-table',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MoleculesRoute = MoleculesRouteImport.update({
+  id: '/molecules',
+  path: '/molecules',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -54,6 +86,11 @@ const LoginRoute = LoginRouteImport.update({
 const LearnRoute = LearnRouteImport.update({
   id: '/learn',
   path: '/learn',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LabSafetyRoute = LabSafetyRouteImport.update({
+  id: '/lab-safety',
+  path: '/lab-safety',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GrimoireRoute = GrimoireRouteImport.update({
@@ -74,6 +111,11 @@ const EquationBalancerRoute = EquationBalancerRouteImport.update({
 const ElementsRoute = ElementsRouteImport.update({
   id: '/elements',
   path: '/elements',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DecayRoute = DecayRouteImport.update({
+  id: '/decay',
+  path: '/decay',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CardsRoute = CardsRouteImport.update({
@@ -114,16 +156,23 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRoute
   '/atomic-builder': typeof AtomicBuilderRoute
   '/cards': typeof CardsRoute
+  '/decay': typeof DecayRoute
   '/elements': typeof ElementsRoute
   '/equation-balancer': typeof EquationBalancerRoute
   '/gas-laws': typeof GasLawsRoute
   '/grimoire': typeof GrimoireRoute
+  '/lab-safety': typeof LabSafetyRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/molecules': typeof MoleculesRoute
   '/periodic-table': typeof PeriodicTableRoute
   '/quiz': typeof QuizRoute
+  '/reactions': typeof ReactionsRoute
+  '/scavenger': typeof ScavengerRoute
   '/signup': typeof SignupRoute
+  '/study': typeof StudyRoute
   '/teacher': typeof TeacherRoute
+  '/titration': typeof TitrationRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -132,16 +181,23 @@ export interface FileRoutesByTo {
   '/app': typeof AppRoute
   '/atomic-builder': typeof AtomicBuilderRoute
   '/cards': typeof CardsRoute
+  '/decay': typeof DecayRoute
   '/elements': typeof ElementsRoute
   '/equation-balancer': typeof EquationBalancerRoute
   '/gas-laws': typeof GasLawsRoute
   '/grimoire': typeof GrimoireRoute
+  '/lab-safety': typeof LabSafetyRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/molecules': typeof MoleculesRoute
   '/periodic-table': typeof PeriodicTableRoute
   '/quiz': typeof QuizRoute
+  '/reactions': typeof ReactionsRoute
+  '/scavenger': typeof ScavengerRoute
   '/signup': typeof SignupRoute
+  '/study': typeof StudyRoute
   '/teacher': typeof TeacherRoute
+  '/titration': typeof TitrationRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -151,16 +207,23 @@ export interface FileRoutesById {
   '/app': typeof AppRoute
   '/atomic-builder': typeof AtomicBuilderRoute
   '/cards': typeof CardsRoute
+  '/decay': typeof DecayRoute
   '/elements': typeof ElementsRoute
   '/equation-balancer': typeof EquationBalancerRoute
   '/gas-laws': typeof GasLawsRoute
   '/grimoire': typeof GrimoireRoute
+  '/lab-safety': typeof LabSafetyRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/molecules': typeof MoleculesRoute
   '/periodic-table': typeof PeriodicTableRoute
   '/quiz': typeof QuizRoute
+  '/reactions': typeof ReactionsRoute
+  '/scavenger': typeof ScavengerRoute
   '/signup': typeof SignupRoute
+  '/study': typeof StudyRoute
   '/teacher': typeof TeacherRoute
+  '/titration': typeof TitrationRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -171,16 +234,23 @@ export interface FileRouteTypes {
     | '/app'
     | '/atomic-builder'
     | '/cards'
+    | '/decay'
     | '/elements'
     | '/equation-balancer'
     | '/gas-laws'
     | '/grimoire'
+    | '/lab-safety'
     | '/learn'
     | '/login'
+    | '/molecules'
     | '/periodic-table'
     | '/quiz'
+    | '/reactions'
+    | '/scavenger'
     | '/signup'
+    | '/study'
     | '/teacher'
+    | '/titration'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -189,16 +259,23 @@ export interface FileRouteTypes {
     | '/app'
     | '/atomic-builder'
     | '/cards'
+    | '/decay'
     | '/elements'
     | '/equation-balancer'
     | '/gas-laws'
     | '/grimoire'
+    | '/lab-safety'
     | '/learn'
     | '/login'
+    | '/molecules'
     | '/periodic-table'
     | '/quiz'
+    | '/reactions'
+    | '/scavenger'
     | '/signup'
+    | '/study'
     | '/teacher'
+    | '/titration'
   id:
     | '__root__'
     | '/'
@@ -207,16 +284,23 @@ export interface FileRouteTypes {
     | '/app'
     | '/atomic-builder'
     | '/cards'
+    | '/decay'
     | '/elements'
     | '/equation-balancer'
     | '/gas-laws'
     | '/grimoire'
+    | '/lab-safety'
     | '/learn'
     | '/login'
+    | '/molecules'
     | '/periodic-table'
     | '/quiz'
+    | '/reactions'
+    | '/scavenger'
     | '/signup'
+    | '/study'
     | '/teacher'
+    | '/titration'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -226,20 +310,34 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRoute
   AtomicBuilderRoute: typeof AtomicBuilderRoute
   CardsRoute: typeof CardsRoute
+  DecayRoute: typeof DecayRoute
   ElementsRoute: typeof ElementsRoute
   EquationBalancerRoute: typeof EquationBalancerRoute
   GasLawsRoute: typeof GasLawsRoute
   GrimoireRoute: typeof GrimoireRoute
+  LabSafetyRoute: typeof LabSafetyRoute
   LearnRoute: typeof LearnRoute
   LoginRoute: typeof LoginRoute
+  MoleculesRoute: typeof MoleculesRoute
   PeriodicTableRoute: typeof PeriodicTableRoute
   QuizRoute: typeof QuizRoute
+  ReactionsRoute: typeof ReactionsRoute
+  ScavengerRoute: typeof ScavengerRoute
   SignupRoute: typeof SignupRoute
+  StudyRoute: typeof StudyRoute
   TeacherRoute: typeof TeacherRoute
+  TitrationRoute: typeof TitrationRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/titration': {
+      id: '/titration'
+      path: '/titration'
+      fullPath: '/titration'
+      preLoaderRoute: typeof TitrationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/teacher': {
       id: '/teacher'
       path: '/teacher'
@@ -247,11 +345,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TeacherRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/study': {
+      id: '/study'
+      path: '/study'
+      fullPath: '/study'
+      preLoaderRoute: typeof StudyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/signup': {
       id: '/signup'
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scavenger': {
+      id: '/scavenger'
+      path: '/scavenger'
+      fullPath: '/scavenger'
+      preLoaderRoute: typeof ScavengerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reactions': {
+      id: '/reactions'
+      path: '/reactions'
+      fullPath: '/reactions'
+      preLoaderRoute: typeof ReactionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/quiz': {
@@ -268,6 +387,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PeriodicTableRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/molecules': {
+      id: '/molecules'
+      path: '/molecules'
+      fullPath: '/molecules'
+      preLoaderRoute: typeof MoleculesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -280,6 +406,13 @@ declare module '@tanstack/react-router' {
       path: '/learn'
       fullPath: '/learn'
       preLoaderRoute: typeof LearnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lab-safety': {
+      id: '/lab-safety'
+      path: '/lab-safety'
+      fullPath: '/lab-safety'
+      preLoaderRoute: typeof LabSafetyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/grimoire': {
@@ -308,6 +441,13 @@ declare module '@tanstack/react-router' {
       path: '/elements'
       fullPath: '/elements'
       preLoaderRoute: typeof ElementsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/decay': {
+      id: '/decay'
+      path: '/decay'
+      fullPath: '/decay'
+      preLoaderRoute: typeof DecayRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cards': {
@@ -362,16 +502,23 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRoute,
   AtomicBuilderRoute: AtomicBuilderRoute,
   CardsRoute: CardsRoute,
+  DecayRoute: DecayRoute,
   ElementsRoute: ElementsRoute,
   EquationBalancerRoute: EquationBalancerRoute,
   GasLawsRoute: GasLawsRoute,
   GrimoireRoute: GrimoireRoute,
+  LabSafetyRoute: LabSafetyRoute,
   LearnRoute: LearnRoute,
   LoginRoute: LoginRoute,
+  MoleculesRoute: MoleculesRoute,
   PeriodicTableRoute: PeriodicTableRoute,
   QuizRoute: QuizRoute,
+  ReactionsRoute: ReactionsRoute,
+  ScavengerRoute: ScavengerRoute,
   SignupRoute: SignupRoute,
+  StudyRoute: StudyRoute,
   TeacherRoute: TeacherRoute,
+  TitrationRoute: TitrationRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

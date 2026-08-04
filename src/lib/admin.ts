@@ -3,6 +3,7 @@ import {
   collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import type { StudentProfile, TeacherStatus } from "./profile";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SEED: the single admin account.
@@ -89,10 +90,36 @@ export function usePendingVerifications() {
 
 export async function approveTeacher(uid: string): Promise<void> {
   await updateDoc(doc(db, "users", uid), { status: "approved" });
-  await updateDoc(doc(db, "verifications", uid), { status: "approved", reviewedAt: serverTimestamp() });
+  await setDoc(doc(db, "verifications", uid), { status: "approved", reviewedAt: serverTimestamp() }, { merge: true });
 }
 
 export async function rejectTeacher(uid: string): Promise<void> {
   await updateDoc(doc(db, "users", uid), { status: "rejected" });
-  await updateDoc(doc(db, "verifications", uid), { status: "rejected", reviewedAt: serverTimestamp() });
+  await setDoc(doc(db, "verifications", uid), { status: "rejected", reviewedAt: serverTimestamp() }, { merge: true });
+}
+
+/** Set a teacher's status directly (used by the Teachers management view). */
+export async function setTeacherStatus(uid: string, status: TeacherStatus): Promise<void> {
+  await updateDoc(doc(db, "users", uid), { status });
+}
+
+// ── Admin-wide data ─────────────────────────────────────────────────────────
+export function useAllUsers() {
+  const [users, setUsers] = useState<StudentProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => onSnapshot(collection(db, "users"), (snap) => {
+    setUsers(snap.docs.map((d) => ({ uid: d.id, ...(d.data() as Omit<StudentProfile, "uid">) })));
+    setLoading(false);
+  }, (err) => { console.error("useAllUsers:", err); setLoading(false); }), []);
+  return { users, loading };
+}
+
+export interface AdminClass { id: string; name: string; teacherId: string; teacherName?: string | null }
+
+export function useAllClasses() {
+  const [classes, setClasses] = useState<AdminClass[]>([]);
+  useEffect(() => onSnapshot(collection(db, "classes"), (snap) => {
+    setClasses(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<AdminClass, "id">) })));
+  }, (err) => console.error("useAllClasses:", err)), []);
+  return classes;
 }

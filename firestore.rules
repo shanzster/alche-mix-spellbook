@@ -32,6 +32,16 @@ service cloud.firestore {
                     || (isApprovedTeacher() && changedKeys().hasOnly(['grades', 'mastery']));
 
       allow delete: if false;
+
+      // ── AI Scavenger-Hunt evidence (users/{uid}/evidence/{autoId}) ──
+      // Students write their own finds; teachers/admins read them and may set a
+      // manual-review verdict (e.g. teacherApproved) on a fallback submission.
+      match /evidence/{evidenceId} {
+        allow read:   if signedIn() && (request.auth.uid == userId || isApprovedTeacher() || isAdmin());
+        allow create: if request.auth.uid == userId;
+        allow update: if isAdmin() || isApprovedTeacher();
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
     }
 
     // ── Teacher identity verifications ──

@@ -51,8 +51,14 @@ export interface MixResult {
   formula?: string;
   bond?: "ionic" | "covalent";
   name?: string;
-  first?: Card;
-  second?: Card;
+  first?: Reagent;
+  second?: Reagent;
+  /** Enrichment from the known-compound table (below). */
+  commonName?: string;
+  uses?: string;
+  hazard?: Hazard;
+  unstable?: boolean;
+  note?: string;
 }
 
 /** Combine two element cards into a compound using valence rules. */
@@ -82,5 +88,104 @@ export function combineCards(a: Card, b: Card): MixResult {
     name = `${firstPart}${first.name} ${p2 || "Mono"}${(second.anionRoot ?? second.name).toLowerCase()}ide`;
   }
 
-  return { valid: true, formula, bond, name, first, second };
+  return enrich({ valid: true, formula, bond, name, first, second });
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Polyatomic ions — so real compounds (CaCO₃, NaOH, acids…) become forgeable.
+//  A polyatomic ion is a group of atoms that stays together as one unit.
+// ════════════════════════════════════════════════════════════════════════════
+export interface PolyIon {
+  symbol: string;   // e.g. "CO3"
+  display: string;  // e.g. "CO₃²⁻"
+  name: string;     // e.g. "Carbonate"
+  val: number;      // charge magnitude (combining power)
+  sign: 1 | -1;     // +1 = behaves as a cation (ammonium), -1 = anion
+  color: string;
+  isIon: true;
+}
+
+export const POLYATOMIC_IONS: PolyIon[] = [
+  { symbol: "OH",   display: "OH⁻",   name: "Hydroxide",   val: 1, sign: -1, color: "#38bdf8", isIon: true },
+  { symbol: "NO3",  display: "NO₃⁻",  name: "Nitrate",     val: 1, sign: -1, color: "#f472b6", isIon: true },
+  { symbol: "HCO3", display: "HCO₃⁻", name: "Bicarbonate", val: 1, sign: -1, color: "#a3e635", isIon: true },
+  { symbol: "CO3",  display: "CO₃²⁻", name: "Carbonate",   val: 2, sign: -1, color: "#facc15", isIon: true },
+  { symbol: "SO4",  display: "SO₄²⁻", name: "Sulfate",     val: 2, sign: -1, color: "#fb923c", isIon: true },
+  { symbol: "PO4",  display: "PO₄³⁻", name: "Phosphate",   val: 3, sign: -1, color: "#c084fc", isIon: true },
+  { symbol: "NH4",  display: "NH₄⁺",  name: "Ammonium",    val: 1, sign:  1, color: "#60a5fa", isIon: true },
+];
+
+/** Anything you can drop into the cauldron: an element card or a polyatomic ion. */
+export type Reagent = Card | PolyIon;
+export function isIon(r: Reagent): r is PolyIon {
+  return (r as PolyIon).isIon === true;
+}
+
+// ── Hazard / stability metadata for known real compounds ──────────────────────
+export type Hazard = "toxic" | "corrosive" | "flammable" | "oxidiser" | "harmful" | "none";
+interface CompoundInfo { name: string; uses: string; hazard: Hazard; unstable?: boolean; note?: string; }
+
+/** Keyed by the exact formula `combine` generates. Unknown mixes stay "none". */
+const COMPOUND_INFO: Record<string, CompoundInfo> = {
+  "NaCl":      { name: "Sodium chloride (table salt)", uses: "Seasoning and preserving food.", hazard: "none" },
+  "H2O":       { name: "Water", uses: "Essential to all life; the universal solvent.", hazard: "none" },
+  "CO2":       { name: "Carbon dioxide", uses: "Fizzy drinks and fire extinguishers.", hazard: "harmful", note: "Not poisonous, but suffocating in high concentration." },
+  "CaCO3":     { name: "Calcium carbonate", uses: "Limestone, chalk, marble and eggshells.", hazard: "none" },
+  "NaOH":      { name: "Sodium hydroxide (lye)", uses: "Making soap and unblocking drains.", hazard: "corrosive" },
+  "Ca(OH)2":   { name: "Calcium hydroxide (slaked lime)", uses: "Treating soil and making cement.", hazard: "corrosive" },
+  "H2SO4":     { name: "Sulfuric acid", uses: "Car batteries and industry.", hazard: "corrosive" },
+  "HNO3":      { name: "Nitric acid", uses: "Fertilisers and explosives.", hazard: "corrosive" },
+  "HCl":       { name: "Hydrogen chloride (hydrochloric acid)", uses: "Stomach acid; cleaning metal.", hazard: "corrosive" },
+  "KNO3":      { name: "Potassium nitrate (saltpetre)", uses: "Fertiliser and gunpowder.", hazard: "oxidiser" },
+  "Na2CO3":    { name: "Sodium carbonate (washing soda)", uses: "Making glass and softening water.", hazard: "harmful" },
+  "NaHCO3":    { name: "Sodium bicarbonate (baking soda)", uses: "Baking and gentle cleaning.", hazard: "none" },
+  "CaO":       { name: "Calcium oxide (quicklime)", uses: "Making cement and steel.", hazard: "corrosive" },
+  "MgO":       { name: "Magnesium oxide", uses: "Antacids and heat-resistant bricks.", hazard: "none" },
+  "Na2O":      { name: "Sodium oxide", uses: "Making glass and ceramics.", hazard: "corrosive" },
+  "Al2O3":     { name: "Aluminium oxide", uses: "Sandpaper and ceramics; protects aluminium.", hazard: "none" },
+  "H3N":       { name: "Ammonia", uses: "Fertilisers and cleaning products.", hazard: "toxic", note: "Choking fumes — handle with ventilation." },
+  "NCl3":      { name: "Nitrogen trichloride", uses: "Almost none — dangerously explosive.", hazard: "toxic", unstable: true, note: "Detonates from heat or shock — an unstable compound." },
+  "FeS":       { name: "Iron(II) sulfide", uses: "Releases rotten-egg gas in acid.", hazard: "harmful" },
+  "FeO":       { name: "Iron(II) oxide", uses: "Pigments; a form of rust.", hazard: "none" },
+  "FeCl2":     { name: "Iron(II) chloride", uses: "Treating waste water.", hazard: "harmful" },
+  "K2CO3":     { name: "Potassium carbonate (potash)", uses: "Making soap and glass.", hazard: "harmful" },
+  "(NH4)2SO4": { name: "Ammonium sulfate", uses: "A common nitrogen fertiliser.", hazard: "harmful" },
+  "Mg(OH)2":   { name: "Magnesium hydroxide", uses: "Milk of magnesia — an antacid.", hazard: "none" },
+  "CaSO4":     { name: "Calcium sulfate", uses: "Plaster of Paris and blackboard chalk.", hazard: "none" },
+};
+
+function enrich(res: MixResult): MixResult {
+  const info = res.formula ? COMPOUND_INFO[res.formula] : undefined;
+  if (!info) return { ...res, hazard: "none" };
+  return { ...res, commonName: info.name, uses: info.uses, hazard: info.hazard, unstable: info.unstable, note: info.note };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  Unified combine — elements AND polyatomic ions.
+// ════════════════════════════════════════════════════════════════════════════
+export function combine(a: Reagent, b: Reagent): MixResult {
+  if (a.symbol === b.symbol) return { valid: false, reason: "Mix two different things to forge a compound." };
+  // Two element cards → the original valence logic (keeps covalent naming etc.).
+  if (!isIon(a) && !isIon(b)) return combineCards(a, b);
+
+  // At least one polyatomic ion → ionic assembly (needs one + and one −).
+  const pos = [a, b].find((r) => r.sign === 1);
+  const neg = [a, b].find((r) => r.sign === -1);
+  if (!pos || !neg) {
+    return { valid: false, reason: "No compound forms — you need one positive part (a metal, hydrogen or ammonium) and one negative part (a non-metal or an ion)." };
+  }
+
+  const g = gcd(pos.val, neg.val) || 1;
+  const nPos = neg.val / g, nNeg = pos.val / g;
+  const part = (r: Reagent, n: number) => {
+    const s = n === 1 ? "" : String(n);
+    return isIon(r) && n > 1 ? `(${r.symbol})${s}` : `${r.symbol}${s}`;
+  };
+  const formula = part(pos, nPos) + part(neg, nNeg);
+
+  const catName = pos.name; // metal / "Hydrogen" / "Ammonium"
+  const anName = isIon(neg) ? neg.name.toLowerCase() : `${(neg as Card).anionRoot ?? neg.name}ide`;
+  const name = `${catName} ${anName}`;
+
+  return enrich({ valid: true, formula, bond: "ionic", name, first: pos, second: neg });
 }
