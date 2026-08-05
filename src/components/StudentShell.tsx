@@ -1,7 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
   Home, Atom, Grid3x3, BookMarked, Scale, Gauge, ClipboardList, LogOut, MoreHorizontal, ScanSearch, Brain,
-  Shapes, ShieldAlert, Beaker, Radiation,
+  Shapes, ShieldAlert, Beaker, Radiation, ScanLine,
 } from "lucide-react";
 import { useState, type ComponentType, type ReactNode } from "react";
 import { signOut } from "../lib/auth";
@@ -23,6 +23,7 @@ const NAV: NavItem[] = [
   { to: "/periodic-table",    label: "Periodic Table",   icon: Grid3x3 },
   { to: "/quiz",              label: "3D Quiz",          icon: ClipboardList },
   { to: "/scavenger",         label: "Scavenger Hunt",   icon: ScanSearch },
+  { to: "/scanner",           label: "AR Scanner",       icon: ScanLine },
   { to: "/molecules",         label: "Molecule Shapes",  icon: Shapes },
   { to: "/reactions",         label: "Reaction Theatre", icon: Atom },
   { to: "/titration",         label: "Titration Lab",    icon: Beaker },

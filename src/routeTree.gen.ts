@@ -14,6 +14,7 @@ import { Route as TeacherRouteImport } from './routes/teacher'
 import { Route as StudyRouteImport } from './routes/study'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ScavengerRouteImport } from './routes/scavenger'
+import { Route as ScannerRouteImport } from './routes/scanner'
 import { Route as ReactionsRouteImport } from './routes/reactions'
 import { Route as QuizRouteImport } from './routes/quiz'
 import { Route as PeriodicTableRouteImport } from './routes/periodic-table'
@@ -56,6 +57,11 @@ const SignupRoute = SignupRouteImport.update({
 const ScavengerRoute = ScavengerRouteImport.update({
   id: '/scavenger',
   path: '/scavenger',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScannerRoute = ScannerRouteImport.update({
+  id: '/scanner',
+  path: '/scanner',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReactionsRoute = ReactionsRouteImport.update({
@@ -168,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/periodic-table': typeof PeriodicTableRoute
   '/quiz': typeof QuizRoute
   '/reactions': typeof ReactionsRoute
+  '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
   '/signup': typeof SignupRoute
   '/study': typeof StudyRoute
@@ -193,6 +200,7 @@ export interface FileRoutesByTo {
   '/periodic-table': typeof PeriodicTableRoute
   '/quiz': typeof QuizRoute
   '/reactions': typeof ReactionsRoute
+  '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
   '/signup': typeof SignupRoute
   '/study': typeof StudyRoute
@@ -219,6 +227,7 @@ export interface FileRoutesById {
   '/periodic-table': typeof PeriodicTableRoute
   '/quiz': typeof QuizRoute
   '/reactions': typeof ReactionsRoute
+  '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
   '/signup': typeof SignupRoute
   '/study': typeof StudyRoute
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
     | '/periodic-table'
     | '/quiz'
     | '/reactions'
+    | '/scanner'
     | '/scavenger'
     | '/signup'
     | '/study'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/periodic-table'
     | '/quiz'
     | '/reactions'
+    | '/scanner'
     | '/scavenger'
     | '/signup'
     | '/study'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/periodic-table'
     | '/quiz'
     | '/reactions'
+    | '/scanner'
     | '/scavenger'
     | '/signup'
     | '/study'
@@ -322,6 +334,7 @@ export interface RootRouteChildren {
   PeriodicTableRoute: typeof PeriodicTableRoute
   QuizRoute: typeof QuizRoute
   ReactionsRoute: typeof ReactionsRoute
+  ScannerRoute: typeof ScannerRoute
   ScavengerRoute: typeof ScavengerRoute
   SignupRoute: typeof SignupRoute
   StudyRoute: typeof StudyRoute
@@ -364,6 +377,13 @@ declare module '@tanstack/react-router' {
       path: '/scavenger'
       fullPath: '/scavenger'
       preLoaderRoute: typeof ScavengerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scanner': {
+      id: '/scanner'
+      path: '/scanner'
+      fullPath: '/scanner'
+      preLoaderRoute: typeof ScannerRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reactions': {
@@ -514,6 +534,7 @@ const rootRouteChildren: RootRouteChildren = {
   PeriodicTableRoute: PeriodicTableRoute,
   QuizRoute: QuizRoute,
   ReactionsRoute: ReactionsRoute,
+  ScannerRoute: ScannerRoute,
   ScavengerRoute: ScavengerRoute,
   SignupRoute: SignupRoute,
   StudyRoute: StudyRoute,
