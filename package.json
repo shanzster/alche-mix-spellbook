@@ -90,5 +90,9 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.56.1",
     "vite": "^8.0.16"
+  },
+  "_comment_overrides": "mind-ar pulls in native `canvas` (node-gyp) for its offline compiler, which we never use at runtime. Alias it to prebuilt @napi-rs/canvas so clean installs (e.g. Vercel) don't try to compile it.",
+  "overrides": {
+    "canvas": "npm:@napi-rs/canvas@^1.0.0"
   }
 }
