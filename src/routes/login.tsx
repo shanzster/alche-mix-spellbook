@@ -43,6 +43,7 @@ function LoginPage() {
       await signInWithGoogle();
       navigate({ to: "/app" });
     } catch (err: any) {
+      console.error("Google sign-in failed:", err);
       if (err.code !== "auth/popup-closed-by-user") setError(friendlyError(err.code));
     } finally { setLoading(false); }
   };
@@ -193,6 +194,8 @@ function friendlyError(code: string): string {
     "auth/too-many-requests":     "Too many attempts. Please wait and try again.",
     "auth/network-request-failed":"Network error. Check your connection.",
     "auth/popup-blocked":         "Popup was blocked. Allow popups for this site.",
+    "auth/unauthorized-domain":   "This site's domain isn't authorized for sign-in yet. Contact the site admin.",
+    "auth/operation-not-allowed": "Google sign-in isn't enabled for this app yet. Contact the site admin.",
   };
-  return map[code] ?? "Something went wrong. Please try again.";
+  return map[code] ?? `Something went wrong. Please try again. (${code ?? "unknown error"})`;
 }
