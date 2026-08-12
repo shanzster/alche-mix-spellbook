@@ -3,9 +3,35 @@ import {
   Home, Atom, Grid3x3, BookMarked, Scale, Gauge, ClipboardList, LogOut, MoreHorizontal, ScanSearch, Brain,
   Shapes, ShieldAlert, Beaker, Radiation, ScanLine,
 } from "lucide-react";
-import { useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { signOut } from "../lib/auth";
+import { aiPing } from "../lib/ai";
 import { ThemeToggle } from "./ThemeToggle";
+
+// Log the AI self-test verdict to the browser console once per page load.
+// (The server caches the underlying Gemini call for 10 min — no quota burn.)
+let aiVerdictLogged = false;
+function useAIVerdictLog() {
+  useEffect(() => {
+    if (aiVerdictLogged) return;
+    aiVerdictLogged = true;
+    aiPing()
+      .then((r) => {
+        if (r.ok) {
+          console.log(
+            `%c[AlcheMix AI] ✓ Gemini is LIVE (model ${r.model}) — ${r.detail}`,
+            "color:#34d399;font-weight:bold",
+          );
+        } else {
+          console.warn(
+            `[AlcheMix AI] ✗ Gemini NOT working — app is running in rule-based fallback mode.\n` +
+            `Reason: ${r.detail}`,
+          );
+        }
+      })
+      .catch((err) => console.warn("[AlcheMix AI] self-test could not run:", err));
+  }, []);
+}
 
 interface NavItem {
   to: string;
@@ -13,25 +39,29 @@ interface NavItem {
   icon: ComponentType<{ className?: string }>;
   primary?: boolean;   // shown in the mobile bottom bar
   disabled?: boolean;  // e.g. gated on AI setup
+  hidden?: boolean;    // temporarily off the nav (routes stay reachable by URL)
 }
 
-const NAV: NavItem[] = [
+const NAV_ALL: NavItem[] = [
   { to: "/app",               label: "Home",             icon: Home,          primary: true },
-  { to: "/study",             label: "The Study",        icon: Brain,         primary: true },
-  { to: "/cards",             label: "Grimoire",         icon: BookMarked,    primary: true },
+  { to: "/study",             label: "The Study",        icon: Brain,         primary: true, hidden: true },
+  { to: "/cards",             label: "Grimoire",         icon: BookMarked },
   { to: "/atomic-builder",    label: "Atomic Builder",   icon: Atom,          primary: true },
-  { to: "/periodic-table",    label: "Periodic Table",   icon: Grid3x3 },
-  { to: "/quiz",              label: "3D Quiz",          icon: ClipboardList },
-  { to: "/scavenger",         label: "Scavenger Hunt",   icon: ScanSearch },
-  { to: "/scanner",           label: "AR Scanner",       icon: ScanLine },
-  { to: "/molecules",         label: "Molecule Shapes",  icon: Shapes },
-  { to: "/reactions",         label: "Reaction Theatre", icon: Atom },
-  { to: "/titration",         label: "Titration Lab",    icon: Beaker },
-  { to: "/decay",             label: "Radioactive Decay",icon: Radiation },
-  { to: "/lab-safety",        label: "Lab Safety",       icon: ShieldAlert },
-  { to: "/equation-balancer", label: "Equation Balancer",icon: Scale },
-  { to: "/gas-laws",          label: "Gas Laws",         icon: Gauge },
+  { to: "/periodic-table",    label: "Periodic Table",   icon: Grid3x3,       primary: true },
+  { to: "/quiz",              label: "3D Quiz",          icon: ClipboardList, hidden: true },
+  { to: "/scavenger",         label: "Scavenger Hunt",   icon: ScanSearch,    primary: true },
+  { to: "/scanner",           label: "AR Scanner",       icon: ScanLine,      primary: true },
+  { to: "/molecules",         label: "Molecule Shapes",  icon: Shapes,        hidden: true },
+  { to: "/reactions",         label: "Reaction Theatre", icon: Atom,          hidden: true },
+  { to: "/titration",         label: "Titration Lab",    icon: Beaker,        hidden: true },
+  { to: "/decay",             label: "Radioactive Decay",icon: Radiation,     hidden: true },
+  { to: "/lab-safety",        label: "Lab Safety",       icon: ShieldAlert,   hidden: true },
+  { to: "/equation-balancer", label: "Equation Balancer",icon: Scale,         hidden: true },
+  { to: "/gas-laws",          label: "Gas Laws",         icon: Gauge,         hidden: true },
 ];
+
+// Only element-focused modules are shown for now; flip `hidden` above to bring one back.
+const NAV = NAV_ALL.filter((n) => !n.hidden);
 
 function useActive() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -46,6 +76,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
   const navigate = useNavigate();
   const isActive = useActive();
   const [moreOpen, setMoreOpen] = useState(false);
+  useAIVerdictLog();
 
   const handleSignOut = async () => { await signOut(); navigate({ to: "/" }); };
   const primary = NAV.filter((n) => n.primary);
@@ -131,7 +162,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
       </main>
 
       {/* ── Mobile "More" sheet ── */}
-      {moreOpen && (
+      {moreOpen && moreItems.length > 0 && (
         <div className="md:hidden">
           <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={() => setMoreOpen(false)} />
           <div className="fixed bottom-[4.5rem] inset-x-3 z-50 rounded-2xl p-2 backdrop-blur-xl"
@@ -179,15 +210,17 @@ export function StudentShell({ title, children }: { title?: string; children: Re
             </Link>
           );
         })}
-        {/* More — opens the overflow sheet */}
-        <button onClick={() => setMoreOpen((o) => !o)}
-          className="relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors"
-          style={{ color: moreOpen || moreActive ? "var(--color-emerald-elixir)" : "var(--color-parchment)" }}
-          aria-label="More modules" aria-expanded={moreOpen}>
-          {moreActive && <span className="absolute top-0 h-0.5 w-8 rounded-full" style={{ background: "var(--color-emerald-elixir)", boxShadow: "0 0 10px 1px var(--color-emerald-elixir)" }} />}
-          <MoreHorizontal className="h-5 w-5" />
-          <span className="text-[9px] tracking-[0.05em] font-display">More</span>
-        </button>
+        {/* More — opens the overflow sheet (only when something overflows) */}
+        {moreItems.length > 0 && (
+          <button onClick={() => setMoreOpen((o) => !o)}
+            className="relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors"
+            style={{ color: moreOpen || moreActive ? "var(--color-emerald-elixir)" : "var(--color-parchment)" }}
+            aria-label="More modules" aria-expanded={moreOpen}>
+            {moreActive && <span className="absolute top-0 h-0.5 w-8 rounded-full" style={{ background: "var(--color-emerald-elixir)", boxShadow: "0 0 10px 1px var(--color-emerald-elixir)" }} />}
+            <MoreHorizontal className="h-5 w-5" />
+            <span className="text-[9px] tracking-[0.05em] font-display">More</span>
+          </button>
+        )}
       </nav>
     </div>
   );

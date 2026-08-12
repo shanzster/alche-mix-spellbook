@@ -3,47 +3,72 @@ import * as THREE from "three";
 import { Camera, Loader2, ScanLine, Sparkles, X, AlertTriangle } from "lucide-react";
 
 /**
- * Image-trigger AR scanner.
+ * Image-trigger AR scanner (multi-card).
  *
- * Opens the camera, watches for the AlcheMix element trigger image
- * (public/image-trigger/alchemix-element-trigger.png, compiled into
- * public/targets.mind), and renders the 3D crystal
- * (public/3d-models/alchemix/scene.gltf) standing up out of the card.
+ * Opens the camera and watches for the AlcheMix element trigger cards
+ * (public/image-trigger/image-trigger-<element>.png, compiled together into
+ * public/targets.mind). When a card is found, that element's 3D model
+ * (public/3d-models/<element>/scene.gltf) rises out of it.
  *
  * MindAR (WebGL + camera) and GLTFLoader are dynamically imported inside start()
  * so nothing touches `window`/`document` during SSR.
  *
- * To add more trigger images later: recompile targets.mind with the extra
- * images (npm run compile:ar), keep this file's anchor index in sync with the
- * compile order, and addAnchor(n) for each.
+ * IMPORTANT: anchor index = position in AR_ELEMENTS = the order the trigger
+ * images are passed to `npm run compile:ar`. Keep all three in sync.
  */
 
 const MIND_SRC = "/targets.mind";
-const MODEL_SRC = "/3d-models/alchemix/scene.gltf";
 
-// Tuning knobs for how the crystal sits on the card.
-const MODEL_SIZE = 0.6;   // longest dimension, in MindAR units (image width = 1)
+// Tuning knobs for how each model sits on its card.
+const MODEL_SIZE = 0.6;   // longest dimension, in MindAR units (card width = 1)
 const SPIN_SPEED = 0.012; // radians/frame turntable spin
 
-// Placeholder element info shown when you tap the crystal in AR.
-// TODO: swap for real element data (or pass it in as a prop) later.
-const ELEMENT_INFO = {
-  symbol: "Ax",
-  name: "Alchemix",
-  number: 118,
-  mass: "294.21",
-  category: "Mythic Metalloid",
-  facts: [
-    "State: Crystalline solid",
-    "Origin: The Grand Grimoire",
-    "Glows faintly under moonlight",
-  ],
-};
+export interface ARElement {
+  key: string;      // folder name under public/3d-models/, all lower case
+  symbol: string;
+  name: string;
+  number: number;
+  mass: string;
+  category: string;
+  facts: string[];
+}
+
+/** Anchor index = position here = compile order of the trigger images. */
+export const AR_ELEMENTS: ARElement[] = [
+  {
+    key: "alchemix",
+    symbol: "Ax",
+    name: "Alchemix",
+    number: 118,
+    mass: "294.21",
+    category: "Mythic Metalloid",
+    facts: [
+      "State: Crystalline solid",
+      "Origin: The Grand Grimoire",
+      "Glows faintly under moonlight",
+    ],
+  },
+  {
+    key: "helium",
+    symbol: "He",
+    name: "Helium",
+    number: 2,
+    mass: "4.003",
+    category: "Noble Gas",
+    facts: [
+      "State: Colorless, odorless gas",
+      "Second-lightest element of all",
+      "Lighter than air — balloons float",
+    ],
+  },
+];
+
+const modelSrc = (el: ARElement) => `/3d-models/${el.key}/scene.gltf`;
 
 // Builds the floating info card as a canvas-textured plane that lives in AR
 // space (anchored to the card, billboarded toward the camera). Client-only —
 // only ever called at runtime from start().
-function makeInfoPanel(): THREE.Mesh {
+function makeInfoPanel(el: ARElement): THREE.Mesh {
   const W = 512;
   const H = 660;
   const canvas = document.createElement("canvas");
@@ -73,24 +98,24 @@ function makeInfoPanel(): THREE.Mesh {
 
   ctx.fillStyle = "#67e8c3";
   ctx.font = "bold 150px system-ui, sans-serif";
-  ctx.fillText(ELEMENT_INFO.symbol, pad, 40);
+  ctx.fillText(el.symbol, pad, 40);
 
   ctx.textAlign = "right";
   ctx.fillStyle = "#e8dcc0";
   ctx.font = "bold 40px system-ui, sans-serif";
-  ctx.fillText(String(ELEMENT_INFO.number), W - pad, 52);
+  ctx.fillText(String(el.number), W - pad, 52);
   ctx.fillStyle = "rgba(232,220,192,0.7)";
   ctx.font = "500 26px system-ui, sans-serif";
-  ctx.fillText(ELEMENT_INFO.mass, W - pad, 102);
+  ctx.fillText(el.mass, W - pad, 102);
   ctx.textAlign = "left";
 
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 54px system-ui, sans-serif";
-  ctx.fillText(ELEMENT_INFO.name, pad, 210);
+  ctx.fillText(el.name, pad, 210);
 
   ctx.fillStyle = "#d4b25a";
   ctx.font = "500 30px system-ui, sans-serif";
-  ctx.fillText(ELEMENT_INFO.category, pad, 278);
+  ctx.fillText(el.category, pad, 278);
 
   ctx.strokeStyle = "rgba(255,255,255,0.15)";
   ctx.lineWidth = 2;
@@ -100,7 +125,7 @@ function makeInfoPanel(): THREE.Mesh {
   ctx.stroke();
 
   ctx.font = "400 28px system-ui, sans-serif";
-  ELEMENT_INFO.facts.forEach((f, i) => {
+  el.facts.forEach((f, i) => {
     const y = 372 + i * 54;
     ctx.fillStyle = "#34d399";
     ctx.fillText("•", pad, y);
@@ -110,7 +135,7 @@ function makeInfoPanel(): THREE.Mesh {
 
   ctx.fillStyle = "rgba(255,255,255,0.4)";
   ctx.font = "italic 22px system-ui, sans-serif";
-  ctx.fillText("tap to close · placeholder data", pad, H - 74);
+  ctx.fillText("tap to close", pad, H - 74);
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
@@ -123,7 +148,7 @@ function makeInfoPanel(): THREE.Mesh {
       map: tex,
       transparent: true,
       side: THREE.DoubleSide,
-      depthTest: false, // always readable, never hidden behind the crystal
+      depthTest: false, // always readable, never hidden behind the model
     }),
   );
   mesh.renderOrder = 999;
@@ -131,14 +156,42 @@ function makeInfoPanel(): THREE.Mesh {
   return mesh;
 }
 
+// Synthesized "summon" chime (rising C-major arpeggio) — no audio asset needed.
+// The camera's Start click already counts as the user gesture browsers require.
+function playChime() {
+  try {
+    const Ctor = window.AudioContext
+      ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctor) return;
+    const ctx = new Ctor();
+    [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.09;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.16, t + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 1.0);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t);
+      osc.stop(t + 1.05);
+    });
+    window.setTimeout(() => void ctx.close().catch(() => {}), 2200);
+  } catch {
+    /* sound is a garnish — never block the summon */
+  }
+}
+
 type Status = "idle" | "starting" | "scanning" | "found" | "error";
 
-export function CrystalAR({ onFound }: { onFound?: () => void }) {
+export function CrystalAR({ onFound }: { onFound?: (elementKey: string) => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mindarRef = useRef<any>(null);
   const cleanupRef = useRef<null | (() => void)>(null);
   const [status, setStatus] = useState<Status>("idle");
+  const [foundName, setFoundName] = useState("");
   const [infoOpen, setInfoOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [error, setError] = useState("");
@@ -210,62 +263,146 @@ export function CrystalAR({ onFound }: { onFound?: () => void }) {
       const { renderer, scene, camera } = mindar;
       renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-      // Lighting that flatters the crystal's metallic-roughness textures.
+      // Lighting that flatters metallic-roughness textures.
       scene.add(new THREE.HemisphereLight(0xffffff, 0x223355, 1.3));
       const key = new THREE.DirectionalLight(0xffffff, 2.2);
       key.position.set(1, 2, 3);
       scene.add(key);
 
-      // Anchor 0 = the alchemix element trigger (first/only image in targets.mind).
-      const anchor = mindar.addAnchor(0);
-      const spinner = new THREE.Group(); // turntable wrapper (spins the crystal)
-      anchor.group.add(spinner);
+      // ── Summon-moment particle burst ─────────────────────────────────────
+      // Sparks fly out of a card the instant its model is first found.
+      const bursts: { points: THREE.Points; velocities: THREE.Vector3[]; age: number }[] = [];
+      const spawnBurst = (group: THREE.Group, color: number, count: number) => {
+        const pos = new Float32Array(count * 3);
+        const velocities: THREE.Vector3[] = [];
+        for (let i = 0; i < count; i++) {
+          pos[i * 3] = (Math.random() - 0.5) * 0.15;
+          pos[i * 3 + 1] = (Math.random() - 0.5) * 0.15;
+          pos[i * 3 + 2] = Math.random() * 0.1;
+          const dir = new THREE.Vector3(
+            Math.random() - 0.5,
+            Math.random() - 0.5,
+            0.4 + Math.random() * 0.8, // biased upward, out of the card
+          ).normalize();
+          velocities.push(dir.multiplyScalar(0.5 + Math.random() * 0.9));
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+        const points = new THREE.Points(
+          geo,
+          new THREE.PointsMaterial({
+            color, size: 0.028, transparent: true, opacity: 1,
+            blending: THREE.AdditiveBlending, depthWrite: false,
+          }),
+        );
+        group.add(points);
+        bursts.push({ points, velocities, age: 0 });
+      };
+      const BURST_DT = 1 / 60;
+      const BURST_LIFE = 1.4; // seconds
+      const updateBursts = () => {
+        for (let bi = bursts.length - 1; bi >= 0; bi--) {
+          const b = bursts[bi];
+          b.age += BURST_DT;
+          const attr = b.points.geometry.getAttribute("position") as THREE.BufferAttribute;
+          for (let i = 0; i < b.velocities.length; i++) {
+            const v = b.velocities[i];
+            attr.setXYZ(i, attr.getX(i) + v.x * BURST_DT, attr.getY(i) + v.y * BURST_DT, attr.getZ(i) + v.z * BURST_DT);
+            v.multiplyScalar(0.965); // air drag
+            v.z -= 0.5 * BURST_DT;   // gentle gravity back toward the card
+          }
+          attr.needsUpdate = true;
+          const mat = b.points.material as THREE.PointsMaterial;
+          mat.opacity = Math.max(0, 1 - b.age / BURST_LIFE);
+          if (b.age > BURST_LIFE) {
+            b.points.parent?.remove(b.points);
+            b.points.geometry.dispose();
+            mat.dispose();
+            bursts.splice(bi, 1);
+          }
+        }
+      };
 
-      // Populated once the model loads; the tap handler + render loop read these.
-      let model: THREE.Object3D | null = null;
-      let infoPanel: THREE.Mesh | null = null;
+      // ── One anchor per element card ──────────────────────────────────────
+      interface Tracked {
+        el: ARElement;
+        spinner: THREE.Group;
+        model: THREE.Object3D | null;
+        infoPanel: THREE.Mesh | null;
+        summoned: boolean; // first-find latch (per scan session)
+      }
+      const loader = new GLTFLoader();
+      const visibleAnchors = new Set<number>();
+      const tracked: Tracked[] = AR_ELEMENTS.map((el, i) => {
+        const anchor = mindar.addAnchor(i);
+        const spinner = new THREE.Group(); // turntable wrapper (spins the model)
+        anchor.group.add(spinner);
+        const t: Tracked = { el, spinner, model: null, infoPanel: null, summoned: false };
 
-      new GLTFLoader().load(
-        MODEL_SRC,
-        (gltf: { scene: THREE.Group }) => {
-          model = gltf.scene;
+        loader.load(
+          modelSrc(el),
+          (gltf: { scene: THREE.Group }) => {
+            const model = gltf.scene;
 
-          // Center the model on the origin, then scale to a friendly size.
-          const box = new THREE.Box3().setFromObject(model);
-          const size = new THREE.Vector3();
-          const center = new THREE.Vector3();
-          box.getSize(size);
-          box.getCenter(center);
-          model.position.sub(center);
+            // ── Seat the model dead-centre on the card ──
+            // The anchor's origin IS the centre of the card. Centre the raw
+            // geometry inside a holder first (offset applied *before* the
+            // holder's rotation/scale, so it stays exact for any model pivot),
+            // then stand the holder up and lift it by half its height so the
+            // base rests precisely on the card's centre.
+            const holder = new THREE.Group();
+            holder.add(model);
+            const box = new THREE.Box3().setFromObject(model);
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            model.position.sub(center); // geometric centre → holder origin
 
-          const maxDim = Math.max(size.x, size.y, size.z) || 1;
-          const scale = MODEL_SIZE / maxDim;
-          model.scale.setScalar(scale);
+            const scale = MODEL_SIZE / (Math.max(size.x, size.y, size.z) || 1);
+            holder.scale.setScalar(scale);
+            holder.rotation.x = Math.PI / 2; // model's up (+Y) → out of the card (+Z)
+            t.spinner.add(holder);
 
-          // Stand the crystal UP out of the card: rotate the model's +Y (up) onto
-          // +Z, which points straight out of a card lying flat on the table.
-          model.rotation.x = Math.PI / 2;
-          spinner.add(model);
+            const height = size.y * scale; // extent along +Z after standing up
+            t.spinner.position.set(0, 0, height / 2);
 
-          // Lift so the base rests on the card instead of being half-buried.
-          const crystalHeight = size.y * scale;
-          spinner.position.z = crystalHeight / 2;
+            // Floating info card — added to the anchor (not the spinner) so it
+            // does not turntable-spin; it billboards toward the camera.
+            const infoPanel = makeInfoPanel(el);
+            infoPanel.position.set(0.6, 0, height * 0.9);
+            anchor.group.add(infoPanel);
 
-          // Floating info card — added to the anchor (not the spinner) so it does
-          // not turntable-spin; it billboards toward the camera each frame.
-          infoPanel = makeInfoPanel();
-          infoPanel.position.set(0.6, 0, crystalHeight * 0.9);
-          anchor.group.add(infoPanel);
-        },
-        undefined,
-        (err: unknown) => {
-          console.error("[CrystalAR] model load failed", err);
-          setError("Could not load the 3D crystal model.");
-          setStatus("error");
-        },
-      );
+            t.model = model;
+            t.infoPanel = infoPanel;
+          },
+          undefined,
+          (err: unknown) => {
+            console.error(`[CrystalAR] ${el.key} model load failed`, err);
+            setError(`Could not load the 3D model for ${el.name}.`);
+            setStatus("error");
+          },
+        );
 
-      // Tap the crystal → toggle the info card. Tap the card → dismiss it.
+        anchor.onTargetFound = () => {
+          visibleAnchors.add(i);
+          setStatus("found");
+          setFoundName(el.name);
+          if (!t.summoned) {
+            t.summoned = true;
+            spawnBurst(anchor.group, 0xffd873, 130); // gold sparks
+            spawnBurst(anchor.group, 0x34d399, 70);  // emerald sparks
+            playChime();
+            onFound?.(el.key);
+          }
+        };
+        anchor.onTargetLost = () => {
+          visibleAnchors.delete(i);
+          if (visibleAnchors.size === 0) setStatus("scanning");
+        };
+
+        return t;
+      });
+
+      // Tap a model → toggle its info card (closing any other). Tap a card → dismiss.
       const raycaster = new THREE.Raycaster();
       const pointer = new THREE.Vector2();
       const onPointerDown = (e: PointerEvent) => {
@@ -273,15 +410,22 @@ export function CrystalAR({ onFound }: { onFound?: () => void }) {
         pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
         pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(pointer, camera);
-        if (infoPanel?.visible && raycaster.intersectObject(infoPanel, false).length) {
-          infoPanel.visible = false;
-          setInfoOpen(false);
-          return;
+
+        for (const t of tracked) {
+          if (t.infoPanel?.visible && raycaster.intersectObject(t.infoPanel, false).length) {
+            t.infoPanel.visible = false;
+            setInfoOpen(false);
+            return;
+          }
         }
-        if (model && raycaster.intersectObject(model, true).length) {
-          const open = !(infoPanel?.visible ?? false);
-          if (infoPanel) infoPanel.visible = open;
-          setInfoOpen(open);
+        for (const t of tracked) {
+          if (t.model && raycaster.intersectObject(t.model, true).length) {
+            const open = !(t.infoPanel?.visible ?? false);
+            tracked.forEach((o) => { if (o.infoPanel) o.infoPanel.visible = false; });
+            if (t.infoPanel) t.infoPanel.visible = open;
+            setInfoOpen(open);
+            return;
+          }
         }
       };
       renderer.domElement.style.touchAction = "none";
@@ -298,31 +442,66 @@ export function CrystalAR({ onFound }: { onFound?: () => void }) {
         document.removeEventListener("fullscreenchange", onFsChange);
       };
 
-      let firstFind = true;
-      anchor.onTargetFound = () => {
-        setStatus("found");
-        if (firstFind) {
-          firstFind = false;
-          onFound?.();
-        }
-      };
-      anchor.onTargetLost = () => setStatus("scanning");
-
       await mindar.start(); // getUserMedia + tracking (needs a user gesture → this runs from a click)
 
       // MindAR positions its <video> at z-index:-2, which the native-fullscreen
-      // backdrop paints over (black screen). Pin the video + canvas to explicit
-      // positive layers so the feed shows in both windowed and fullscreen.
+      // backdrop paints over (black screen). Pin the canvas above it.
       const videoEl = (mindar as unknown as { video?: HTMLVideoElement }).video;
-      if (videoEl) videoEl.style.zIndex = "0";
       renderer.domElement.style.zIndex = "1";
+
+      // MindAR sizes the <video> with manual pixel math derived from
+      // video.videoWidth/Height — which phones (iOS Safari especially) report
+      // late or wrong at start, leaving a tiny/offset feed. Don't trust it:
+      // pin the video to the container and let object-fit:cover do the
+      // cropping/centring. Geometrically identical to MindAR's intended
+      // layout, but self-correcting on every size change.
+      const coverVideo = () => {
+        if (!videoEl) return;
+        videoEl.style.zIndex = "0";
+        videoEl.style.top = "0px";
+        videoEl.style.left = "0px";
+        videoEl.style.width = "100%";
+        videoEl.style.height = "100%";
+        videoEl.style.objectFit = "cover";
+      };
+      coverVideo();
+
+      // Still run MindAR's resize() (it derives the camera FOV/projection from
+      // the container) whenever the viewport or the camera's reported
+      // dimensions settle — then re-assert our cover styles, since resize()
+      // rewrites the video's inline pixel sizing.
+      const nudgeResize = () => {
+        if (mindarRef.current === mindar) {
+          try { mindar.resize(); } catch { /* session ending — ignore */ }
+          coverVideo();
+        }
+      };
+      const resizeTimers = [250, 700, 1500].map((ms) => window.setTimeout(nudgeResize, ms));
+      window.addEventListener("orientationchange", nudgeResize);
+      document.addEventListener("fullscreenchange", nudgeResize);
+      window.visualViewport?.addEventListener("resize", nudgeResize);
+      // <video> fires "resize" when videoWidth/videoHeight actually change —
+      // the exact moment phones deliver the camera's true dimensions.
+      videoEl?.addEventListener("resize", nudgeResize);
+      const prevCleanup = cleanupRef.current;
+      cleanupRef.current = () => {
+        resizeTimers.forEach((t) => window.clearTimeout(t));
+        window.removeEventListener("orientationchange", nudgeResize);
+        document.removeEventListener("fullscreenchange", nudgeResize);
+        window.visualViewport?.removeEventListener("resize", nudgeResize);
+        videoEl?.removeEventListener("resize", nudgeResize);
+        prevCleanup?.();
+      };
 
       const camWorld = new THREE.Vector3();
       renderer.setAnimationLoop(() => {
-        spinner.rotation.z += SPIN_SPEED;
-        if (infoPanel?.visible) {
-          infoPanel.lookAt(camera.getWorldPosition(camWorld)); // billboard to camera
-        }
+        tracked.forEach((t) => { t.spinner.rotation.z += SPIN_SPEED; });
+        updateBursts();
+        tracked.forEach((t) => {
+          if (t.infoPanel?.visible) {
+            t.infoPanel.lookAt(camera.getWorldPosition(camWorld)); // billboard to camera
+          }
+        });
         renderer.render(scene, camera);
       });
       setStatus("scanning");
@@ -348,7 +527,9 @@ export function CrystalAR({ onFound }: { onFound?: () => void }) {
       ref={containerRef}
       className={
         fullscreen
-          ? "fixed inset-0 z-[60] h-screen w-screen overflow-hidden bg-slate-sunken"
+          // inset-0 alone sizes the fixed box to the *visible* viewport;
+          // h-screen (100vh) would overshoot it on phones with dynamic URL bars.
+          ? "fixed inset-0 z-[60] overflow-hidden bg-slate-sunken"
           : "relative w-full overflow-hidden rounded-2xl bg-slate-sunken"
       }
       // `isolation: isolate` gives this panel its own stacking context so MindAR's
@@ -365,9 +546,9 @@ export function CrystalAR({ onFound }: { onFound?: () => void }) {
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-4 p-6 text-center">
           <ScanLine className="h-12 w-12 text-emerald-elixir" />
           <div>
-            <p className="font-medium text-parchment">Scan the AlcheMix element card</p>
+            <p className="font-medium text-parchment">Scan an AlcheMix element card</p>
             <p className="mt-1 text-sm text-parchment/60">
-              Point your camera at the trigger image to summon the 3D crystal.
+              Point your camera at a trigger card to summon its 3D model.
             </p>
           </div>
           <button
@@ -408,12 +589,12 @@ export function CrystalAR({ onFound }: { onFound?: () => void }) {
             {status === "found" ? (
               <>
                 <Sparkles className="h-3.5 w-3.5 text-gold" />
-                <span className="text-gold">Crystal summoned</span>
+                <span className="text-gold">{foundName || "Element"} summoned</span>
               </>
             ) : (
               <>
                 <ScanLine className="h-3.5 w-3.5 animate-pulse text-emerald-elixir" />
-                <span className="text-parchment/80">Looking for the card…</span>
+                <span className="text-parchment/80">Looking for a card…</span>
               </>
             )}
           </div>
@@ -425,10 +606,10 @@ export function CrystalAR({ onFound }: { onFound?: () => void }) {
             <X className="h-4 w-4" />
           </button>
 
-          {/* Tap hint — only once the crystal is on-screen. */}
+          {/* Tap hint — only once a model is on-screen. */}
           {status === "found" && (
             <div className="pointer-events-none absolute bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-slate-sunken/80 px-3 py-1.5 text-xs text-parchment/80 backdrop-blur">
-              {infoOpen ? "Tap the card to close the info" : "Tap the crystal to inspect the element"}
+              {infoOpen ? "Tap the card to close the info" : "Tap the model to inspect · ✕ to claim your discovery"}
             </div>
           )}
 

@@ -17,8 +17,8 @@ model follows the card as you move, tilt and rotate it.
 
 The current build:
 
-- **Trigger image:** `public/image-trigger/alchemix-element-trigger.png`
-- **3D model:** `public/3d-models/alchemix/scene.gltf` (the crystal — GLTF + `scene.bin` + textures)
+- **Trigger images:** `public/image-trigger/image-trigger-<element>.png` (currently `alchemix`, `helium`)
+- **3D models:** `public/3d-models/<element>/scene.gltf` (folder per element, lower case — GLTF + `scene.bin` + textures)
 - **Behaviour:** camera opens → looks for the card → the crystal stands up out of
   the card and slowly turns → tracks the card as it moves.
 
@@ -36,7 +36,7 @@ Not to be confused with:
 
 | Piece | Location | Notes |
 |---|---|---|
-| Trigger image | `public/image-trigger/alchemix-element-trigger.png` | 2289×3852 source art |
+| Trigger images | `public/image-trigger/image-trigger-<element>.png` | one card per element (532×796) |
 | Compiled tracking target | `public/targets.mind` | **generated** — do not hand-edit |
 | 3D crystal model | `public/3d-models/alchemix/scene.gltf` (+ `.bin`, `textures/`) | loaded via Three's `GLTFLoader` |
 | AR viewport component | `src/components/CrystalAR.tsx` | camera + MindAR + model |
@@ -73,11 +73,14 @@ sidesteps that: it decodes the PNG with pure-JS **pngjs** and feeds the pixels
 straight into MindAR's own feature extractor.
 
 ```bash
-# Recompile from the default trigger image → public/targets.mind
+# Recompile all element cards (in AR_ELEMENTS order) → public/targets.mind
 npm run compile:ar
 
-# Or specify inputs + output explicitly (multiple images allowed):
-node scripts/compile-mind-target.mjs public/image-trigger/alchemix-element-trigger.png public/targets.mind
+# Or specify inputs + output explicitly (input order = anchor order!):
+node scripts/compile-mind-target.mjs \
+  public/image-trigger/image-trigger-alchemix.png \
+  public/image-trigger/image-trigger-helium.png \
+  public/targets.mind
 ```
 
 > The current file is ~492 KB (1 target, 2289×3852). Compilation is CPU-heavy
@@ -137,7 +140,7 @@ npm run dev
   the phone needs **HTTPS**, so for on-device testing either deploy a preview or
   use a tunnel (e.g. an HTTPS dev tunnel) pointing at the dev server.
 - Go to **AR Scanner** in the nav → **Start scanning** → grant camera → aim at a
-  printed or on-screen copy of `alchemix-element-trigger.png`.
+  printed or on-screen copy of one of the `image-trigger-<element>.png` cards.
 - The crystal should rise out of the card and turn.
 
 ---
@@ -150,12 +153,18 @@ npm run dev
 2. Recompile **all** images in one go, in a fixed order:
    ```bash
    node scripts/compile-mind-target.mjs \
-     public/image-trigger/alchemix-element-trigger.png \
-     public/image-trigger/second-card.png \
+     public/image-trigger/image-trigger-alchemix.png \
+     public/image-trigger/image-trigger-helium.png \
+     public/image-trigger/image-trigger-<new-element>.png \
      public/targets.mind
    ```
-3. In `CrystalAR.tsx`, `addAnchor(1)` (etc.) for each extra target and load the
-   model you want on that anchor. Keep indices matching the compile order.
+   (Or add the new card to the default list in `scripts/compile-mind-target.mjs`
+   and just run `npm run compile:ar`.)
+3. Add the element to `AR_ELEMENTS` in `CrystalAR.tsx` (same position as its
+   compile order) with its `key` matching the model folder name, and drop its
+   model at `public/3d-models/<key>/scene.gltf`. Anchors, info cards, bursts and
+   scan recording all follow from that one entry — plus a quiz in `QUIZZES`
+   (keyed by the same `key`) in `src/routes/scanner.tsx`.
 
 **Ideas (not yet built)**
 

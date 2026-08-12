@@ -2,8 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import {
   Atom, BookMarked, Scale, Gauge, ClipboardList, Grid3x3,
-  ChevronRight, GraduationCap, ClipboardCheck, Users, ScanSearch, Brain,
-  Shapes, ShieldAlert, Beaker, Radiation,
+  ChevronRight, GraduationCap, ClipboardCheck, Users, ScanSearch, Brain, Award,
+  Shapes, ShieldAlert, Beaker, Radiation, ScanLine,
 } from "lucide-react";
 import { StudentShell } from "../components/StudentShell";
 import { PageHeader } from "../components/PageHeader";
@@ -20,25 +20,34 @@ export const Route = createFileRoute("/app")({
 });
 
 type ModuleStatus = "live" | "soon" | "ai";
-interface ModuleRow { icon: typeof Atom; title: string; desc: string; color: string; to: string; status: ModuleStatus }
+interface ModuleRow { icon: typeof Atom; title: string; desc: string; color: string; to: string; status: ModuleStatus; hidden?: boolean }
 
-const MODULES: ModuleRow[] = [
-  { icon: Brain, title: "The Study", desc: "Guided learn → practise → assess paths, with spaced review.", color: "var(--color-wraith)", to: "/study", status: "live" },
-  { icon: BookMarked, title: "Grimoire", desc: "Scan cards in AR, collect them & mix compounds.", color: "var(--color-gold)", to: "/cards", status: "live" },
+const MODULES_ALL: ModuleRow[] = [
+  { icon: Brain, title: "The Study", desc: "Guided learn → practise → assess paths, with spaced review.", color: "var(--color-wraith)", to: "/study", status: "live", hidden: true },
+  { icon: BookMarked, title: "Grimoire", desc: "Your collection book — every card you've scanned, and when you got it.", color: "var(--color-gold)", to: "/cards", status: "live" },
   { icon: Atom, title: "Atomic Builder", desc: "Forge atoms from protons, neutrons & electrons.", color: "var(--color-emerald-elixir)", to: "/atomic-builder", status: "live" },
   { icon: Grid3x3, title: "Periodic Table", desc: "Study each element — uses, examples & 3D.", color: "var(--color-wraith)", to: "/periodic-table", status: "live" },
-  { icon: Scale, title: "Equation Balancer", desc: "Balance equations & learn conservation of mass.", color: "var(--color-emerald-elixir)", to: "/equation-balancer", status: "live" },
-  { icon: Gauge, title: "Gas Laws Simulator", desc: "Explore PV = nRT with live particles.", color: "var(--color-wraith)", to: "/gas-laws", status: "live" },
-  { icon: ClipboardList, title: "3D Visual Quiz", desc: "Identify elements from rotating atoms.", color: "var(--color-emerald-elixir)", to: "/quiz", status: "live" },
-  { icon: ScanSearch, title: "AI Scavenger Hunt", desc: "Photograph an element you find in the real world.", color: "var(--color-gold)", to: "/scavenger", status: "live" },
-  { icon: Shapes, title: "Molecule Shapes", desc: "Real 3D VSEPR geometry — bent, tetrahedral & more.", color: "var(--color-emerald-elixir)", to: "/molecules", status: "live" },
-  { icon: Atom, title: "Reaction Theatre", desc: "Watch bonds break and reform in a balanced equation.", color: "var(--color-gold)", to: "/reactions", status: "live" },
-  { icon: Beaker, title: "Titration Lab", desc: "Titrate acid with base and read the pH curve.", color: "var(--color-wraith)", to: "/titration", status: "live" },
-  { icon: Radiation, title: "Radioactive Decay", desc: "Isotopes, half-life & decay, one nucleus at a time.", color: "var(--color-emerald-elixir)", to: "/decay", status: "live" },
-  { icon: ShieldAlert, title: "Lab Safety", desc: "Hazard symbols & apparatus — know before you touch.", color: "var(--color-crimson)", to: "/lab-safety", status: "live" },
+  { icon: ScanLine, title: "AR Scanner", desc: "Scan the element card and summon its 3D crystal in AR.", color: "var(--color-emerald-elixir)", to: "/scanner", status: "live" },
+  { icon: Scale, title: "Equation Balancer", desc: "Balance equations & learn conservation of mass.", color: "var(--color-emerald-elixir)", to: "/equation-balancer", status: "live", hidden: true },
+  { icon: Gauge, title: "Gas Laws Simulator", desc: "Explore PV = nRT with live particles.", color: "var(--color-wraith)", to: "/gas-laws", status: "live", hidden: true },
+  { icon: ClipboardList, title: "3D Visual Quiz", desc: "Identify elements from rotating atoms.", color: "var(--color-emerald-elixir)", to: "/quiz", status: "live", hidden: true },
+  { icon: ScanSearch, title: "AI Scavenger Hunt", desc: "Live camera scan — green trackers lock onto your element.", color: "var(--color-gold)", to: "/scavenger", status: "live" },
+  { icon: Shapes, title: "Molecule Shapes", desc: "Real 3D VSEPR geometry — bent, tetrahedral & more.", color: "var(--color-emerald-elixir)", to: "/molecules", status: "live", hidden: true },
+  { icon: Atom, title: "Reaction Theatre", desc: "Watch bonds break and reform in a balanced equation.", color: "var(--color-gold)", to: "/reactions", status: "live", hidden: true },
+  { icon: Beaker, title: "Titration Lab", desc: "Titrate acid with base and read the pH curve.", color: "var(--color-wraith)", to: "/titration", status: "live", hidden: true },
+  { icon: Radiation, title: "Radioactive Decay", desc: "Isotopes, half-life & decay, one nucleus at a time.", color: "var(--color-emerald-elixir)", to: "/decay", status: "live", hidden: true },
+  { icon: ShieldAlert, title: "Lab Safety", desc: "Hazard symbols & apparatus — know before you touch.", color: "var(--color-crimson)", to: "/lab-safety", status: "live", hidden: true },
 ];
 
+// Only element-focused modules are shown for now; flip `hidden` above to bring one back.
+const MODULES = MODULES_ALL.filter((m) => !m.hidden);
+
 const STATUS_LABEL: Record<ModuleStatus, string> = { live: "Open", soon: "Soon", ai: "AI setup" };
+
+/** Badges the app can award, keyed by badge id (see awardBadge in lib/profile). */
+const BADGE_META: Record<string, { label: string; desc: string }> = {
+  "ar-alchemist": { label: "AR Alchemist", desc: "Summoned the crystal in AR and aced the quick check" },
+};
 
 const MASTERY_META: Record<Mastery, { label: string; color: string }> = {
   "not-started": { label: "Not started", color: "var(--color-parchment)" },
@@ -92,6 +101,7 @@ function StudentHub() {
   const gradeEntries = Object.entries(grades);
   const masteryEntries = Object.entries(mastery);
   const hasProgress = gradeEntries.length > 0 || masteryEntries.length > 0;
+  const badges = (profile?.badges ?? []).filter((b) => BADGE_META[b]);
 
   return (
     <StudentShell title="Home">
@@ -112,6 +122,24 @@ function StudentHub() {
           <GraduationCap className="h-4 w-4 text-teal" />
           <h2 className="font-display text-sm tracking-[0.2em] uppercase text-parchment/70">My Progress</h2>
         </div>
+
+        {/* Badges earned in the app (e.g. from the AR Scanner's quick check). */}
+        {badges.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {badges.map((b) => (
+              <span key={b} title={BADGE_META[b].desc}
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-display text-xs tracking-[0.08em]"
+                style={{
+                  color: "var(--color-gold)",
+                  background: "color-mix(in oklab, var(--color-gold) 12%, transparent)",
+                  border: "1px solid color-mix(in oklab, var(--color-gold) 35%, transparent)",
+                  boxShadow: "0 0 18px -8px var(--color-gold)",
+                }}>
+                <Award className="h-3.5 w-3.5" /> {BADGE_META[b].label}
+              </span>
+            ))}
+          </div>
+        )}
 
         {!hasProgress ? (
           <div className="relative overflow-hidden rounded-2xl px-5 py-9 text-center"

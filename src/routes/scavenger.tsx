@@ -13,6 +13,8 @@ import {
   SCAVENGER_ELEMENTS, buildMissionQuestion, downscaleImage, submitEvidence,
   useEvidence, type ScavengerElement, type EvidenceEntry,
 } from "../lib/scavenger";
+import { startElementDetector, type LiveDetection } from "../lib/element-vision";
+import { uploadEvidenceImage } from "../lib/image-upload";
 
 export const Route = createFileRoute("/scavenger")({
   component: () => (
@@ -60,10 +62,12 @@ function ScavengerHunt() {
         source: "fallback" as const,
       };
     }
+    // Cloudinary when configured; inline data URL in Firestore otherwise.
+    const { url: imageUrl } = await uploadEvidenceImage(shot.dataUrl);
     const entry: EvidenceEntry = {
       id: "pending",
       element: element.symbol, elementName: element.name,
-      answer, question, image: shot.dataUrl,
+      answer, question, image: imageUrl,
       correct: result.correct, confidence: result.confidence,
       feedback: result.feedback, needsManualReview: result.needsManualReview,
       source: result.source,
@@ -171,9 +175,29 @@ function CaptureStep({
   saving: boolean; onSubmit: () => void; onBack: () => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [camState, setCamState] = useState<"idle" | "live" | "denied">("idle");
+  const [eye, setEye] = useState<"loading" | "live" | "off">("loading");
+  const [best, setBest] = useState<LiveDetection | null>(null);
+
+  // The live "AI eye": on-device object detection over the camera feed.
+  // Green reticle = that object plausibly contains the hunted element.
+  useEffect(() => {
+    if (camState !== "live" || !videoRef.current || !overlayRef.current) return;
+    setEye("loading");
+    setBest(null);
+    const detector = startElementDetector({
+      video: videoRef.current,
+      canvas: overlayRef.current,
+      elementSymbol: element.symbol,
+      onReady: () => setEye("live"),
+      onError: () => setEye("off"),
+      onUpdate: setBest,
+    });
+    return detector.stop;
+  }, [camState, element.symbol]);
 
   const stopCam = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -182,19 +206,28 @@ function CaptureStep({
 
   const startCam = async () => {
     try {
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error("no camera API (needs HTTPS or localhost)");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" }, audio: false,
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-      setCamState("live");
-    } catch {
+      setCamState("live"); // the <video> renders on this state — stream attaches in the effect below
+    } catch (err) {
+      console.warn("[Scavenger] camera unavailable:", err);
       setCamState("denied");
     }
   };
+
+  // Attach the stream AFTER the <video> exists. (Setting srcObject inside
+  // startCam raced the render: the ref was still null, leaving a black box.)
+  useEffect(() => {
+    if (camState !== "live") return;
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!video || !stream) return;
+    video.srcObject = stream;
+    video.play().catch(() => { /* autoplay is fine: muted + playsInline */ });
+  }, [camState]);
 
   // Clean up the camera when leaving this step.
   useEffect(() => stopCam, []);
@@ -207,6 +240,8 @@ function CaptureStep({
     canvas.height = video.videoHeight;
     canvas.getContext("2d")!.drawImage(video, 0, 0);
     const raw = canvas.toDataURL("image/jpeg", 0.9);
+    // If the AI eye had the element locked on, pre-fill "what is it?".
+    if (best?.match && !answer) setAnswer(best.label);
     stopCam();
     setCamState("idle");
     setShot(await downscaleImage(raw));
@@ -247,12 +282,31 @@ function CaptureStep({
         {shot ? (
           <img src={shot.dataUrl} alt="Your capture" className="h-full w-full object-cover" />
         ) : camState === "live" ? (
-          <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
+          <>
+            <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
+            {/* Reticle overlay — green = contains the element, red = not it. */}
+            <canvas ref={overlayRef} className="pointer-events-none absolute inset-0 h-full w-full" />
+            {/* AI-eye status chip */}
+            <div
+              className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-[92%] -translate-x-1/2 truncate rounded-full px-3 py-1.5 text-xs backdrop-blur"
+              style={{
+                background: "rgba(11,18,32,0.75)",
+                color: best?.match ? "#34d399" : eye === "live" ? "var(--color-parchment)" : "var(--color-gold)",
+                border: `1px solid ${best?.match ? "rgba(52,211,153,0.5)" : "rgba(232,220,192,0.2)"}`,
+              }}
+            >
+              {eye === "loading" && "Summoning the AI eye…"}
+              {eye === "off" && "Live detector unavailable — you can still capture and submit."}
+              {eye === "live" && (best?.match
+                ? `${element.name} spotted: ${best.label} ✓ — capture it!`
+                : `Scanning for ${element.name}… try ${element.examples[0]}`)}
+            </div>
+          </>
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 text-parchment/60 p-6 text-center">
             <Camera className="h-9 w-9" style={{ color: ACCENT }} />
             {camState === "denied"
-              ? <p className="text-sm">Camera unavailable — upload a photo instead.</p>
+              ? <p className="text-sm">Camera unavailable — allow camera permission and use HTTPS (or localhost). You can still upload a photo instead.</p>
               : <p className="text-sm">Snap a live photo, or upload one from your device.</p>}
           </div>
         )}
@@ -270,8 +324,9 @@ function CaptureStep({
             </button>
           </>
         ) : camState === "live" ? (
-          <button onClick={capture} className="btn-arcane btn-arcane-hover text-sm">
-            <Camera className="h-4 w-4" /> Capture
+          <button onClick={capture} className="btn-arcane btn-arcane-hover text-sm"
+            style={best?.match ? { boxShadow: "0 0 24px -6px #34d399" } : undefined}>
+            <Camera className="h-4 w-4" /> {best?.match ? `Capture the ${best.label}` : "Capture"}
           </button>
         ) : (
           <>

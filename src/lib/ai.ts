@@ -140,7 +140,8 @@ export const aiVerifyMission = createServerFn({ method: "POST" })
         needsManualReview: false,
         source: "gemini",
       };
-    } catch {
+    } catch (err) {
+      console.error("[AI] aiVerifyMission fell back to manual review:", err);
       // Keyless / error → route to the teacher. Never auto-fail a real student.
       return {
         correct: false,
@@ -186,7 +187,8 @@ export const aiGenerateProblem = createServerFn({ method: "POST" })
         ],
       });
       return { topic, source: "gemini", ...problem };
-    } catch {
+    } catch (err) {
+      console.error("[AI] aiGenerateProblem fell back to local generator:", err);
       return { ...localProblem(topic, seed), source: "fallback" };
     }
   });
@@ -270,7 +272,8 @@ export const aiGradeAnswer = createServerFn({ method: "POST" })
         score: result.score ?? (result.isCorrect ? 1 : 0),
         source: "gemini",
       };
-    } catch {
+    } catch (err) {
+      console.error("[AI] aiGradeAnswer fell back to local grader:", err);
       return { ...localGrade(studentAnswer, correctAnswer), source: "fallback" };
     }
   });
@@ -332,7 +335,8 @@ export const aiAskAlchemist = createServerFn({ method: "POST" })
         parts: [{ text: (context ? `Context: ${context}\n\n` : "") + question }],
       });
       return { reply, source: "gemini" };
-    } catch {
+    } catch (err) {
+      console.error("[AI] aiAskAlchemist fell back to canned reply:", err);
       return {
         reply:
           "🜁 The Alchemist is resting — the AI tutor isn't switched on yet. " +
@@ -347,4 +351,43 @@ export const aiAskAlchemist = createServerFn({ method: "POST" })
 export const aiStatus = createServerFn({ method: "GET" }).handler(async () => {
   const { isAIConfigured } = await import("./server/gemini");
   return { configured: isAIConfigured() };
+});
+
+// ── Self-test: ONE tiny live Gemini call, so the console can say definitively
+//    whether AI works. Result is cached server-side for 10 minutes so page
+//    loads don't burn free-tier quota. ─────────────────────────────────────────
+export interface AIPingResult {
+  ok: boolean;
+  configured: boolean;
+  model: string;
+  detail: string;
+  cached: boolean;
+}
+let pingCache: { at: number; result: Omit<AIPingResult, "cached"> } | null = null;
+
+export const aiPing = createServerFn({ method: "GET" }).handler(async (): Promise<AIPingResult> => {
+  if (pingCache && Date.now() - pingCache.at < 10 * 60_000) {
+    return { ...pingCache.result, cached: true };
+  }
+  const { askGemini, isAIConfigured, resolvedModel } = await import("./server/gemini");
+  const model = resolvedModel();
+  let result: Omit<AIPingResult, "cached">;
+  if (!isAIConfigured()) {
+    result = { ok: false, configured: false, model, detail: "No GEMINI_API_KEY set on the server." };
+  } else {
+    try {
+      const reply = await askGemini<string>({ parts: [{ text: "Reply with exactly: OK" }], temperature: 0 });
+      result = { ok: true, configured: true, model, detail: `Gemini replied "${String(reply).trim().slice(0, 40)}"` };
+    } catch (err) {
+      result = {
+        ok: false,
+        configured: true,
+        model,
+        detail: (err instanceof Error ? err.message : String(err)).slice(0, 300),
+      };
+    }
+  }
+  console.log(`[AI] self-test: ${result.ok ? "✓ LIVE" : "✗ NOT working"} (model ${model}) — ${result.detail}`);
+  pingCache = { at: Date.now(), result };
+  return { ...result, cached: false };
 });

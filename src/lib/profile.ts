@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { arrayUnion, doc, increment, onSnapshot, serverTimestamp, updateDoc } from "firebase/firestore";
+import { arrayUnion, doc, getDoc, increment, onSnapshot, serverTimestamp, updateDoc, type Timestamp } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { onAuthChange } from "./auth";
 
@@ -36,8 +36,12 @@ export interface StudentProfile {
   practice?: Record<string, number>;
   /** Element-card symbols the student has scanned into their Grimoire. */
   grimoire?: string[];
+  /** When each card was FIRST obtained, keyed by symbol. */
+  grimoireScans?: Record<string, Timestamp>;
   /** Compound formulas the student has forged by mixing cards. */
   compounds?: string[];
+  /** Achievement badges the app has awarded (e.g. "ar-alchemist"). */
+  badges?: string[];
   /** Guided-lesson-path progress, keyed by topic id (see lib/learning.ts). */
   pathProgress?: Record<string, PathProgress>;
   /** Spaced-repetition schedule, keyed by concept id (see lib/learning.ts). */
@@ -124,12 +128,32 @@ export async function logPractice(uid: string | null, moduleId: string, inc = 1)
 export async function scanCard(uid: string | null, symbol: string): Promise<void> {
   if (!uid) return;
   try {
-    await updateDoc(doc(db, "users", uid), {
+    const ref = doc(db, "users", uid);
+    const updates: Record<string, unknown> = {
       grimoire: arrayUnion(symbol),
+      "practice.lastActiveAt": serverTimestamp(),
+    };
+    // Stamp when the card was FIRST obtained — never overwritten by rescans.
+    // (Also backfills cards collected before timestamps existed.)
+    const snap = await getDoc(ref);
+    const scans = (snap.data() as { grimoireScans?: Record<string, unknown> } | undefined)?.grimoireScans;
+    if (!scans?.[symbol]) updates[`grimoireScans.${symbol}`] = serverTimestamp();
+    await updateDoc(ref, updates);
+  } catch (err) {
+    console.error("scanCard failed:", err);
+  }
+}
+
+/** Award an achievement badge (deduped). Best-effort; never thrown. */
+export async function awardBadge(uid: string | null, badgeId: string): Promise<void> {
+  if (!uid) return;
+  try {
+    await updateDoc(doc(db, "users", uid), {
+      badges: arrayUnion(badgeId),
       "practice.lastActiveAt": serverTimestamp(),
     });
   } catch (err) {
-    console.error("scanCard failed:", err);
+    console.error("awardBadge failed:", err);
   }
 }
 

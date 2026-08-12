@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Info, Atom, BookMarked, Compass, LogIn, LogOut, UserPlus } from "lucide-react";
+import { Info, Atom, Compass, LogIn, LogOut, UserPlus } from "lucide-react";
 import { onAuthChange, signOut, type User } from "../lib/auth";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -8,7 +8,6 @@ import { ThemeToggle } from "./ThemeToggle";
 const NAV_LINKS = [
   { href: "/about", label: "About", icon: Info },
   { href: "/elements", label: "Elements", icon: Atom },
-  { href: "/grimoire", label: "Grimoire", icon: BookMarked },
   { href: "/learn", label: "How It Works", icon: Compass },
 ] as const;
 
@@ -34,7 +33,7 @@ function NavLink({ href, label, icon: Icon }: (typeof NAV_LINKS)[number]) {
 }
 
 // ── Auth pill ──────────────────────────────────────────────────────────────
-function AuthPill({ user }: { user: User | null }) {
+function AuthPill({ user, bare = false }: { user: User | null; bare?: boolean }) {
   const navigate = useNavigate();
   const [signingOut, setSigningOut] = useState(false);
 
@@ -45,15 +44,18 @@ function AuthPill({ user }: { user: User | null }) {
     navigate({ to: "/" });
   };
 
-  const pillStyle = {
+  // `bare` renders just the buttons (used inside the mobile nav pill);
+  // otherwise the buttons get their own floating pill.
+  const pillStyle = bare ? undefined : {
     background: "color-mix(in oklab, var(--color-slate-sunken) 88%, transparent)",
     border: "1px solid var(--color-border)",
     boxShadow: "0 8px 30px -12px color-mix(in oklab, var(--color-wraith) 25%, transparent)",
   };
+  const wrap = bare ? "flex items-center gap-1.5" : "flex items-center gap-2 h-10 rounded-full px-2 backdrop-blur-xl";
 
   if (user) {
     return (
-      <div className="flex items-center gap-2 h-10 rounded-full px-2 backdrop-blur-xl" style={pillStyle}>
+      <div className={wrap} style={pillStyle}>
         <div
           className="flex h-7 w-7 items-center justify-center rounded-full overflow-hidden flex-shrink-0 border"
           style={{ borderColor: "color-mix(in oklab, var(--color-emerald-elixir) 55%, transparent)" }}
@@ -87,7 +89,7 @@ function AuthPill({ user }: { user: User | null }) {
   }
 
   return (
-    <div className="flex items-center gap-1.5 h-10 rounded-full px-2 backdrop-blur-xl" style={pillStyle}>
+    <div className={wrap} style={pillStyle}>
       <Link
         to="/login"
         className="flex items-center gap-1.5 h-7 rounded-full px-3 font-display text-[11px] tracking-[0.1em] uppercase transition-all duration-200 hover:scale-105"
@@ -159,12 +161,18 @@ export function FloatingNav() {
           </Link>
 
           <NavLink {...NAV_LINKS[2]} />
-          <NavLink {...NAV_LINKS[3]} />
+
+          {/* Mobile: theme + auth live inside the pill so nothing overlaps. */}
+          <span className="flex items-center gap-1.5 md:hidden">
+            <span aria-hidden className="mx-0.5 h-6 w-px" style={{ background: "var(--color-border)" }} />
+            <ThemeToggle className="!h-8 !w-8 !backdrop-blur-none" />
+            {authReady && <AuthPill user={user} bare />}
+          </span>
         </nav>
       </div>
 
-      {/* Right-side controls — pinned right, vertically centred to the pill. */}
-      <div className="pointer-events-auto absolute right-4 top-0 flex h-14 items-center gap-2">
+      {/* Desktop: controls pinned right, vertically centred to the pill. */}
+      <div className="pointer-events-auto absolute right-4 top-0 hidden h-14 items-center gap-2 md:flex">
         <ThemeToggle />
         {authReady && <AuthPill user={user} />}
       </div>

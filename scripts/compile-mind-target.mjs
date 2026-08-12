@@ -4,7 +4,8 @@
 // feature extractor, replicating what OfflineCompiler does internally.
 //
 // Usage: node scripts/compile-mind-target.mjs <in.png> [<in2.png> ...] <out.mind>
-// Default (no args): public/image-trigger/alchemix-element-trigger.png -> public/targets.mind
+// Default (no args): all element trigger cards -> public/targets.mind
+// IMPORTANT: input order = anchor order = AR_ELEMENTS order in CrystalAR.tsx.
 
 import fs from "node:fs";
 import path from "node:path";
@@ -54,7 +55,10 @@ async function main() {
   const args = process.argv.slice(2);
   let inputs, out;
   if (args.length === 0) {
-    inputs = ["public/image-trigger/alchemix-element-trigger.png"];
+    inputs = [
+      "public/image-trigger/image-trigger-alchemix.png",
+      "public/image-trigger/image-trigger-helium.png",
+    ];
     out = "public/targets.mind";
   } else {
     out = args[args.length - 1];

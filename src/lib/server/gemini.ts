@@ -14,7 +14,9 @@
  */
 
 const PLACEHOLDER_KEY = "__PLACEHOLDER_ADD_YOUR_GEMINI_KEY__";
-const DEFAULT_MODEL = "gemini-2.0-flash";
+// "-latest" alias tracks the current stable Flash model, so retired-model 404s
+// (which killed gemini-2.0-flash) can't recur. Pin via GEMINI_MODEL if needed.
+const DEFAULT_MODEL = "gemini-flash-latest";
 
 const endpoint = (model: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
@@ -37,6 +39,11 @@ function getApiKey(): string | null {
 /** True once a real key is configured — features can flag "AI is live". */
 export function isAIConfigured(): boolean {
   return getApiKey() !== null;
+}
+
+/** The model askGemini will actually call (env override or default). */
+export function resolvedModel(): string {
+  return process.env.GEMINI_MODEL || DEFAULT_MODEL;
 }
 
 export type GeminiPart =
@@ -63,9 +70,12 @@ export async function askGemini<T = unknown>({
   temperature = 0.4,
 }: AskGeminiOptions): Promise<T> {
   const apiKey = getApiKey();
-  if (!apiKey) throw new AINotConfiguredError();
+  if (!apiKey) {
+    console.warn("[AI] ✗ GEMINI_API_KEY not set — using rule-based fallback");
+    throw new AINotConfiguredError();
+  }
 
-  const model = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  const model = resolvedModel();
 
   const body: Record<string, unknown> = {
     contents: [{ role: "user", parts }],
@@ -86,8 +96,11 @@ export async function askGemini<T = unknown>({
 
   if (!res.ok) {
     // Surface the status so callers can back off on 429 (tutorial §6).
-    throw new Error(`Gemini error ${res.status}: ${await res.text()}`);
+    const errText = await res.text();
+    console.error(`[AI] ✗ Gemini call FAILED (HTTP ${res.status}, model ${model}): ${errText.slice(0, 300)}`);
+    throw new Error(`Gemini error ${res.status}: ${errText}`);
   }
+  console.log(`[AI] ✓ Gemini responded (model ${model})`);
 
   const json = (await res.json()) as {
     candidates?: { content?: { parts?: { text?: string }[] } }[];
