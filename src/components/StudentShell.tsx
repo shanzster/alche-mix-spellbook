@@ -52,7 +52,7 @@ const NAV_ALL: NavItem[] = [
   { to: "/scavenger",         label: "Scavenger Hunt",   icon: ScanSearch,    primary: true },
   { to: "/scanner",           label: "AR Scanner",       icon: ScanLine,      primary: true },
   { to: "/molecules",         label: "Molecule Shapes",  icon: Shapes,        hidden: true },
-  { to: "/reactions",         label: "Reaction Theatre", icon: Atom,          hidden: true },
+  { to: "/reactions",         label: "Reaction Theatre", icon: Atom },
   { to: "/titration",         label: "Titration Lab",    icon: Beaker,        hidden: true },
   { to: "/decay",             label: "Radioactive Decay",icon: Radiation,     hidden: true },
   { to: "/lab-safety",        label: "Lab Safety",       icon: ShieldAlert,   hidden: true },

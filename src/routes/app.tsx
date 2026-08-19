@@ -33,7 +33,7 @@ const MODULES_ALL: ModuleRow[] = [
   { icon: ClipboardList, title: "3D Visual Quiz", desc: "Identify elements from rotating atoms.", color: "var(--color-emerald-elixir)", to: "/quiz", status: "live", hidden: true },
   { icon: ScanSearch, title: "AI Scavenger Hunt", desc: "Live camera scan — green trackers lock onto your element.", color: "var(--color-gold)", to: "/scavenger", status: "live" },
   { icon: Shapes, title: "Molecule Shapes", desc: "Real 3D VSEPR geometry — bent, tetrahedral & more.", color: "var(--color-emerald-elixir)", to: "/molecules", status: "live", hidden: true },
-  { icon: Atom, title: "Reaction Theatre", desc: "Watch bonds break and reform in a balanced equation.", color: "var(--color-gold)", to: "/reactions", status: "live", hidden: true },
+  { icon: Atom, title: "Reaction Theatre", desc: "Watch bonds break and reform in a balanced equation.", color: "var(--color-gold)", to: "/reactions", status: "live" },
   { icon: Beaker, title: "Titration Lab", desc: "Titrate acid with base and read the pH curve.", color: "var(--color-wraith)", to: "/titration", status: "live", hidden: true },
   { icon: Radiation, title: "Radioactive Decay", desc: "Isotopes, half-life & decay, one nucleus at a time.", color: "var(--color-emerald-elixir)", to: "/decay", status: "live", hidden: true },
   { icon: ShieldAlert, title: "Lab Safety", desc: "Hazard symbols & apparatus — know before you touch.", color: "var(--color-crimson)", to: "/lab-safety", status: "live", hidden: true },

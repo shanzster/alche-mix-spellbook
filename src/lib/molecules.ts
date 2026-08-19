@@ -17,6 +17,10 @@ export const ELEMENT_STYLE: Record<string, ElementStyle> = {
   B:  { color: "#fbbf24", radius: 0.50 },
   S:  { color: "#eab308", radius: 0.58 },
   P:  { color: "#f97316", radius: 0.56 },
+  Na: { color: "#c084fc", radius: 0.62 },
+  Ca: { color: "#4ade80", radius: 0.66 },
+  K:  { color: "#a855f7", radius: 0.70 },
+  Fe: { color: "#e06c3b", radius: 0.60 },
 };
 export function elementStyle(el: string): ElementStyle {
   return ELEMENT_STYLE[el] ?? { color: "#a78bfa", radius: 0.45 };
