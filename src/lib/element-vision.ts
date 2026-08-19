@@ -48,9 +48,10 @@ const CLASS_ELEMENTS: Record<string, string[]> = {
   "hot dog": [...ORGANIC, "Na", "S"], donut: [...ORGANIC, "Na"],
   cake: [...ORGANIC, "Na", "Ca"],
   // Dishes & containers — glass (Na/Ca), ceramics (Ca), plastics (C/H).
-  bottle: ["C", "H", "O", "Na"], "wine glass": ["O", "Na", "Ca"],
-  cup: ["C", "Ca", "O"], bowl: ["C", "Ca", "O"], vase: ["Ca", "O", "C"],
-  toilet: ["Ca", "O"],
+  // Drinking vessels usually hold water, so imply its H + O too.
+  bottle: ["C", "H", "O", "Na"], "wine glass": ["H", "O", "Na", "Ca"],
+  cup: ["C", "H", "Ca", "O"], bowl: ["C", "H", "Ca", "O"], vase: ["H", "Ca", "O", "C"],
+  toilet: ["H", "Ca", "O"],
   // Plants — photosynthesis in a pot.
   "potted plant": [...ORGANIC, "K", "Mg"],
   // Furniture & fabric — wood, foam, plastic, springs.

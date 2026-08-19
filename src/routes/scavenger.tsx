@@ -15,6 +15,22 @@ import {
 } from "../lib/scavenger";
 import { startElementDetector, type LiveDetection } from "../lib/element-vision";
 import { uploadEvidenceImage } from "../lib/image-upload";
+import type { ScanResult } from "../lib/ai";
+
+/** Grab the current video frame as small JPEG base64 (no data: prefix). */
+function grabFrameBase64(video: HTMLVideoElement, maxDim = 384, quality = 0.55): string | null {
+  if (!video.videoWidth) return null;
+  const scale = Math.min(1, maxDim / Math.max(video.videoWidth, video.videoHeight));
+  const w = Math.round(video.videoWidth * scale);
+  const h = Math.round(video.videoHeight * scale);
+  const canvas = document.createElement("canvas");
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return null;
+  ctx.drawImage(video, 0, 0, w, h);
+  return canvas.toDataURL("image/jpeg", quality).split(",")[1] ?? null;
+}
 
 export const Route = createFileRoute("/scavenger")({
   component: () => (
@@ -109,6 +125,7 @@ function ScavengerHunt() {
       {step === "pick" && <PickStep onPick={pick} />}
       {step === "capture" && element && (
         <CaptureStep
+          ai={ai}
           element={element} shot={shot} setShot={setShot}
           answer={answer} setAnswer={setAnswer}
           saving={saving} onSubmit={submit} onBack={reset}
@@ -166,8 +183,9 @@ function PickStep({ onPick }: { onPick: (el: ScavengerElement) => void }) {
 
 // ── Step 2: capture / upload a photo ──────────────────────────────────────────
 function CaptureStep({
-  element, shot, setShot, answer, setAnswer, saving, onSubmit, onBack,
+  ai, element, shot, setShot, answer, setAnswer, saving, onSubmit, onBack,
 }: {
+  ai: ReturnType<typeof useAI>;
   element: ScavengerElement;
   shot: { dataUrl: string; base64: string } | null;
   setShot: (s: { dataUrl: string; base64: string } | null) => void;
@@ -181,6 +199,9 @@ function CaptureStep({
   const [camState, setCamState] = useState<"idle" | "live" | "denied">("idle");
   const [eye, setEye] = useState<"loading" | "live" | "off">("loading");
   const [best, setBest] = useState<LiveDetection | null>(null);
+  // The smarter, Gemini-backed read of the live frame (sees rings, water, etc.).
+  const [smart, setSmart] = useState<ScanResult | null>(null);
+  const smartLockedRef = useRef(false);
 
   // The live "AI eye": on-device object detection over the camera feed.
   // Green reticle = that object plausibly contains the hunted element.
@@ -198,6 +219,52 @@ function CaptureStep({
     });
     return detector.stop;
   }, [camState, element.symbol]);
+
+  // The "Alchemist's eye": every few seconds, send a small frame to Gemini and
+  // let it REASON about materials/contents — catching what COCO-SSD can't (a
+  // gold ring, the water inside a cup, a powder). Stops once it locks on, to
+  // keep calls minimal. Silently inert when no AI key is configured.
+  useEffect(() => {
+    if (camState !== "live" || ai.configured === false) return;
+    let cancelled = false;
+    let inFlight = false;
+    smartLockedRef.current = false;
+    setSmart(null);
+
+    const scan = async () => {
+      const video = videoRef.current;
+      if (!video || cancelled || inFlight || smartLockedRef.current) return;
+      const b64 = grabFrameBase64(video);
+      if (!b64) return;
+      inFlight = true;
+      try {
+        const r = await ai.scanFrame({
+          elementName: element.name,
+          elementSymbol: element.symbol,
+          examples: element.examples,
+          imageBase64: b64,
+        });
+        if (!cancelled && r.source === "gemini") {
+          setSmart(r);
+          if (r.present) smartLockedRef.current = true; // locked — stop scanning
+        }
+      } catch {
+        /* on-device eye still runs */
+      } finally {
+        inFlight = false;
+      }
+    };
+
+    const id = window.setInterval(scan, 2800);
+    void scan(); // first pass promptly
+    return () => { cancelled = true; window.clearInterval(id); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [camState, element.symbol, ai.configured]);
+
+  // A confident lock from either eye. Gemini's reasoning wins when it fires.
+  const smartMatch = smart?.present === true;
+  const locked = smartMatch || best?.match === true;
+  const lockedLabel = smartMatch ? smart!.label : best?.label ?? "";
 
   const stopCam = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -240,8 +307,8 @@ function CaptureStep({
     canvas.height = video.videoHeight;
     canvas.getContext("2d")!.drawImage(video, 0, 0);
     const raw = canvas.toDataURL("image/jpeg", 0.9);
-    // If the AI eye had the element locked on, pre-fill "what is it?".
-    if (best?.match && !answer) setAnswer(best.label);
+    // If either eye had the element locked on, pre-fill "what is it?".
+    if (locked && !answer && lockedLabel) setAnswer(lockedLabel);
     stopCam();
     setCamState("idle");
     setShot(await downscaleImage(raw));
@@ -288,18 +355,30 @@ function CaptureStep({
             <canvas ref={overlayRef} className="pointer-events-none absolute inset-0 h-full w-full" />
             {/* AI-eye status chip */}
             <div
-              className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-[92%] -translate-x-1/2 truncate rounded-full px-3 py-1.5 text-xs backdrop-blur"
+              className="pointer-events-none absolute left-1/2 top-3 z-10 flex max-w-[92%] -translate-x-1/2 flex-col items-center gap-0.5 rounded-2xl px-3 py-1.5 text-center text-xs backdrop-blur"
               style={{
-                background: "rgba(11,18,32,0.75)",
-                color: best?.match ? "#34d399" : eye === "live" ? "var(--color-parchment)" : "var(--color-gold)",
-                border: `1px solid ${best?.match ? "rgba(52,211,153,0.5)" : "rgba(232,220,192,0.2)"}`,
+                background: "rgba(11,18,32,0.78)",
+                color: locked ? "#34d399" : eye === "live" || ai.configured ? "var(--color-parchment)" : "var(--color-gold)",
+                border: `1px solid ${locked ? "rgba(52,211,153,0.5)" : "rgba(232,220,192,0.2)"}`,
               }}
             >
-              {eye === "loading" && "Summoning the AI eye…"}
-              {eye === "off" && "Live detector unavailable — you can still capture and submit."}
-              {eye === "live" && (best?.match
-                ? `${element.name} spotted: ${best.label} ✓ — capture it!`
-                : `Scanning for ${element.name}… try ${element.examples[0]}`)}
+              <span className="max-w-full truncate">
+                {locked
+                  ? `${element.name} found${lockedLabel ? `: ${lockedLabel}` : ""} ✓ — capture it!`
+                  : eye === "loading" && ai.configured !== true
+                    ? "Summoning the Alchemist's eye…"
+                    : `Looking for ${element.name}… try ${element.examples[0]}`}
+              </span>
+              {/* Gemini's reasoning (why it locked on) — the smart layer. */}
+              {smartMatch && smart?.reason && (
+                <span className="max-w-full truncate text-[10px] font-normal text-parchment/70">{smart.reason}</span>
+              )}
+              {/* Subtle "AI is thinking" hint while a scan is in flight and not yet locked. */}
+              {!locked && ai.configured === true && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-normal text-teal/80">
+                  <Loader2 className="h-2.5 w-2.5 animate-spin" /> Alchemist's eye analysing…
+                </span>
+              )}
             </div>
           </>
         ) : (
@@ -325,8 +404,8 @@ function CaptureStep({
           </>
         ) : camState === "live" ? (
           <button onClick={capture} className="btn-arcane btn-arcane-hover text-sm"
-            style={best?.match ? { boxShadow: "0 0 24px -6px #34d399" } : undefined}>
-            <Camera className="h-4 w-4" /> {best?.match ? `Capture the ${best.label}` : "Capture"}
+            style={locked ? { boxShadow: "0 0 24px -6px #34d399" } : undefined}>
+            <Camera className="h-4 w-4" /> {locked && lockedLabel ? `Capture the ${lockedLabel}` : "Capture"}
           </button>
         ) : (
           <>

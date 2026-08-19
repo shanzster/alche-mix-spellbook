@@ -57,12 +57,29 @@ export interface TutorResult {
   source: AISource;
 }
 
+/** A quick live-frame read: is the hunted element visible right now? */
+export interface ScanResult {
+  present: boolean;
+  /** The specific thing seen that contains the element, e.g. "gold ring". */
+  label: string;
+  confidence: number; // 0..1
+  reason: string;
+  source: AISource;
+}
+
 // ── Input shapes ──────────────────────────────────────────────────────────────
 interface VerifyInput {
   question: string;
   answer: string;
   /** Raw base64 (no `data:` prefix). Optional — omit to force manual review. */
   imageBase64?: string;
+}
+interface ScanInput {
+  elementName: string;
+  elementSymbol: string;
+  examples: string[];
+  /** Raw base64 (no `data:` prefix) of a small camera frame. */
+  imageBase64: string;
 }
 interface GenerateInput {
   topic?: string; // e.g. "gas-laws" | "stoichiometry"
@@ -152,6 +169,67 @@ export const aiVerifyMission = createServerFn({ method: "POST" })
         needsManualReview: true,
         source: "fallback",
       };
+    }
+  });
+
+// ════════════════════════════════════════════════════════════════════════════
+//  1b. Live "smart scan" — reason about a camera frame in real time.
+//  COCO-SSD (the on-device eye) only knows 80 object classes and can't see a
+//  ring, a powder, or the WATER inside a cup. This asks Gemini to reason about
+//  materials and contents, so the live tracker locks onto what COCO can't.
+// ════════════════════════════════════════════════════════════════════════════
+export const aiScanFrame = createServerFn({ method: "POST" })
+  .validator((d: ScanInput) => d)
+  .handler(async ({ data }): Promise<ScanResult> => {
+    const { elementName, elementSymbol, examples, imageBase64 } = data;
+    try {
+      const { askGemini } = await import("./server/gemini");
+      const verdict = await askGemini<Omit<ScanResult, "source">>({
+        system:
+          "You are a chemistry vision assistant for a real-world scavenger hunt. " +
+          "Look at a single camera frame and decide whether anything visible " +
+          "plausibly CONTAINS the target element — as the pure element OR inside a " +
+          "common everyday compound. Reason about materials and contents, not just " +
+          "object names: water contains hydrogen and oxygen; a gold ring is gold; " +
+          "steel cutlery contains iron; table salt is sodium and chlorine; a banana " +
+          "is rich in potassium. Judge what is actually in view — don't invent " +
+          "things that aren't there. Be practical and generous, but honest.",
+        jsonSchema: {
+          type: "object",
+          properties: {
+            present: { type: "boolean" },
+            label: { type: "string" },
+            confidence: { type: "number" },
+            reason: { type: "string" },
+          },
+          required: ["present", "label", "confidence", "reason"],
+        },
+        parts: [
+          {
+            text:
+              `Target element: ${elementName} (${elementSymbol}).\n` +
+              `Common household sources: ${examples.join(", ")}.\n\n` +
+              `Look at the attached camera frame. Is something that contains ` +
+              `${elementName} visible? Set "label" to the specific object you see ` +
+              `(e.g. "gold ring", "glass of water", "steel fork"), or "" if nothing ` +
+              `qualifies. Keep "reason" to one short sentence a student can read. ` +
+              `Reply as JSON.`,
+          },
+          { inlineData: { mimeType: "image/jpeg", data: imageBase64 } as const },
+        ],
+        temperature: 0.1,
+      });
+      return {
+        present: !!verdict.present,
+        label: verdict.label ?? "",
+        confidence: verdict.confidence ?? 0.5,
+        reason: verdict.reason ?? "",
+        source: "gemini",
+      };
+    } catch (err) {
+      // Keyless / rate-limited / offline → the on-device COCO eye still runs.
+      console.warn("[AI] aiScanFrame unavailable (using on-device eye only):", err);
+      return { present: false, label: "", confidence: 0, reason: "", source: "fallback" };
     }
   });
 
