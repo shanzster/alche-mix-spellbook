@@ -73,11 +73,11 @@
 :root {
   --radius: 0.625rem;
 
-  --mist: #ffffff;            /* background — bright */
-  --slate-sunken: #f4f1ea;   /* warm parchment surface */
+  --mist: #f6f3ec;            /* background — soft warm daylight (not stark white) */
+  --slate-sunken: #e8e1d1;   /* warm parchment surface — clearly reads as a card */
   --wraith: #7c3aed;         /* violet — secondary accent */
-  --parchment: #55606f;      /* muted foreground — readable slate */
-  --gold: #a1670a;           /* candle gold — tertiary accent (dark enough for white) */
+  --parchment: #4d5766;      /* muted foreground — readable slate, a touch deeper */
+  --gold: #9a6207;           /* candle gold — tertiary accent (dark enough for white) */
   --spectral: #111826;       /* high-contrast foreground — deep ink */
   --crimson: #dc2626;
   --amber-scry: #b7791f;
@@ -86,7 +86,7 @@
 
   --background: var(--mist);
   --foreground: var(--spectral);
-  --card: #ffffff;
+  --card: #ffffff;           /* bright white cards pop against the warm backdrop */
   --card-foreground: var(--spectral);
   --popover: #ffffff;
   --popover-foreground: var(--spectral);
@@ -100,8 +100,8 @@
   --accent-foreground: #ffffff;
   --destructive: var(--crimson);
   --destructive-foreground: #ffffff;
-  --border: color-mix(in oklab, var(--spectral) 12%, transparent);
-  --input: color-mix(in oklab, var(--spectral) 18%, transparent);
+  --border: color-mix(in oklab, var(--spectral) 15%, transparent);
+  --input: color-mix(in oklab, var(--spectral) 22%, transparent);
   --ring: var(--emerald-elixir);
 }
 
@@ -282,6 +282,25 @@
   background-image: linear-gradient(180deg,
     color-mix(in oklab, var(--color-slate-sunken) 92%, transparent),
     color-mix(in oklab, var(--color-mist) 85%, transparent));
+  /* Light mode: a soft shadow so cards lift off the warm page. */
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--color-spectral) 7%, transparent),
+    0 12px 30px -20px color-mix(in oklab, var(--color-spectral) 22%, transparent);
+}
+/* Dark mode leans on glow utilities instead of drop shadows. */
+.dark .parchment-border {
+  box-shadow: none;
+}
+
+/* A gentle lift for the many module cards built from the slate-sunken surface,
+   so they read as distinct panels on the bright page. Silent in dark mode. */
+@utility card-lift {
+  box-shadow:
+    0 1px 2px color-mix(in oklab, var(--color-spectral) 6%, transparent),
+    0 14px 32px -22px color-mix(in oklab, var(--color-spectral) 22%, transparent);
+}
+.dark .card-lift {
+  box-shadow: none;
 }
 
 @utility rune-dashed {
