@@ -40,6 +40,10 @@ export interface StudentProfile {
   grimoireScans?: Record<string, Timestamp>;
   /** Compound formulas the student has forged by mixing cards. */
   compounds?: string[];
+  /** Forged-card ids the student has unlocked via Alche-mix (see lib/forged.ts). */
+  forged?: string[];
+  /** When each forged card was first obtained, keyed by forged-card id. */
+  forgedAt?: Record<string, Timestamp>;
   /** Achievement badges the app has awarded (e.g. "ar-alchemist"). */
   badges?: string[];
   /** Guided-lesson-path progress, keyed by topic id (see lib/learning.ts). */
@@ -164,5 +168,27 @@ export async function recordCompound(uid: string | null, formula: string): Promi
     await updateDoc(doc(db, "users", uid), { compounds: arrayUnion(formula) });
   } catch (err) {
     console.error("recordCompound failed:", err);
+  }
+}
+
+/**
+ * Register a forged card (a new element unlocked via Alche-mix) to the student's
+ * Grimoire (deduped). Stamps the first-obtained time, never overwriting it on a
+ * re-forge. Best-effort; never thrown.
+ */
+export async function registerForged(uid: string | null, forgedId: string): Promise<void> {
+  if (!uid) return;
+  try {
+    const ref = doc(db, "users", uid);
+    const updates: Record<string, unknown> = {
+      forged: arrayUnion(forgedId),
+      "practice.lastActiveAt": serverTimestamp(),
+    };
+    const snap = await getDoc(ref);
+    const at = (snap.data() as { forgedAt?: Record<string, unknown> } | undefined)?.forgedAt;
+    if (!at?.[forgedId]) updates[`forgedAt.${forgedId}`] = serverTimestamp();
+    await updateDoc(ref, updates);
+  } catch (err) {
+    console.error("registerForged failed:", err);
   }
 }

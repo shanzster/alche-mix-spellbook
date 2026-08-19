@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { Camera, Loader2, ScanLine, Sparkles, X, AlertTriangle } from "lucide-react";
+import { Camera, Loader2, ScanLine, Sparkles, X, AlertTriangle, FlaskConical } from "lucide-react";
+import { BohrModel3D } from "./BohrModel3D";
 
 /**
  * Image-trigger AR scanner (multi-card).
@@ -185,7 +186,19 @@ function playChime() {
 
 type Status = "idle" | "starting" | "scanning" | "found" | "error";
 
-export function CrystalAR({ onFound }: { onFound?: (elementKey: string) => void }) {
+// The forged card the mix ceremony currently reveals. One sample for now;
+// later this is chosen from the two cards being mixed.
+const MIX_FORGED_ID = "3rd_card";
+const MIX_FORGED_IMAGE = "/other_cards/3rd_card.png";
+
+export function CrystalAR({
+  onFound,
+  onMix,
+}: {
+  onFound?: (elementKey: string) => void;
+  /** Fires once the mix reveals a new card, so the host can register it. */
+  onMix?: (forgedId: string) => void;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const mindarRef = useRef<any>(null);
@@ -195,6 +208,12 @@ export function CrystalAR({ onFound }: { onFound?: (elementKey: string) => void 
   const [infoOpen, setInfoOpen] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [error, setError] = useState("");
+  // How many element cards are on screen at once — the "Alche-mix them?" button
+  // only appears when two or more are visible together.
+  const [visibleCount, setVisibleCount] = useState(0);
+  // The mix ceremony: idle → swirling (Bohr atom) → revealed (new card pops up).
+  const [mixPhase, setMixPhase] = useState<"idle" | "swirling" | "revealed">("idle");
+  const mixTimerRef = useRef<number | null>(null);
 
   const stop = async () => {
     const mindar = mindarRef.current;
@@ -212,6 +231,30 @@ export function CrystalAR({ onFound }: { onFound?: (elementKey: string) => void 
     setInfoOpen(false);
     setFullscreen(false);
     setStatus("idle");
+    resetMix();
+    setVisibleCount(0);
+  };
+
+  // ── Alche-mix ceremony ──────────────────────────────────────────────────────
+  // Kick off the swirl, then reveal the new element card. Purely presentational
+  // for now — the swirl runs for a fixed beat, then the new card pops up.
+  const startMix = () => {
+    if (mixPhase !== "idle") return;
+    setMixPhase("swirling");
+    playChime();
+    if (mixTimerRef.current) window.clearTimeout(mixTimerRef.current);
+    mixTimerRef.current = window.setTimeout(() => {
+      setMixPhase("revealed");
+      mixTimerRef.current = null;
+      onMix?.(MIX_FORGED_ID); // register the new card to the Grimoire
+    }, 2600);
+  };
+  const resetMix = () => {
+    if (mixTimerRef.current) {
+      window.clearTimeout(mixTimerRef.current);
+      mixTimerRef.current = null;
+    }
+    setMixPhase("idle");
   };
 
   const start = async () => {
@@ -384,6 +427,7 @@ export function CrystalAR({ onFound }: { onFound?: (elementKey: string) => void 
 
         anchor.onTargetFound = () => {
           visibleAnchors.add(i);
+          setVisibleCount(visibleAnchors.size);
           setStatus("found");
           setFoundName(el.name);
           if (!t.summoned) {
@@ -396,6 +440,7 @@ export function CrystalAR({ onFound }: { onFound?: (elementKey: string) => void 
         };
         anchor.onTargetLost = () => {
           visibleAnchors.delete(i);
+          setVisibleCount(visibleAnchors.size);
           if (visibleAnchors.size === 0) setStatus("scanning");
         };
 
@@ -613,6 +658,16 @@ export function CrystalAR({ onFound }: { onFound?: (elementKey: string) => void 
             </div>
           )}
 
+          {/* Two cards on screen at once → offer to mix them. */}
+          {mixPhase === "idle" && visibleCount >= 2 && (
+            <button
+              onClick={startMix}
+              className="animate-pulse-ring absolute bottom-16 left-1/2 z-20 inline-flex -translate-x-1/2 items-center gap-2 rounded-full bg-gradient-to-r from-wraith to-emerald-elixir px-6 py-3 font-semibold text-white shadow-lg transition hover:brightness-110"
+            >
+              <FlaskConical className="h-5 w-5" /> Alche-mix them?
+            </button>
+          )}
+
           {/* AlcheMix watermark, bottom-right. */}
           <img
             src="/images/logo-outline.png"
@@ -620,6 +675,38 @@ export function CrystalAR({ onFound }: { onFound?: (elementKey: string) => void 
             className="pointer-events-none absolute bottom-3 right-3 z-10 h-8 w-auto opacity-70 drop-shadow-lg sm:h-10"
           />
         </>
+      )}
+
+      {/* ── Mix ceremony: swirling Bohr atom ── */}
+      {mixPhase === "swirling" && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-4 bg-slate-sunken/85 backdrop-blur-sm">
+          <div className="h-64 w-64 sm:h-80 sm:w-80">
+            <BohrModel3D electrons="2,8,8,2" color="#c084fc" nucleusColor="#fbbf24" tumble />
+          </div>
+          <p className="animate-pulse text-lg font-medium text-parchment text-glow-teal">
+            Fusing elements…
+          </p>
+        </div>
+      )}
+
+      {/* ── Mix ceremony: the new element card pops up ── */}
+      {mixPhase === "revealed" && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-slate-sunken/90 p-6 backdrop-blur">
+          <img
+            src={MIX_FORGED_IMAGE}
+            alt="A newly forged element card"
+            className="animate-card-pop max-h-[60vh] w-auto rounded-2xl shadow-2xl"
+          />
+          <p className="flex items-center gap-1.5 text-sm text-gold text-glow-teal">
+            <Sparkles className="h-4 w-4" /> New element added to your Grimoire
+          </p>
+          <button
+            onClick={resetMix}
+            className="inline-flex items-center gap-2 rounded-full border border-parchment/25 bg-slate-sunken/70 px-5 py-2.5 text-parchment transition hover:bg-parchment/10"
+          >
+            Claim &amp; keep scanning
+          </button>
+        </div>
       )}
     </div>
   );

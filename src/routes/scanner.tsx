@@ -7,7 +7,7 @@ import {
 import { ModuleShell } from "../components/ModuleShell";
 import { RequireAuth } from "../components/RequireAuth";
 import { CrystalAR, AR_ELEMENTS } from "../components/CrystalAR";
-import { useUserProfile, scanCard, logPractice, awardBadge } from "../lib/profile";
+import { useUserProfile, scanCard, logPractice, awardBadge, registerForged } from "../lib/profile";
 
 export const Route = createFileRoute("/scanner")({
   component: () => (
@@ -200,6 +200,12 @@ function Scanner() {
     void logPractice(uidRef.current, "scanner");      // engagement shows on the teacher dashboard
   };
 
+  // A mix revealed a new forged card → register it to the Grimoire.
+  const handleMix = (forgedId: string) => {
+    void registerForged(uidRef.current, forgedId);
+    void logPractice(uidRef.current, "scanner-mix");
+  };
+
   return (
     <ModuleShell
       title="AR Scanner"
@@ -211,7 +217,7 @@ function Scanner() {
       <div className="space-y-6">
         {/* The camera / AR viewport — full width. */}
         <div className="mx-auto w-full max-w-4xl">
-          <CrystalAR onFound={handleFound} />
+          <CrystalAR onFound={handleFound} onMix={handleMix} />
         </div>
 
         {/* The outcome: one discovery panel per element scanned. */}

@@ -331,6 +331,14 @@
   50% { background-position: 100% 50%; }
 }
 
+/* New-element reveal — a card bursts in from the swirl. */
+@keyframes card-pop {
+  0%   { opacity: 0; transform: scale(0.3) rotate(-14deg); filter: blur(6px); }
+  55%  { opacity: 1; transform: scale(1.08) rotate(3deg);  filter: blur(0); }
+  75%  { transform: scale(0.97) rotate(-1deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); }
+}
+
 @utility animate-breathing { animation: breathing 3.4s ease-in-out infinite; }
 @utility animate-bubble { animation: bubble 2.2s ease-in-out infinite; }
 @utility animate-float-slow { animation: float-slow 7s ease-in-out infinite; }
@@ -341,6 +349,10 @@
 @utility animate-aurora {
   background-size: 200% 200%;
   animation: aurora-shift 14s ease-in-out infinite;
+}
+
+@utility animate-card-pop {
+  animation: card-pop 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
 @utility text-glow-violet {
