@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Minus, Plus, RotateCcw, RefreshCw, Atom } from "lucide-react";
+import { Minus, Plus, RotateCcw, RefreshCw, Atom, Target, Check, Sparkles } from "lucide-react";
 import { ModuleShell } from "../components/ModuleShell";
 import { RequireAuth } from "../components/RequireAuth";
 import { BohrModel3D } from "../components/BohrModel3D";
-import { ConceptCard, DidYouKnow, ChallengeBanner } from "../components/Learn";
+import { ConceptCard, DidYouKnow } from "../components/Learn";
 import { useUserProfile, logPractice } from "../lib/profile";
 
 export const Route = createFileRoute("/atomic-builder")({
@@ -58,15 +58,18 @@ function shellsFromElectrons(e: number): number[] {
 }
 
 function Stepper({
-  label, value, onChange, min, max, color,
-}: { label: string; value: number; onChange: (v: number) => void; min: number; max: number; color: string }) {
+  label, hint, value, onChange, min, max, color,
+}: { label: string; hint: string; value: number; onChange: (v: number) => void; min: number; max: number; color: string }) {
   const set = (v: number) => onChange(Math.max(min, Math.min(max, v)));
   return (
     <div className="rounded-xl p-4"
       style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: `1px solid color-mix(in oklab, ${color} 30%, transparent)` }}>
-      <div className="flex items-center justify-between mb-3">
-        <span className="text-[11px] tracking-[0.2em] uppercase" style={{ color }}>{label}</span>
-        <span className="font-display text-2xl" style={{ color }}>{value}</span>
+      <div className="mb-3 flex items-start justify-between">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.2em]" style={{ color }}>{label}</div>
+          <div className="mt-0.5 text-[11px] text-parchment/55">{hint}</div>
+        </div>
+        <span className="font-display text-2xl leading-none" style={{ color }}>{value}</span>
       </div>
       <div className="flex items-center gap-3">
         <button onClick={() => set(value - 1)} disabled={value <= min}
@@ -75,7 +78,7 @@ function Stepper({
           aria-label={`Decrease ${label}`}>
           <Minus className="h-4 w-4" />
         </button>
-        <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "color-mix(in oklab, var(--color-mist) 70%, transparent)" }}>
+        <div className="h-2 flex-1 overflow-hidden rounded-full" style={{ background: "color-mix(in oklab, var(--color-mist) 70%, transparent)" }}>
           <div className="h-full rounded-full transition-[width] duration-200" style={{ width: `${((value - min) / (max - min)) * 100}%`, background: color }} />
         </div>
         <button onClick={() => set(value + 1)} disabled={value >= max}
@@ -89,12 +92,40 @@ function Stepper({
   );
 }
 
-interface Challenge { text: string; hint: string; check: (p: number, n: number, e: number) => boolean }
-const CHALLENGES: Challenge[] = [
-  { text: "Build a neutral Carbon atom (6 protons, 6 electrons).", hint: "Protons = electrons makes it neutral.", check: (p, _n, e) => p === 6 && e === 6 },
-  { text: "Make a Sodium ion, Na⁺ — 11 protons but only 10 electrons.", hint: "Remove one electron to give it a +1 charge.", check: (p, _n, e) => p === 11 && e === 10 },
-  { text: "Create Carbon-14, the isotope with 8 neutrons.", hint: "Keep 6 protons; change the neutron count.", check: (p, n) => p === 6 && n === 8 },
-  { text: "Build a Chloride ion, Cl⁻ — 17 protons and 18 electrons.", hint: "Add one extra electron for a −1 charge.", check: (p, _n, e) => p === 17 && e === 18 },
+// ── Guided missions — each gives a purpose + live sub-goals to hit ───────────
+interface Goal { label: string; met: boolean; }
+interface Mission {
+  tag: string;
+  text: string;
+  hint: string;
+  goals: (p: number, n: number, e: number) => Goal[];
+}
+const MISSIONS: Mission[] = [
+  {
+    tag: "Element", text: "Make Lithium. Protons decide the element — set them so the atom becomes Lithium.",
+    hint: "Lithium is element number 3.",
+    goals: (p) => [{ label: "3 protons", met: p === 3 }],
+  },
+  {
+    tag: "Neutral atom", text: "Build a neutral Oxygen atom — 8 protons and 8 electrons.",
+    hint: "Equal protons and electrons make the charge zero.",
+    goals: (p, _n, e) => [{ label: "8 protons", met: p === 8 }, { label: "8 electrons", met: e === 8 }],
+  },
+  {
+    tag: "Positive ion", text: "Make a Sodium ion, Na⁺ — 11 protons but only 10 electrons.",
+    hint: "Remove one electron to leave a +1 charge.",
+    goals: (p, _n, e) => [{ label: "11 protons", met: p === 11 }, { label: "10 electrons", met: e === 10 }],
+  },
+  {
+    tag: "Negative ion", text: "Make a Chloride ion, Cl⁻ — 17 protons and 18 electrons.",
+    hint: "Add one extra electron for a −1 charge.",
+    goals: (p, _n, e) => [{ label: "17 protons", met: p === 17 }, { label: "18 electrons", met: e === 18 }],
+  },
+  {
+    tag: "Isotope", text: "Create Carbon-14 — carbon with 8 neutrons.",
+    hint: "Keep 6 protons; change only the neutrons.",
+    goals: (p, n) => [{ label: "6 protons", met: p === 6 }, { label: "8 neutrons", met: n === 8 }],
+  },
 ];
 
 function AtomicBuilder() {
@@ -102,7 +133,8 @@ function AtomicBuilder() {
   const [protons, setProtons]     = useState(6); // Carbon by default
   const [neutrons, setNeutrons]   = useState(6);
   const [electrons, setElectrons] = useState(6);
-  const [challengeIdx, setChallengeIdx] = useState(0);
+  const [missionIdx, setMissionIdx] = useState(0);
+  const [done, setDone] = useState<Set<number>>(new Set());
 
   const el = protons >= 1 && protons <= MAX_Z ? ELEMENTS[protons - 1] : null;
 
@@ -112,10 +144,9 @@ function AtomicBuilder() {
     const shells = shellsFromElectrons(electrons);
     const ion =
       charge === 0 ? "Neutral atom"
-      : charge > 0 ? `Cation (${charge}+)`
-      : `Anion (${Math.abs(charge)}−)`;
+      : charge > 0 ? `Positive ion +${charge} (cation)`
+      : `Negative ion −${Math.abs(charge)} (anion)`;
     const isIsotope = el ? neutrons !== el.commonN : false;
-    // Approximate nuclear stability from closeness to the common isotope.
     const nDiff = el ? Math.abs(neutrons - el.commonN) : 99;
     const stability =
       nDiff <= 1 ? { label: "Stable", color: "var(--color-emerald-elixir)" }
@@ -124,18 +155,36 @@ function AtomicBuilder() {
     return { mass, charge, shells, ion, isIsotope, stability };
   }, [protons, neutrons, electrons, el]);
 
-  // Colour the atom by its ionic state.
-  const atomColor = analysis.charge === 0 ? "#2dd4bf" : analysis.charge > 0 ? "#e0b457" : "#60a5fa";
+  // Live, plain-language read of exactly what you've built right now.
+  const story = useMemo(() => {
+    if (!el) return ["Set 1–20 protons to build an element."];
+    const lines: string[] = [];
+    lines.push(`${protons} proton${protons === 1 ? "" : "s"} makes this ${el.name} (${el.symbol}) — protons alone decide the element.`);
+    if (analysis.charge === 0)
+      lines.push(`Electrons balance the protons, so the + and − cancel out: a neutral atom.`);
+    else if (analysis.charge > 0)
+      lines.push(`It's short ${analysis.charge} electron${analysis.charge === 1 ? "" : "s"}, so it carries a +${analysis.charge} charge — a positive ion.`);
+    else
+      lines.push(`It has ${Math.abs(analysis.charge)} extra electron${Math.abs(analysis.charge) === 1 ? "" : "s"}, so it carries a −${Math.abs(analysis.charge)} charge — a negative ion.`);
+    if (analysis.isIsotope)
+      lines.push(`${neutrons} neutrons (the usual is ${el.commonN}) makes this the isotope ${el.symbol}-${analysis.mass}${analysis.stability.label === "Likely radioactive" ? " — likely radioactive" : ""}.`);
+    else
+      lines.push(`${neutrons} neutrons is ${el.name}'s most common, stable form: ${el.symbol}-${analysis.mass}.`);
+    return lines;
+  }, [el, protons, neutrons, analysis]);
 
+  const atomColor = analysis.charge === 0 ? "#2dd4bf" : analysis.charge > 0 ? "#e0b457" : "#60a5fa";
   const shellString = analysis.shells.join(",");
 
-  // ── Guided challenge ──
-  const challenge = CHALLENGES[challengeIdx];
-  const solved = challenge.check(protons, neutrons, electrons);
+  // ── Mission tracking ──
+  const mission = MISSIONS[missionIdx];
+  const goals = mission.goals(protons, neutrons, electrons);
+  const solved = goals.every((g) => g.met);
   useEffect(() => {
     if (solved && uid) logPractice(uid, "atomic-builder");
-  }, [solved, uid]);
-  const nextChallenge = () => setChallengeIdx((i) => (i + 1) % CHALLENGES.length);
+    if (solved) setDone((d) => (d.has(missionIdx) ? d : new Set(d).add(missionIdx)));
+  }, [solved, uid, missionIdx]);
+  const nextMission = () => setMissionIdx((i) => (i + 1) % MISSIONS.length);
 
   const setNeutral = () => setElectrons(protons);
   const reset = () => { setProtons(6); setNeutrons(6); setElectrons(6); };
@@ -143,111 +192,153 @@ function AtomicBuilder() {
   return (
     <ModuleShell
       title="Atomic Builder"
-      eyebrow="Simulation Engine"
+      eyebrow="Build-an-Atom Lab"
       icon={Atom}
-      subtitle="Adjust the subatomic particles to construct an atom. The Bohr model, element identity, isotope and ion state all update live."
+      subtitle="Every atom in the universe is just three particles — protons, neutrons and electrons. Add or remove them here and watch which element you make, whether it's charged, and whether it's radioactive."
     >
-        <div className="grid gap-8 lg:grid-cols-2">
-          {/* ── Left: 3D model + identity ── */}
-          <div>
-            <div className="relative rounded-2xl overflow-hidden"
+      {/* Mission — the point of the lab, up top. */}
+      <div className="mb-6 rounded-2xl p-5"
+        style={{ background: `color-mix(in oklab, ${solved ? "var(--color-emerald-elixir)" : "var(--color-gold)"} ${solved ? 12 : 9}%, transparent)`, border: `1px solid color-mix(in oklab, ${solved ? "var(--color-emerald-elixir)" : "var(--color-gold)"} ${solved ? 45 : 30}%, transparent)`, boxShadow: solved ? "0 0 30px -12px var(--color-emerald-elixir)" : "none" }}>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: `color-mix(in oklab, ${solved ? "var(--color-emerald-elixir)" : "var(--color-gold)"} 18%, transparent)`, color: solved ? "var(--color-emerald-elixir)" : "var(--color-gold)" }}>
+              {solved ? <Check className="h-4 w-4" /> : <Target className="h-4 w-4" />}
+            </span>
+            <span className="font-display text-sm" style={{ color: solved ? "var(--color-emerald-elixir)" : "var(--color-gold)" }}>
+              {solved ? "Mission complete!" : `Mission · ${mission.tag}`}
+            </span>
+          </div>
+          <span className="text-[10px] uppercase tracking-[0.2em] text-parchment/45">{done.size}/{MISSIONS.length} solved</span>
+        </div>
+        <p className="mt-2 text-sm text-spectral">{mission.text}</p>
+        {/* Live sub-goal checklist — see exactly what's left. */}
+        <div className="mt-3 flex flex-wrap gap-2">
+          {goals.map((g) => (
+            <span key={g.label} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs transition"
               style={{
-                background: "radial-gradient(ellipse at 50% 40%, color-mix(in oklab, var(--color-violet-deep) 30%, transparent), color-mix(in oklab, var(--color-slate-sunken) 80%, transparent))",
-                border: `1px solid color-mix(in oklab, ${atomColor} 35%, transparent)`,
-                boxShadow: `0 0 60px -22px color-mix(in oklab, ${atomColor} 50%, transparent)`,
-                minHeight: 380,
+                background: `color-mix(in oklab, ${g.met ? "var(--color-emerald-elixir)" : "var(--color-parchment)"} 12%, transparent)`,
+                border: `1px solid color-mix(in oklab, ${g.met ? "var(--color-emerald-elixir)" : "var(--color-parchment)"} 30%, transparent)`,
+                color: g.met ? "var(--color-emerald-elixir)" : "var(--color-parchment)",
               }}>
-              <BohrModel3D key={shellString || "empty"} interactive electrons={shellString} color={atomColor} nucleusColor="#a855f7" label={el?.symbol ?? "?"} />
-              <div className="absolute top-3 right-3 text-[9px] uppercase tracking-[0.2em] text-parchment/50 pointer-events-none">drag to spin ⟳</div>
-            </div>
+              {g.met ? <Check className="h-3 w-3" /> : <span className="h-3 w-3 rounded-full border" style={{ borderColor: "currentColor" }} />}
+              {g.label}
+            </span>
+          ))}
+        </div>
+        {!solved
+          ? <p className="mt-2 text-xs text-parchment/60">Hint: {mission.hint}</p>
+          : <button onClick={nextMission} className="btn-ghost-arcane mt-3 text-xs"><RefreshCw className="h-3.5 w-3.5" /> Next mission</button>}
+      </div>
 
-            {/* Identity banner */}
-            <div className="mt-4 rounded-2xl p-5 flex items-center gap-5"
-              style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 68%, transparent)", border: "1px solid var(--color-border)" }}>
-              <div className="flex h-16 w-16 flex-col items-center justify-center rounded-xl flex-shrink-0"
-                style={{ background: `color-mix(in oklab, ${atomColor} 16%, transparent)`, border: `2px solid color-mix(in oklab, ${atomColor} 55%, transparent)` }}>
-                <span className="font-display text-2xl leading-none" style={{ color: atomColor }}>{el?.symbol ?? "?"}</span>
-                <span className="text-[9px] text-parchment/60 mt-0.5">{protons}p</span>
-              </div>
-              <div>
-                <h2 className="font-display text-2xl">{el?.name ?? "Unknown"}</h2>
-                <p className="text-sm text-parchment mt-0.5">
-                  {el ? <>Mass number <span className="text-spectral font-medium">{analysis.mass}</span> · {el.symbol}-{analysis.mass}</> : "Set 1–20 protons"}
-                </p>
-              </div>
+      <div className="grid gap-8 lg:grid-cols-2">
+        {/* ── Left: 3D model + identity + live explanation ── */}
+        <div>
+          <div className="relative overflow-hidden rounded-2xl"
+            style={{
+              background: "radial-gradient(ellipse at 50% 40%, color-mix(in oklab, var(--color-violet-deep) 30%, transparent), color-mix(in oklab, var(--color-slate-sunken) 80%, transparent))",
+              border: `1px solid color-mix(in oklab, ${atomColor} 35%, transparent)`,
+              boxShadow: `0 0 60px -22px color-mix(in oklab, ${atomColor} 50%, transparent)`,
+              minHeight: 360,
+            }}>
+            <BohrModel3D key={shellString || "empty"} interactive electrons={shellString} color={atomColor} nucleusColor="#a855f7" label={el?.symbol ?? "?"} />
+            <div className="pointer-events-none absolute right-3 top-3 text-[9px] uppercase tracking-[0.2em] text-parchment/50">drag to spin ⟳</div>
+          </div>
+
+          {/* Identity banner */}
+          <div className="mt-4 flex items-center gap-5 rounded-2xl p-5"
+            style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 68%, transparent)", border: "1px solid var(--color-border)" }}>
+            <div className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-xl"
+              style={{ background: `color-mix(in oklab, ${atomColor} 16%, transparent)`, border: `2px solid color-mix(in oklab, ${atomColor} 55%, transparent)` }}>
+              <span className="font-display text-2xl leading-none" style={{ color: atomColor }}>{el?.symbol ?? "?"}</span>
+              <span className="mt-0.5 text-[9px] text-parchment/60">{protons}p</span>
+            </div>
+            <div>
+              <h2 className="font-display text-2xl">{el?.name ?? "Unknown"}</h2>
+              <p className="mt-0.5 text-sm text-parchment">
+                {el ? <>{el.symbol}-{analysis.mass} · <span style={{ color: atomColor }}>{analysis.ion}</span></> : "Set 1–20 protons"}
+              </p>
             </div>
           </div>
 
-          {/* ── Right: controls + readouts ── */}
-          <div className="space-y-4">
-            <Stepper label="Protons"   value={protons}   onChange={setProtons}   min={1} max={MAX_Z} color="#e0b457" />
-            <Stepper label="Neutrons"  value={neutrons}  onChange={setNeutrons}  min={0} max={30}    color="#9aa7bd" />
-            <Stepper label="Electrons" value={electrons} onChange={setElectrons} min={0} max={30}    color="#2dd4bf" />
-
-            <div className="flex gap-3">
-              <button onClick={setNeutral}
-                className="flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs tracking-[0.12em] uppercase transition hover:-translate-y-0.5"
-                style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 14%, transparent)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent)", color: "var(--color-emerald-elixir)" }}>
-                Make Neutral
-              </button>
-              <button onClick={reset}
-                className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs tracking-[0.12em] uppercase text-parchment/70 transition hover:text-spectral"
-                style={{ border: "1px solid var(--color-border)" }}>
-                <RotateCcw className="h-3.5 w-3.5" /> Reset
-              </button>
+          {/* Live "what you just built" explanation — the teaching core. */}
+          <div className="mt-4 rounded-2xl p-5" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px solid var(--color-border)" }}>
+            <div className="mb-2 flex items-center gap-2 text-teal">
+              <Sparkles className="h-3.5 w-3.5" />
+              <span className="font-display text-[11px] uppercase tracking-[0.2em]">What you've built</span>
             </div>
+            <ul className="space-y-1.5">
+              {story.map((s, i) => (
+                <li key={i} className="flex gap-2 text-sm leading-relaxed text-parchment/85">
+                  <span className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full" style={{ background: atomColor }} />
+                  {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
 
-            {/* Readouts */}
-            <div className="grid grid-cols-2 gap-3">
-              <Readout label="Charge / Ion" value={analysis.ion}
-                color={analysis.charge === 0 ? "var(--color-emerald-elixir)" : "var(--color-gold)"} />
-              <Readout label="Isotope" value={analysis.isIsotope ? "Yes — rare isotope" : "No — common form"}
-                color={analysis.isIsotope ? "var(--color-wraith)" : "var(--color-parchment)"} />
-              <Readout label="Mass Number (A)" value={String(analysis.mass)} color="var(--color-spectral)" />
-              <Readout label="Nuclear Stability" value={analysis.stability.label} color={analysis.stability.color} />
-            </div>
+        {/* ── Right: controls + readouts ── */}
+        <div className="space-y-4">
+          <Stepper label="Protons"   hint="sets which element it is"        value={protons}   onChange={setProtons}   min={1} max={MAX_Z} color="#e0b457" />
+          <Stepper label="Neutrons"  hint="sets the mass — makes isotopes"  value={neutrons}  onChange={setNeutrons}  min={0} max={30}    color="#9aa7bd" />
+          <Stepper label="Electrons" hint="sets the charge — makes ions"    value={electrons} onChange={setElectrons} min={0} max={30}    color="#2dd4bf" />
 
-            {/* Shell capacities */}
-            <div className="rounded-xl p-4"
-              style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-              <div className="text-[10px] tracking-[0.25em] uppercase text-parchment/60 mb-2">Electron Shells</div>
-              {analysis.shells.length === 0 ? (
-                <p className="text-sm text-parchment/50">No electrons — a bare nucleus.</p>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {analysis.shells.map((n, i) => (
-                    <span key={i} className="rounded-full px-3 py-1 text-xs"
-                      style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 30%, transparent)", color: "var(--color-emerald-elixir)" }}>
-                      Shell {i + 1}: {n}/{SHELL_CAPS[i] ?? "—"} e⁻
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+          <div className="flex gap-3">
+            <button onClick={setNeutral}
+              className="flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-xs uppercase tracking-[0.12em] transition hover:-translate-y-0.5"
+              style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 14%, transparent)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent)", color: "var(--color-emerald-elixir)" }}>
+              Balance charge
+            </button>
+            <button onClick={reset}
+              className="flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs uppercase tracking-[0.12em] text-parchment/70 transition hover:text-spectral"
+              style={{ border: "1px solid var(--color-border)" }}>
+              <RotateCcw className="h-3.5 w-3.5" /> Reset
+            </button>
+          </div>
 
-            {/* Guided challenge */}
-            <ChallengeBanner prompt={challenge.text} solved={solved} hint={challenge.hint} />
-            {solved && (
-              <button onClick={nextChallenge} className="btn-ghost-arcane w-full justify-center text-xs">
-                <RefreshCw className="h-3.5 w-3.5" /> Next challenge
-              </button>
+          {/* Readouts */}
+          <div className="grid grid-cols-2 gap-3">
+            <Readout label="Charge" value={analysis.ion}
+              color={analysis.charge === 0 ? "var(--color-emerald-elixir)" : "var(--color-gold)"} />
+            <Readout label="Isotope?" value={analysis.isIsotope ? "Rare isotope" : "Common form"}
+              color={analysis.isIsotope ? "var(--color-wraith)" : "var(--color-parchment)"} />
+            <Readout label="Mass number (protons + neutrons)" value={String(analysis.mass)} color="var(--color-spectral)" />
+            <Readout label="Nuclear stability" value={analysis.stability.label} color={analysis.stability.color} />
+          </div>
+
+          {/* Shell capacities */}
+          <div className="rounded-xl p-4"
+            style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
+            <div className="mb-2 text-[10px] uppercase tracking-[0.25em] text-parchment/60">Electron shells (fill inner first)</div>
+            {analysis.shells.length === 0 ? (
+              <p className="text-sm text-parchment/50">No electrons — a bare nucleus.</p>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {analysis.shells.map((n, i) => (
+                  <span key={i} className="rounded-full px-3 py-1 text-xs"
+                    style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 30%, transparent)", color: "var(--color-emerald-elixir)" }}>
+                    Shell {i + 1}: {n}/{SHELL_CAPS[i] ?? "—"} e⁻
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         </div>
+      </div>
 
-        {/* Teaching layer */}
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <ConceptCard title="What each particle does">
-            <span className="text-spectral">Protons</span> decide which element it is (the atomic number).{" "}
-            <span className="text-spectral">Neutrons</span> change the mass — same element, different mass is an{" "}
-            <span className="text-wraith">isotope</span>. <span className="text-spectral">Electrons</span> balance the charge —
-            add or remove one and you get an <span className="text-gold">ion</span>.
-          </ConceptCard>
-          <DidYouKnow>
-            Carbon-14 — carbon with 8 neutrons instead of 6 — is radioactive and decays at a known rate.
-            Scientists measure how much is left to <span className="text-spectral">date bones and artefacts</span> thousands of years old.
-          </DidYouKnow>
-        </div>
+      {/* Teaching layer */}
+      <div className="mt-8 grid gap-4 md:grid-cols-2">
+        <ConceptCard title="What each particle does">
+          <span className="text-spectral">Protons</span> decide which element it is (the atomic number).{" "}
+          <span className="text-spectral">Neutrons</span> change the mass — same element, different mass is an{" "}
+          <span className="text-wraith">isotope</span>. <span className="text-spectral">Electrons</span> balance the charge —
+          add or remove one and you get an <span className="text-gold">ion</span>.
+        </ConceptCard>
+        <DidYouKnow>
+          Carbon-14 — carbon with 8 neutrons instead of 6 — is radioactive and decays at a known rate.
+          Scientists measure how much is left to <span className="text-spectral">date bones and artefacts</span> thousands of years old.
+        </DidYouKnow>
+      </div>
     </ModuleShell>
   );
 }
@@ -256,7 +347,7 @@ function Readout({ label, value, color }: { label: string; value: string; color:
   return (
     <div className="rounded-xl p-3.5"
       style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-      <div className="text-[10px] tracking-[0.2em] uppercase text-parchment/55 mb-1">{label}</div>
+      <div className="mb-1 text-[10px] uppercase tracking-[0.2em] text-parchment/55">{label}</div>
       <div className="font-display text-sm" style={{ color }}>{value}</div>
     </div>
   );
