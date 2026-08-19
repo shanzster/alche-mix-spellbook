@@ -223,6 +223,11 @@ export function CrystalAR({
       cleanupRef.current = null;
       mindar.renderer.setAnimationLoop(null);
       mindar.stop();
+      // Belt-and-suspenders: strip any MindAR-injected overlay (scanning laser /
+      // loading spinner) so it can't linger on the page after we stop.
+      containerRef.current
+        ?.querySelectorAll(".mindar-ui-overlay")
+        .forEach((el) => el.remove());
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
     } catch {
       /* ignore */
@@ -299,8 +304,14 @@ export function CrystalAR({
       const mindar = new MindARThree({
         container,
         imageTargetSrc: MIND_SRC,
-        uiScanning: "yes",
-        uiLoading: "yes",
+        // Track every card at once (MindAR defaults to 1) so two element models
+        // can appear together — which is what unlocks the "Alche-mix" button.
+        maxTrack: AR_ELEMENTS.length,
+        // Disable MindAR's own scanning-laser + loading overlays — we render our
+        // own status UI, and MindAR's overlay otherwise lingers on the page
+        // after the session stops.
+        uiScanning: "no",
+        uiLoading: "no",
       });
       mindarRef.current = mindar;
       const { renderer, scene, camera } = mindar;
