@@ -32,7 +32,8 @@ import {
   Coffee,
   Compass,
 } from "lucide-react";
-import { useEffect, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import { signOut } from "../lib/auth";
 import { aiPing } from "../lib/ai";
 import { AskAlchemist } from "./AskAlchemist";
@@ -115,6 +116,28 @@ function useActive() {
     to === "/app" ? pathname === "/app" : pathname === to || pathname.startsWith(to + "/");
 }
 
+/** Index of the current route in the book's page order (-1 when off-book). */
+function pageIndexOf(pathname: string): number {
+  return NAV.findIndex((n) =>
+    n.to === "/app" ? pathname === "/app" : pathname === n.to || pathname.startsWith(n.to + "/"),
+  );
+}
+
+/**
+ * Direction-aware page-turn: compares this route's position in the book with
+ * the previous one and returns the animation class for the entering page.
+ */
+function usePageTurn(pathname: string): string {
+  const prevIndexRef = useRef<number>(pageIndexOf(pathname));
+  const index = pageIndexOf(pathname);
+  const prev = prevIndexRef.current;
+  useEffect(() => {
+    prevIndexRef.current = index;
+  }, [index]);
+  if (index === -1 || prev === -1 || index === prev) return "page-turn-fwd";
+  return index >= prev ? "page-turn-fwd" : "page-turn-back";
+}
+
 /**
  * App shell for the student area.
  * Desktop: persistent left sidebar. Mobile: top bar + bottom tab nav.
@@ -122,7 +145,12 @@ function useActive() {
 export function StudentShell({ title, children }: { title?: string; children: ReactNode }) {
   const navigate = useNavigate();
   const isActive = useActive();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
+  const turnClass = usePageTurn(pathname);
+  const pageIndex = pageIndexOf(pathname);
+  const prevPage = pageIndex > 0 ? NAV[pageIndex - 1] : null;
+  const nextPage = pageIndex >= 0 && pageIndex < NAV.length - 1 ? NAV[pageIndex + 1] : null;
   useAIVerdictLog();
 
   const handleSignOut = async () => {
@@ -145,7 +173,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
           <span className="font-display text-lg tracking-[0.15em]">AlcheMix</span>
         </Link>
 
-        <nav className="relative flex-1 min-h-0 space-y-1 overflow-y-auto">
+        <nav className="scroll-slim relative flex-1 min-h-0 space-y-1 overflow-y-auto">
           {NAV.map((item) => {
             const active = !item.disabled && isActive(item.to);
             const Inner = (
@@ -218,14 +246,57 @@ export function StudentShell({ title, children }: { title?: string; children: Re
         <ThemeToggle className="!h-8 !w-8" />
       </header>
 
-      {/* ── Content ── */}
+      {/* ── Content — each route enters like a turning page ── */}
       <main className="relative z-10 md:pl-[16.75rem]">
         {/* Full-bleed: content fills the whole area beside the rail, with only
             a small symmetric gap — no max-width cap. */}
-        <div className="w-full px-5 pt-20 pb-28 md:pt-8 md:pb-16 md:pl-6 md:pr-6">
+        <div key={pathname} className={`w-full px-5 pt-20 pb-28 md:pt-8 md:pb-24 md:pl-6 md:pr-6 ${turnClass}`}>
           {children}
         </div>
       </main>
+
+      {/* ── The Grimoire pager — flip to the previous/next page of the book ── */}
+      {pageIndex !== -1 && (
+        <div className="glass-strong hidden md:flex fixed bottom-3 z-40 items-center gap-1 rounded-full px-1.5 py-1.5 left-[calc(50%+8.375rem)] -translate-x-1/2">
+          {prevPage ? (
+            <Link
+              to={prevPage.to as any}
+              aria-label={`Previous page: ${prevPage.label}`}
+              title={prevPage.label}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-parchment transition-colors hover:bg-teal/10 hover:text-emerald-elixir"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Link>
+          ) : (
+            <span className="flex h-8 w-8 items-center justify-center rounded-full text-parchment/25">
+              <ChevronLeft className="h-4 w-4" />
+            </span>
+          )}
+          <span className="flex items-center gap-2 px-2 text-parchment/80">
+            <BookOpen className="h-3.5 w-3.5 text-gold" />
+            <span className="font-display text-[11px] tracking-[0.08em] whitespace-nowrap">
+              {NAV[pageIndex].label}
+            </span>
+            <span className="text-[10px] text-parchment/45 whitespace-nowrap">
+              {pageIndex + 1} / {NAV.length}
+            </span>
+          </span>
+          {nextPage ? (
+            <Link
+              to={nextPage.to as any}
+              aria-label={`Next page: ${nextPage.label}`}
+              title={nextPage.label}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-parchment transition-colors hover:bg-teal/10 hover:text-emerald-elixir"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          ) : (
+            <span className="flex h-8 w-8 items-center justify-center rounded-full text-parchment/25">
+              <ChevronRight className="h-4 w-4" />
+            </span>
+          )}
+        </div>
+      )}
 
       {/* ── Ask the Alchemist — the mentor, on every student page ── */}
       <AskAlchemist context={title} />

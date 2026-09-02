@@ -244,6 +244,65 @@
     radial-gradient(46rem 34rem at 45% 110%, color-mix(in oklab, var(--color-wraith) 20%, transparent), transparent 65%);
 }
 
+/* Slim, quiet scrollbar for the nav rail and other internal scrollers. */
+@utility scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--color-parchment) 22%, transparent) transparent;
+  &::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--color-parchment) 20%, transparent);
+    border-radius: 999px;
+  }
+  &::-webkit-scrollbar-thumb:hover {
+    background: color-mix(in oklab, var(--color-parchment) 35%, transparent);
+  }
+}
+
+/* Page-turn transitions — routes enter like a page of the Grimoire turning.
+   Forward = flipping toward the next page (enters from the right edge),
+   back = returning to an earlier page. Kept subtle; disabled for
+   reduced-motion users. */
+@keyframes page-turn-fwd {
+  from {
+    opacity: 0;
+    transform: perspective(1400px) rotateY(-5deg) translateX(26px);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1400px) rotateY(0deg) translateX(0);
+  }
+}
+@keyframes page-turn-back {
+  from {
+    opacity: 0;
+    transform: perspective(1400px) rotateY(5deg) translateX(-26px);
+  }
+  to {
+    opacity: 1;
+    transform: perspective(1400px) rotateY(0deg) translateX(0);
+  }
+}
+.page-turn-fwd {
+  animation: page-turn-fwd 0.34s ease-out;
+  transform-origin: left center;
+}
+.page-turn-back {
+  animation: page-turn-back 0.34s ease-out;
+  transform-origin: right center;
+}
+@media (prefers-reduced-motion: reduce) {
+  .page-turn-fwd,
+  .page-turn-back {
+    animation: none;
+  }
+}
+
 /* Unstable-compound jitter — used on hazardous/unstable mix results. */
 @keyframes hazard-shake {
   0%, 100% { transform: translateX(0); }
