@@ -220,9 +220,9 @@ export function StudentShell({ title, children }: { title?: string; children: Re
 
       {/* ── Content ── */}
       <main className="relative z-10 md:pl-[16.75rem]">
-        {/* Left-anchored: content sits right beside the rail with a small gap,
-            capped only so lines stay readable on very wide screens. */}
-        <div className="max-w-7xl px-5 pt-20 pb-28 md:pt-8 md:pb-16 md:pl-6 md:pr-8">
+        {/* Full-bleed: content fills the whole area beside the rail, with only
+            a small symmetric gap — no max-width cap. */}
+        <div className="w-full px-5 pt-20 pb-28 md:pt-8 md:pb-16 md:pl-6 md:pr-6">
           {children}
         </div>
       </main>
