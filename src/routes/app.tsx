@@ -257,6 +257,14 @@ const MODULES: ModuleRow[] = [
     status: "live",
   },
   {
+    icon: Users,
+    title: "Class Duels",
+    desc: "Challenge a classmate — duels resolve whenever each of you visits.",
+    color: "var(--color-wraith)",
+    to: "/duels",
+    status: "live",
+  },
+  {
     icon: Trophy,
     title: "Hall of Records",
     desc: "Your class leaderboards — stars, duels, compounds, streaks.",

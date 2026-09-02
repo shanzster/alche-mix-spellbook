@@ -37,6 +37,7 @@ import { Route as EquilibriumRouteImport } from './routes/equilibrium'
 import { Route as EquationBalancerRouteImport } from './routes/equation-balancer'
 import { Route as ElementsRouteImport } from './routes/elements'
 import { Route as ElectroRouteImport } from './routes/electro'
+import { Route as DuelsRouteImport } from './routes/duels'
 import { Route as DuelRouteImport } from './routes/duel'
 import { Route as DecayRouteImport } from './routes/decay'
 import { Route as CodexRouteImport } from './routes/codex'
@@ -188,6 +189,11 @@ const ElectroRoute = ElectroRouteImport.update({
   path: '/electro',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DuelsRoute = DuelsRouteImport.update({
+  id: '/duels',
+  path: '/duels',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DuelRoute = DuelRouteImport.update({
   id: '/duel',
   path: '/duel',
@@ -250,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/codex': typeof CodexRoute
   '/decay': typeof DecayRoute
   '/duel': typeof DuelRoute
+  '/duels': typeof DuelsRoute
   '/electro': typeof ElectroRoute
   '/elements': typeof ElementsRoute
   '/equation-balancer': typeof EquationBalancerRoute
@@ -290,6 +297,7 @@ export interface FileRoutesByTo {
   '/codex': typeof CodexRoute
   '/decay': typeof DecayRoute
   '/duel': typeof DuelRoute
+  '/duels': typeof DuelsRoute
   '/electro': typeof ElectroRoute
   '/elements': typeof ElementsRoute
   '/equation-balancer': typeof EquationBalancerRoute
@@ -331,6 +339,7 @@ export interface FileRoutesById {
   '/codex': typeof CodexRoute
   '/decay': typeof DecayRoute
   '/duel': typeof DuelRoute
+  '/duels': typeof DuelsRoute
   '/electro': typeof ElectroRoute
   '/elements': typeof ElementsRoute
   '/equation-balancer': typeof EquationBalancerRoute
@@ -373,6 +382,7 @@ export interface FileRouteTypes {
     | '/codex'
     | '/decay'
     | '/duel'
+    | '/duels'
     | '/electro'
     | '/elements'
     | '/equation-balancer'
@@ -413,6 +423,7 @@ export interface FileRouteTypes {
     | '/codex'
     | '/decay'
     | '/duel'
+    | '/duels'
     | '/electro'
     | '/elements'
     | '/equation-balancer'
@@ -453,6 +464,7 @@ export interface FileRouteTypes {
     | '/codex'
     | '/decay'
     | '/duel'
+    | '/duels'
     | '/electro'
     | '/elements'
     | '/equation-balancer'
@@ -494,6 +506,7 @@ export interface RootRouteChildren {
   CodexRoute: typeof CodexRoute
   DecayRoute: typeof DecayRoute
   DuelRoute: typeof DuelRoute
+  DuelsRoute: typeof DuelsRoute
   ElectroRoute: typeof ElectroRoute
   ElementsRoute: typeof ElementsRoute
   EquationBalancerRoute: typeof EquationBalancerRoute
@@ -722,6 +735,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ElectroRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/duels': {
+      id: '/duels'
+      path: '/duels'
+      fullPath: '/duels'
+      preLoaderRoute: typeof DuelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/duel': {
       id: '/duel'
       path: '/duel'
@@ -806,6 +826,7 @@ const rootRouteChildren: RootRouteChildren = {
   CodexRoute: CodexRoute,
   DecayRoute: DecayRoute,
   DuelRoute: DuelRoute,
+  DuelsRoute: DuelsRoute,
   ElectroRoute: ElectroRoute,
   ElementsRoute: ElementsRoute,
   EquationBalancerRoute: EquationBalancerRoute,

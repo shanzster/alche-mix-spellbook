@@ -99,6 +99,7 @@ const NAV: NavItem[] = [
   { to: "/decay", label: "Radioactive Decay", icon: Radiation },
   { to: "/quiz", label: "3D Quiz", icon: ClipboardList },
   { to: "/duel", label: "Duel", icon: Swords },
+  { to: "/duels", label: "Class Duels", icon: Swords },
   { to: "/leaderboard", label: "Hall of Records", icon: Trophy },
   { to: "/shop", label: "The Emporium", icon: Store },
   { to: "/scanner", label: "AR Scanner", icon: ScanLine, primary: true },
