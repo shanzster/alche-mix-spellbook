@@ -30,6 +30,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as LabSafetyRouteImport } from './routes/lab-safety'
+import { Route as GuideRouteImport } from './routes/guide'
 import { Route as GrimoireRouteImport } from './routes/grimoire'
 import { Route as GasLawsRouteImport } from './routes/gas-laws'
 import { Route as ForcesRouteImport } from './routes/forces'
@@ -154,6 +155,11 @@ const LabSafetyRoute = LabSafetyRouteImport.update({
   path: '/lab-safety',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GuideRoute = GuideRouteImport.update({
+  id: '/guide',
+  path: '/guide',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GrimoireRoute = GrimoireRouteImport.update({
   id: '/grimoire',
   path: '/grimoire',
@@ -264,6 +270,7 @@ export interface FileRoutesByFullPath {
   '/forces': typeof ForcesRoute
   '/gas-laws': typeof GasLawsRoute
   '/grimoire': typeof GrimoireRoute
+  '/guide': typeof GuideRoute
   '/lab-safety': typeof LabSafetyRoute
   '/leaderboard': typeof LeaderboardRoute
   '/learn': typeof LearnRoute
@@ -305,6 +312,7 @@ export interface FileRoutesByTo {
   '/forces': typeof ForcesRoute
   '/gas-laws': typeof GasLawsRoute
   '/grimoire': typeof GrimoireRoute
+  '/guide': typeof GuideRoute
   '/lab-safety': typeof LabSafetyRoute
   '/leaderboard': typeof LeaderboardRoute
   '/learn': typeof LearnRoute
@@ -347,6 +355,7 @@ export interface FileRoutesById {
   '/forces': typeof ForcesRoute
   '/gas-laws': typeof GasLawsRoute
   '/grimoire': typeof GrimoireRoute
+  '/guide': typeof GuideRoute
   '/lab-safety': typeof LabSafetyRoute
   '/leaderboard': typeof LeaderboardRoute
   '/learn': typeof LearnRoute
@@ -390,6 +399,7 @@ export interface FileRouteTypes {
     | '/forces'
     | '/gas-laws'
     | '/grimoire'
+    | '/guide'
     | '/lab-safety'
     | '/leaderboard'
     | '/learn'
@@ -431,6 +441,7 @@ export interface FileRouteTypes {
     | '/forces'
     | '/gas-laws'
     | '/grimoire'
+    | '/guide'
     | '/lab-safety'
     | '/leaderboard'
     | '/learn'
@@ -472,6 +483,7 @@ export interface FileRouteTypes {
     | '/forces'
     | '/gas-laws'
     | '/grimoire'
+    | '/guide'
     | '/lab-safety'
     | '/leaderboard'
     | '/learn'
@@ -514,6 +526,7 @@ export interface RootRouteChildren {
   ForcesRoute: typeof ForcesRoute
   GasLawsRoute: typeof GasLawsRoute
   GrimoireRoute: typeof GrimoireRoute
+  GuideRoute: typeof GuideRoute
   LabSafetyRoute: typeof LabSafetyRoute
   LeaderboardRoute: typeof LeaderboardRoute
   LearnRoute: typeof LearnRoute
@@ -686,6 +699,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LabSafetyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/guide': {
+      id: '/guide'
+      path: '/guide'
+      fullPath: '/guide'
+      preLoaderRoute: typeof GuideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/grimoire': {
       id: '/grimoire'
       path: '/grimoire'
@@ -834,6 +854,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForcesRoute: ForcesRoute,
   GasLawsRoute: GasLawsRoute,
   GrimoireRoute: GrimoireRoute,
+  GuideRoute: GuideRoute,
   LabSafetyRoute: LabSafetyRoute,
   LeaderboardRoute: LeaderboardRoute,
   LearnRoute: LearnRoute,

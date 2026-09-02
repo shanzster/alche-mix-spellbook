@@ -43,6 +43,12 @@ Gemini (`GEMINI_API_KEY`, server-only via `createServerFn`) · Nitro/Cloudflare.
    get warm teaching moments (the Alchemist's counsel), never punishment.
 6. **On-brand naming.** Trials, forging, Codex, aurum, itsura, "the Alchemist"
    — new features should extend the alchemy vocabulary, not break it.
+6b. **Games stay in the Arcade.** Owner feedback (2026-09-02): the app must not
+   feel "too gamified". Games & rewards (Duel, Class Duels, Placement Trials,
+   Hall of Records, Emporium, aurum/streak chips) live only in the hub's
+   separate Arcade section — never mixed into the learning-module list, the
+   Guide's steps, or module pages. The Grimoire (/cards) is the card
+   collection only; the learning path lives at /guide.
 7. **Both themes, mobile-friendly, token-based styling.** Every surface must
    work in dark and light mode using the existing CSS tokens; wide content
    scrolls horizontally in its own container.

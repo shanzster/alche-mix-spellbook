@@ -33,6 +33,7 @@ import {
   Magnet,
   Droplets,
   Coffee,
+  Compass,
 } from "lucide-react";
 import { StudentShell } from "../components/StudentShell";
 import { PageHeader } from "../components/PageHeader";
@@ -67,9 +68,17 @@ const MODULES: ModuleRow[] = [
   {
     icon: BookMarked,
     title: "Grimoire",
-    desc: "Your guidebook — the learning path, plus every card you've claimed.",
+    desc: "Your card collection — every card you've scanned and forged.",
     color: "var(--color-gold)",
     to: "/cards",
+    status: "live",
+  },
+  {
+    icon: Compass,
+    title: "The Guide",
+    desc: "The learning path — what to study first, and where you are.",
+    color: "var(--color-emerald-elixir)",
+    to: "/guide",
     status: "live",
   },
   {
@@ -110,14 +119,6 @@ const MODULES: ModuleRow[] = [
     desc: "Study each element — uses, examples & 3D.",
     color: "var(--color-wraith)",
     to: "/periodic-table",
-    status: "live",
-  },
-  {
-    icon: Crosshair,
-    title: "Placement Trials",
-    desc: "Know the table by heart — place each element in its true cell.",
-    color: "var(--color-emerald-elixir)",
-    to: "/table-game",
     status: "live",
   },
   {
@@ -249,6 +250,28 @@ const MODULES: ModuleRow[] = [
     status: "live",
   },
   {
+    icon: ScanLine,
+    title: "AR Scanner",
+    desc: "Scan the element card and summon its 3D crystal in AR.",
+    color: "var(--color-emerald-elixir)",
+    to: "/scanner",
+    status: "live",
+    arOnly: true,
+  },
+  {
+    icon: ScanSearch,
+    title: "AI Scavenger Hunt",
+    desc: "Live camera scan — green trackers lock onto your element.",
+    color: "var(--color-gold)",
+    to: "/scavenger",
+    status: "live",
+  },
+];
+
+// The Arcade — games & rewards, deliberately separated from the learning
+// modules so the science reads as the main experience and play stays optional.
+const ARCADE: ModuleRow[] = [
+  {
     icon: Swords,
     title: "Duel the Alchemist",
     desc: "Card battles where the stats are real chemistry. Three rivals await.",
@@ -265,6 +288,14 @@ const MODULES: ModuleRow[] = [
     status: "live",
   },
   {
+    icon: Crosshair,
+    title: "Placement Trials",
+    desc: "Know the table by heart — place each element in its true cell.",
+    color: "var(--color-emerald-elixir)",
+    to: "/table-game",
+    status: "live",
+  },
+  {
     icon: Trophy,
     title: "Hall of Records",
     desc: "Your class leaderboards — stars, duels, compounds, streaks.",
@@ -278,23 +309,6 @@ const MODULES: ModuleRow[] = [
     desc: "Spend your aurum — frames, titles and charms.",
     color: "var(--color-gold)",
     to: "/shop",
-    status: "live",
-  },
-  {
-    icon: ScanLine,
-    title: "AR Scanner",
-    desc: "Scan the element card and summon its 3D crystal in AR.",
-    color: "var(--color-emerald-elixir)",
-    to: "/scanner",
-    status: "live",
-    arOnly: true,
-  },
-  {
-    icon: ScanSearch,
-    title: "AI Scavenger Hunt",
-    desc: "Live camera scan — green trackers lock onto your element.",
-    color: "var(--color-gold)",
-    to: "/scavenger",
     status: "live",
   },
 ];
@@ -403,6 +417,82 @@ function StudentHub() {
   const hasProgress = gradeEntries.length > 0 || masteryEntries.length > 0;
   const badges = (profile?.badges ?? []).filter((b) => BADGE_META[b]);
 
+  const renderModule = (m: ModuleRow) => {
+            const live = m.status === "live";
+            const recommended = nextStep?.to === m.to;
+            const mobileOnly = m.arOnly && platform.ready && !platform.arCapable;
+            const Row = (
+              <div
+                className="group flex items-center gap-4 py-4 px-3 border-t transition-colors"
+                style={{ borderColor: "var(--color-border)" }}
+              >
+                <span
+                  className="flex h-11 w-11 items-center justify-center rounded-xl flex-shrink-0 transition-all duration-200 group-hover:scale-105"
+                  style={{
+                    background: `linear-gradient(135deg, color-mix(in oklab, ${m.color} 24%, transparent), color-mix(in oklab, ${m.color} 8%, transparent))`,
+                    border: `1px solid color-mix(in oklab, ${m.color} 30%, transparent)`,
+                    color: m.color,
+                    boxShadow: `0 0 18px -9px ${m.color}`,
+                  }}
+                >
+                  <m.icon className="h-5 w-5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-display text-base">{m.title}</span>
+                    {recommended && (
+                      <span
+                        className="rounded-full px-2 py-0.5 text-[9px] tracking-[0.12em] uppercase flex-shrink-0"
+                        style={{
+                          color: "var(--color-emerald-elixir)",
+                          background:
+                            "color-mix(in oklab, var(--color-emerald-elixir) 14%, transparent)",
+                          border:
+                            "1px solid color-mix(in oklab, var(--color-emerald-elixir) 40%, transparent)",
+                        }}
+                      >
+                        Up next
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-parchment/60 truncate">
+                    {mobileOnly
+                      ? "An AR experience — open this on your phone; here it shows the hand-off."
+                      : m.desc}
+                  </div>
+                </div>
+                <span
+                  className="text-[10px] tracking-[0.15em] uppercase flex-shrink-0"
+                  style={{
+                    color: mobileOnly
+                      ? "var(--color-parchment)"
+                      : live
+                        ? m.color
+                        : "var(--color-parchment)",
+                  }}
+                >
+                  {mobileOnly ? "On mobile" : STATUS_LABEL[m.status]}
+                </span>
+                {live ? (
+                  <ChevronRight className="h-4 w-4 text-parchment/40 group-hover:text-teal group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                ) : (
+                  <span className="w-4 flex-shrink-0" />
+                )}
+              </div>
+            );
+            return live ? (
+              <li key={m.title}>
+                <Link to={m.to as any} className="block rounded-lg hover:bg-teal/5">
+                  {Row}
+                </Link>
+              </li>
+            ) : (
+              <li key={m.title} className="opacity-55 cursor-not-allowed" title="Needs AI setup">
+                {Row}
+              </li>
+            );
+  };
+
   return (
     <StudentShell title="Home">
       {/* Themed greeting header */}
@@ -412,38 +502,6 @@ function StudentHub() {
         subtitle="Practise a module, then check back here for the scores and feedback your teacher posts."
         icon={GraduationCap}
       />
-
-      {/* Alchemist's purse & streak — rewards earned from Trials and daily Starters. */}
-      {((profile?.aurum ?? 0) > 0 || (profile?.starterStreak?.count ?? 0) > 0) && (
-        <div className="mb-6 flex flex-wrap gap-2">
-          {(profile?.aurum ?? 0) > 0 && (
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-display text-xs tracking-[0.08em]"
-              style={{
-                color: "var(--color-gold)",
-                background: "color-mix(in oklab, var(--color-gold) 12%, transparent)",
-                border: "1px solid color-mix(in oklab, var(--color-gold) 35%, transparent)",
-              }}
-              title="Aurum — earned from Trials and the daily Starters"
-            >
-              ⚜ {profile?.aurum} aurum
-            </span>
-          )}
-          {(profile?.starterStreak?.count ?? 0) > 0 && (
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-display text-xs tracking-[0.08em]"
-              style={{
-                color: "var(--color-crimson)",
-                background: "color-mix(in oklab, var(--color-crimson) 10%, transparent)",
-                border: "1px solid color-mix(in oklab, var(--color-crimson) 30%, transparent)",
-              }}
-              title="Consecutive days of Starters for Ten"
-            >
-              <Flame className="h-3.5 w-3.5" /> {profile?.starterStreak?.count}-day streak
-            </span>
-          )}
-        </div>
-      )}
 
       {/* Which side of AlcheMix is this? Mobile = capture companion; website = deep study. */}
       {platform.ready && platform.arCapable && (
@@ -589,81 +647,54 @@ function StudentHub() {
           </span>
         </div>
         <ul>
-          {MODULES.map((m) => {
-            const live = m.status === "live";
-            const recommended = nextStep?.to === m.to;
-            const mobileOnly = m.arOnly && platform.ready && !platform.arCapable;
-            const Row = (
-              <div
-                className="group flex items-center gap-4 py-4 px-3 border-t transition-colors"
-                style={{ borderColor: "var(--color-border)" }}
-              >
-                <span
-                  className="flex h-11 w-11 items-center justify-center rounded-xl flex-shrink-0 transition-all duration-200 group-hover:scale-105"
-                  style={{
-                    background: `linear-gradient(135deg, color-mix(in oklab, ${m.color} 24%, transparent), color-mix(in oklab, ${m.color} 8%, transparent))`,
-                    border: `1px solid color-mix(in oklab, ${m.color} 30%, transparent)`,
-                    color: m.color,
-                    boxShadow: `0 0 18px -9px ${m.color}`,
-                  }}
-                >
-                  <m.icon className="h-5 w-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-display text-base">{m.title}</span>
-                    {recommended && (
-                      <span
-                        className="rounded-full px-2 py-0.5 text-[9px] tracking-[0.12em] uppercase flex-shrink-0"
-                        style={{
-                          color: "var(--color-emerald-elixir)",
-                          background:
-                            "color-mix(in oklab, var(--color-emerald-elixir) 14%, transparent)",
-                          border:
-                            "1px solid color-mix(in oklab, var(--color-emerald-elixir) 40%, transparent)",
-                        }}
-                      >
-                        Up next
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-parchment/60 truncate">
-                    {mobileOnly
-                      ? "An AR experience — open this on your phone; here it shows the hand-off."
-                      : m.desc}
-                  </div>
-                </div>
-                <span
-                  className="text-[10px] tracking-[0.15em] uppercase flex-shrink-0"
-                  style={{
-                    color: mobileOnly
-                      ? "var(--color-parchment)"
-                      : live
-                        ? m.color
-                        : "var(--color-parchment)",
-                  }}
-                >
-                  {mobileOnly ? "On mobile" : STATUS_LABEL[m.status]}
-                </span>
-                {live ? (
-                  <ChevronRight className="h-4 w-4 text-parchment/40 group-hover:text-teal group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-                ) : (
-                  <span className="w-4 flex-shrink-0" />
-                )}
-              </div>
-            );
-            return live ? (
-              <li key={m.title}>
-                <Link to={m.to as any} className="block rounded-lg hover:bg-teal/5">
-                  {Row}
-                </Link>
-              </li>
-            ) : (
-              <li key={m.title} className="opacity-55 cursor-not-allowed" title="Needs AI setup">
-                {Row}
-              </li>
-            );
-          })}
+          {MODULES.map(renderModule)}
+        </ul>
+      </section>
+
+      {/* The Arcade — games & rewards, kept apart from the learning path */}
+      <section className="mt-12">
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <Swords className="h-4 w-4 text-crimson" />
+          <h2 className="font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+            The Arcade
+          </h2>
+          <span className="ml-auto text-[10px] text-parchment/45">
+            games & rewards — for after the studying
+          </span>
+        </div>
+      {/* Alchemist's purse & streak — rewards earned from Trials and daily Starters. */}
+      {((profile?.aurum ?? 0) > 0 || (profile?.starterStreak?.count ?? 0) > 0) && (
+        <div className="mb-6 flex flex-wrap gap-2">
+          {(profile?.aurum ?? 0) > 0 && (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-display text-xs tracking-[0.08em]"
+              style={{
+                color: "var(--color-gold)",
+                background: "color-mix(in oklab, var(--color-gold) 12%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--color-gold) 35%, transparent)",
+              }}
+              title="Aurum — earned from Trials and the daily Starters"
+            >
+              ⚜ {profile?.aurum} aurum
+            </span>
+          )}
+          {(profile?.starterStreak?.count ?? 0) > 0 && (
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-display text-xs tracking-[0.08em]"
+              style={{
+                color: "var(--color-crimson)",
+                background: "color-mix(in oklab, var(--color-crimson) 10%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--color-crimson) 30%, transparent)",
+              }}
+              title="Consecutive days of Starters for Ten"
+            >
+              <Flame className="h-3.5 w-3.5" /> {profile?.starterStreak?.count}-day streak
+            </span>
+          )}
+        </div>
+      )}
+        <ul>
+          {ARCADE.map(renderModule)}
         </ul>
       </section>
     </StudentShell>

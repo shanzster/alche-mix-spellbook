@@ -30,6 +30,7 @@ import {
   Magnet,
   Droplets,
   Coffee,
+  Compass,
 } from "lucide-react";
 import { useEffect, useState, type ComponentType, type ReactNode } from "react";
 import { signOut } from "../lib/auth";
@@ -76,12 +77,12 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: "/app", label: "Home", icon: Home, primary: true },
   { to: "/cards", label: "Grimoire", icon: BookMarked, primary: true },
+  { to: "/guide", label: "The Guide", icon: Compass },
   { to: "/starters", label: "Starters for Ten", icon: Flame },
   { to: "/assignments", label: "Assignments", icon: ListChecks },
   { to: "/lab-safety", label: "Lab Safety", icon: ShieldAlert },
   { to: "/atomic-builder", label: "Atomic Builder", icon: Atom },
   { to: "/periodic-table", label: "Periodic Table", icon: Grid3x3 },
-  { to: "/table-game", label: "Placement Trials", icon: Crosshair },
   { to: "/states", label: "States of Matter", icon: Thermometer },
   { to: "/study", label: "The Study", icon: Brain },
   { to: "/molecules", label: "Molecule Shapes", icon: Shapes },
@@ -98,8 +99,10 @@ const NAV: NavItem[] = [
   { to: "/titration", label: "Titration Lab", icon: Beaker },
   { to: "/decay", label: "Radioactive Decay", icon: Radiation },
   { to: "/quiz", label: "3D Quiz", icon: ClipboardList },
+  // The Arcade — games & rewards, listed after the learning modules
   { to: "/duel", label: "Duel", icon: Swords },
   { to: "/duels", label: "Class Duels", icon: Swords },
+  { to: "/table-game", label: "Placement Trials", icon: Crosshair },
   { to: "/leaderboard", label: "Hall of Records", icon: Trophy },
   { to: "/shop", label: "The Emporium", icon: Store },
   { to: "/scanner", label: "AR Scanner", icon: ScanLine, primary: true },

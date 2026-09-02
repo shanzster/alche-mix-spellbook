@@ -25,8 +25,6 @@ import {
   Flame,
   FlaskConical,
   Thermometer,
-  Crosshair,
-  Swords,
   Activity,
   RefreshCw,
   Zap,
@@ -89,15 +87,6 @@ export const GUIDE: GuideStep[] = [
     icon: Grid3x3,
     why: "Meet all 118 elements and how the table organises them.",
     done: (p) => practised(p, "periodic-table"),
-  },
-  {
-    id: "table-game",
-    chapter: CH1,
-    title: "Placement Trials",
-    to: "/table-game",
-    icon: Crosshair,
-    why: "Prove you know the map — place elements in their true cells from memory.",
-    done: (p) => practised(p, "table-game"),
   },
   {
     id: "states",
@@ -250,20 +239,6 @@ export const GUIDE: GuideStep[] = [
     icon: ClipboardList,
     why: "Prove you can identify elements from their rotating atoms alone.",
     done: (p) => practised(p, "quiz"),
-  },
-  {
-    id: "duel",
-    chapter: CH5,
-    title: "Duel the Alchemist",
-    to: "/duel",
-    icon: Swords,
-    why: "Everything you've learned, weaponised — win a duel where the stats are real chemistry.",
-    done: (p) =>
-      Object.values(p?.duelRecord ?? {}).some((d) => (d?.wins ?? 0) > 0),
-    detail: (p) => {
-      const wins = Object.values(p?.duelRecord ?? {}).reduce((s, d) => s + (d?.wins ?? 0), 0);
-      return wins > 0 ? `${wins} victories` : null;
-    },
   },
   {
     id: "starters",
