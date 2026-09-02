@@ -193,6 +193,57 @@
     radial-gradient(ellipse at 50% 100%, color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent), transparent 70%);
 }
 
+/* ── Liquid glass (student side) ──────────────────────────────────────────
+   Frosted translucent surfaces with backdrop blur, a soft top specular line
+   and gentle depth. `glass` for content panels/cards, `glass-strong` for
+   chrome that floats over content (rails, bars, sheets). Requires something
+   colorful behind it — pair with bg-arcane / bg-aurora. */
+@utility glass {
+  background: color-mix(in oklab, var(--color-mist) 46%, transparent);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  border: 1px solid color-mix(in oklab, var(--color-spectral) 10%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 40%, transparent),
+    0 10px 32px -18px color-mix(in oklab, var(--color-spectral) 22%, transparent);
+}
+.dark .glass {
+  background: color-mix(in oklab, var(--color-mist) 36%, transparent);
+  border-color: color-mix(in oklab, white 9%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 7%, transparent),
+    0 10px 32px -18px rgb(0 0 0 / 0.55);
+}
+@utility glass-strong {
+  background: color-mix(in oklab, var(--color-mist) 72%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
+  backdrop-filter: blur(28px) saturate(160%);
+  border: 1px solid color-mix(in oklab, var(--color-spectral) 12%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 45%, transparent),
+    0 14px 44px -20px color-mix(in oklab, var(--color-spectral) 28%, transparent);
+}
+.dark .glass-strong {
+  background: color-mix(in oklab, var(--color-mist) 55%, transparent);
+  border-color: color-mix(in oklab, white 10%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 8%, transparent),
+    0 14px 44px -20px rgb(0 0 0 / 0.6);
+}
+/* Extra ambient colour floating under the glass. */
+@utility bg-aurora {
+  background-image:
+    radial-gradient(42rem 30rem at 8% -8%, color-mix(in oklab, var(--color-emerald-elixir) 14%, transparent), transparent 62%),
+    radial-gradient(34rem 26rem at 92% 14%, color-mix(in oklab, var(--color-gold) 10%, transparent), transparent 58%),
+    radial-gradient(46rem 34rem at 45% 110%, color-mix(in oklab, var(--color-wraith) 16%, transparent), transparent 65%);
+}
+.dark .bg-aurora {
+  background-image:
+    radial-gradient(42rem 30rem at 8% -8%, color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent), transparent 62%),
+    radial-gradient(34rem 26rem at 92% 14%, color-mix(in oklab, var(--color-violet-deep) 22%, transparent), transparent 58%),
+    radial-gradient(46rem 34rem at 45% 110%, color-mix(in oklab, var(--color-wraith) 20%, transparent), transparent 65%);
+}
+
 /* Unstable-compound jitter — used on hazardous/unstable mix results. */
 @keyframes hazard-shake {
   0%, 100% { transform: translateX(0); }

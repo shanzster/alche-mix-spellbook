@@ -11,8 +11,10 @@ import { ScrollText, Sparkles, Swords, Check } from "lucide-react";
 
 function quietCard(accent: string) {
   return {
-    background: `color-mix(in oklab, ${accent} 5%, transparent)`,
-    border: `1px solid color-mix(in oklab, ${accent} 22%, transparent)`,
+    background: `color-mix(in oklab, ${accent} 5%, color-mix(in oklab, var(--color-mist) 30%, transparent))`,
+    border: `1px solid color-mix(in oklab, ${accent} 20%, transparent)`,
+    backdropFilter: "blur(16px) saturate(140%)",
+    WebkitBackdropFilter: "blur(16px) saturate(140%)",
   };
 }
 

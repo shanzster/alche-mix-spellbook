@@ -135,14 +135,11 @@ export function StudentShell({ title, children }: { title?: string; children: Re
 
   return (
     <div className="bg-arcane min-h-screen text-spectral">
-      {/* ── Desktop sidebar ── */}
-      <aside
-        className="hidden md:flex fixed inset-y-0 left-0 z-40 w-60 flex-col px-4 py-6 border-r overflow-hidden"
-        style={{
-          background: "var(--color-slate-sunken)",
-          borderColor: "var(--color-border)",
-        }}
-      >
+      {/* Ambient colour under the glass */}
+      <div className="bg-aurora pointer-events-none fixed inset-0 z-0" />
+
+      {/* ── Desktop sidebar — floating glass rail ── */}
+      <aside className="glass-strong hidden md:flex fixed inset-y-3 left-3 z-40 w-60 flex-col rounded-2xl px-4 py-5 overflow-hidden">
         <Link to="/" className="relative flex items-center gap-2.5 px-2 mb-8">
           <img src="/images/logo-outline.png" alt="" className="h-8 w-8 object-contain" />
           <span className="font-display text-lg tracking-[0.15em]">AlcheMix</span>
@@ -210,14 +207,8 @@ export function StudentShell({ title, children }: { title?: string; children: Re
         </div>
       </aside>
 
-      {/* ── Mobile top bar ── */}
-      <header
-        className="md:hidden fixed top-0 inset-x-0 z-40 flex items-center justify-between h-14 px-4 backdrop-blur-xl border-b"
-        style={{
-          background: "color-mix(in oklab, var(--color-slate-sunken) 88%, transparent)",
-          borderColor: "var(--color-border)",
-        }}
-      >
+      {/* ── Mobile top bar — floating glass ── */}
+      <header className="glass-strong md:hidden fixed top-2 inset-x-2 z-40 flex items-center justify-between h-14 px-4 rounded-2xl">
         <Link to="/" className="flex items-center gap-2">
           <img src="/images/logo-outline.png" alt="" className="h-7 w-7 object-contain" />
           <span className="font-display text-sm tracking-[0.12em] truncate max-w-[46vw]">
@@ -228,7 +219,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
       </header>
 
       {/* ── Content ── */}
-      <main className="relative z-10 md:pl-60">
+      <main className="relative z-10 md:pl-[16.75rem]">
         <div className="mx-auto max-w-7xl px-5 pt-20 pb-28 md:pt-8 md:pb-16 md:px-8 lg:px-10">
           {children}
         </div>
@@ -244,15 +235,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
             className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
             onClick={() => setMoreOpen(false)}
           />
-          <div
-            className="fixed bottom-[4.5rem] inset-x-3 z-50 rounded-2xl p-2 backdrop-blur-xl"
-            style={{
-              background: "color-mix(in oklab, var(--color-slate-sunken) 96%, transparent)",
-              border: "1px solid var(--color-border)",
-              boxShadow:
-                "0 -10px 40px -12px color-mix(in oklab, var(--color-wraith) 45%, transparent)",
-            }}
-          >
+          <div className="glass-strong fixed bottom-[5rem] inset-x-3 z-50 rounded-2xl p-2">
             <p className="px-3 py-2 text-[10px] tracking-[0.25em] uppercase text-parchment/50">
               More modules
             </p>
@@ -295,14 +278,8 @@ export function StudentShell({ title, children }: { title?: string; children: Re
         </div>
       )}
 
-      {/* ── Mobile bottom nav ── */}
-      <nav
-        className="md:hidden fixed bottom-0 inset-x-0 z-50 flex items-stretch justify-around h-16 backdrop-blur-xl border-t"
-        style={{
-          background: "color-mix(in oklab, var(--color-slate-sunken) 92%, transparent)",
-          borderColor: "var(--color-border)",
-        }}
-      >
+      {/* ── Mobile bottom nav — floating glass ── */}
+      <nav className="glass-strong md:hidden fixed bottom-2 inset-x-2 z-50 flex items-stretch justify-around h-16 rounded-2xl overflow-hidden">
         {primary.map((item) => {
           const active = isActive(item.to);
           return (

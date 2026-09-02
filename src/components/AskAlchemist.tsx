@@ -60,15 +60,7 @@ export function AskAlchemist({ context }: { context?: string }) {
 
       {/* Chat panel */}
       {open && (
-        <div
-          className="fixed z-50 bottom-[8.5rem] right-4 md:bottom-24 md:right-6 flex w-[min(22rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl backdrop-blur-xl"
-          style={{
-            background: "color-mix(in oklab, var(--color-slate-sunken) 96%, transparent)",
-            border: "1px solid var(--color-border)",
-            boxShadow:
-              "0 18px 50px -12px color-mix(in oklab, var(--color-wraith) 55%, transparent)",
-          }}
-        >
+        <div className="glass-strong fixed z-50 bottom-[8.5rem] right-4 md:bottom-24 md:right-6 flex w-[min(22rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-2xl">
           <div
             className="flex items-center gap-2 px-4 py-3"
             style={{ borderBottom: "1px solid var(--color-border)" }}

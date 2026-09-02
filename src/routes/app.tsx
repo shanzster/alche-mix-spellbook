@@ -372,13 +372,7 @@ function ClassBanner({
   };
 
   return (
-    <div
-      className="mb-8 rounded-xl px-4 py-4"
-      style={{
-        background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)",
-        border: "1px dashed color-mix(in oklab, var(--color-parchment) 30%, transparent)",
-      }}
-    >
+    <div className="glass mb-8 rounded-2xl px-5 py-4">
       <p className="text-sm text-parchment mb-2">Have a class code from your teacher?</p>
       <form onSubmit={join} className="flex gap-2">
         <input
@@ -422,10 +416,7 @@ function StudentHub() {
             const recommended = nextStep?.to === m.to;
             const mobileOnly = m.arOnly && platform.ready && !platform.arCapable;
             const Row = (
-              <div
-                className="flex items-center gap-3.5 py-3 px-3 border-t"
-                style={{ borderColor: "var(--color-border)" }}
-              >
+              <div className="flex items-center gap-3.5 rounded-xl py-3 px-3">
                 <span
                   className="flex h-10 w-10 items-center justify-center rounded-xl flex-shrink-0"
                   style={{
@@ -474,7 +465,7 @@ function StudentHub() {
             );
             return live ? (
               <li key={m.title}>
-                <Link to={m.to as any} className="block rounded-lg hover:bg-teal/5">
+                <Link to={m.to as any} className="block rounded-xl hover:bg-teal/5">
                   {Row}
                 </Link>
               </li>
@@ -545,13 +536,7 @@ function StudentHub() {
         )}
 
         {!hasProgress ? (
-          <div
-            className="rounded-xl px-5 py-9 text-center"
-            style={{
-              background: "color-mix(in oklab, var(--color-parchment) 4%, transparent)",
-              border: "1px dashed color-mix(in oklab, var(--color-parchment) 25%, transparent)",
-            }}
-          >
+          <div className="glass rounded-2xl px-5 py-9 text-center">
             <span
               className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
               style={{
@@ -629,7 +614,7 @@ function StudentHub() {
             in the Guide's recommended order
           </span>
         </div>
-        <ul className="xl:grid xl:grid-cols-2 xl:gap-x-10">
+        <ul className="glass rounded-2xl p-2 xl:grid xl:grid-cols-2 xl:gap-x-6">
           {MODULES.map(renderModule)}
         </ul>
       </section>
@@ -675,7 +660,7 @@ function StudentHub() {
           )}
         </div>
       )}
-        <ul className="xl:grid xl:grid-cols-2 xl:gap-x-10">
+        <ul className="glass rounded-2xl p-2 xl:grid xl:grid-cols-2 xl:gap-x-6">
           {ARCADE.map(renderModule)}
         </ul>
       </section>
