@@ -220,7 +220,9 @@ export function StudentShell({ title, children }: { title?: string; children: Re
 
       {/* ── Content ── */}
       <main className="relative z-10 md:pl-[16.75rem]">
-        <div className="mx-auto max-w-7xl px-5 pt-20 pb-28 md:pt-8 md:pb-16 md:px-8 lg:px-10">
+        {/* Left-anchored: content sits right beside the rail with a small gap,
+            capped only so lines stay readable on very wide screens. */}
+        <div className="max-w-7xl px-5 pt-20 pb-28 md:pt-8 md:pb-16 md:pl-6 md:pr-8">
           {children}
         </div>
       </main>
