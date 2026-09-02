@@ -31,9 +31,12 @@ import {
   Droplets,
   Coffee,
   Compass,
+  BookOpen,
+  ChevronLeft,
+  ChevronRight,
+  X,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
-import { BookOpen, ChevronLeft, ChevronRight } from "lucide-react";
 import { signOut } from "../lib/auth";
 import { aiPing } from "../lib/ai";
 import { AskAlchemist } from "./AskAlchemist";
@@ -68,47 +71,58 @@ interface NavItem {
   to: string;
   label: string;
   icon: ComponentType<{ className?: string }>;
+  /** Chapter heading this page sits under in the Table of Contents. */
+  chapter: string;
   primary?: boolean; // shown in the mobile bottom bar
   disabled?: boolean; // e.g. gated on AI setup
 }
 
-// Every module, in the Grimoire Guide's recommended learning order.
-// `primary` picks the mobile bottom-bar tabs: the phone is the capture
-// companion (Grimoire + camera experiences); everything else sits under More.
+const CH_BENCH = "The Bench";
+const CH_1 = "I · Foundations";
+const CH_2 = "II · The Study";
+const CH_3 = "III · Molecules & Reactions";
+const CH_4 = "IV · Advanced Labs";
+const CH_5 = "V · Prove Your Craft";
+const CH_ARCADE = "The Arcade";
+const CH_FIELD = "Field Work";
+
+// Every page of the book, in reading order. The order doubles as the pager's
+// page sequence; `chapter` groups them in the Table of Contents.
 const NAV: NavItem[] = [
-  { to: "/app", label: "Home", icon: Home, primary: true },
-  { to: "/cards", label: "Grimoire", icon: BookMarked, primary: true },
-  { to: "/guide", label: "The Guide", icon: Compass },
-  { to: "/starters", label: "Starters for Ten", icon: Flame },
-  { to: "/assignments", label: "Assignments", icon: ListChecks },
-  { to: "/lab-safety", label: "Lab Safety", icon: ShieldAlert },
-  { to: "/atomic-builder", label: "Atomic Builder", icon: Atom },
-  { to: "/periodic-table", label: "Periodic Table", icon: Grid3x3 },
-  { to: "/states", label: "States of Matter", icon: Thermometer },
-  { to: "/study", label: "The Study", icon: Brain },
-  { to: "/molecules", label: "Molecule Shapes", icon: Shapes },
-  { to: "/forces", label: "Invisible Bonds", icon: Magnet },
-  { to: "/reactions", label: "Reaction Theatre", icon: Atom },
-  { to: "/equation-balancer", label: "Equation Balancer", icon: Scale },
-  { to: "/codex", label: "Compound Codex", icon: FlaskConical },
-  { to: "/gas-laws", label: "Gas Laws", icon: Gauge },
-  { to: "/solutions", label: "Elixir Bench", icon: Droplets },
-  { to: "/thermo", label: "Cauldron of Heat", icon: Coffee },
-  { to: "/rates", label: "Reaction Rates", icon: Activity },
-  { to: "/equilibrium", label: "Equilibrium", icon: RefreshCw },
-  { to: "/electro", label: "Voltaic Forge", icon: Zap },
-  { to: "/titration", label: "Titration Lab", icon: Beaker },
-  { to: "/decay", label: "Radioactive Decay", icon: Radiation },
-  { to: "/quiz", label: "3D Quiz", icon: ClipboardList },
-  // The Arcade — games & rewards, listed after the learning modules
-  { to: "/duel", label: "Duel", icon: Swords },
-  { to: "/duels", label: "Class Duels", icon: Swords },
-  { to: "/table-game", label: "Placement Trials", icon: Crosshair },
-  { to: "/leaderboard", label: "Hall of Records", icon: Trophy },
-  { to: "/shop", label: "The Emporium", icon: Store },
-  { to: "/scanner", label: "AR Scanner", icon: ScanLine, primary: true },
-  { to: "/scavenger", label: "Scavenger Hunt", icon: ScanSearch, primary: true },
+  { to: "/app", label: "Home", icon: Home, chapter: CH_BENCH, primary: true },
+  { to: "/cards", label: "Grimoire", icon: BookMarked, chapter: CH_BENCH, primary: true },
+  { to: "/guide", label: "The Guide", icon: Compass, chapter: CH_BENCH },
+  { to: "/starters", label: "Starters for Ten", icon: Flame, chapter: CH_BENCH },
+  { to: "/assignments", label: "Assignments", icon: ListChecks, chapter: CH_BENCH },
+  { to: "/lab-safety", label: "Lab Safety", icon: ShieldAlert, chapter: CH_1 },
+  { to: "/atomic-builder", label: "Atomic Builder", icon: Atom, chapter: CH_1 },
+  { to: "/periodic-table", label: "Periodic Table", icon: Grid3x3, chapter: CH_1 },
+  { to: "/states", label: "States of Matter", icon: Thermometer, chapter: CH_1 },
+  { to: "/study", label: "The Study", icon: Brain, chapter: CH_2 },
+  { to: "/molecules", label: "Molecule Shapes", icon: Shapes, chapter: CH_3 },
+  { to: "/forces", label: "Invisible Bonds", icon: Magnet, chapter: CH_3 },
+  { to: "/reactions", label: "Reaction Theatre", icon: Atom, chapter: CH_3 },
+  { to: "/equation-balancer", label: "Equation Balancer", icon: Scale, chapter: CH_3 },
+  { to: "/codex", label: "Compound Codex", icon: FlaskConical, chapter: CH_3 },
+  { to: "/gas-laws", label: "Gas Laws", icon: Gauge, chapter: CH_4 },
+  { to: "/solutions", label: "Elixir Bench", icon: Droplets, chapter: CH_4 },
+  { to: "/thermo", label: "Cauldron of Heat", icon: Coffee, chapter: CH_4 },
+  { to: "/rates", label: "Reaction Rates", icon: Activity, chapter: CH_4 },
+  { to: "/equilibrium", label: "Equilibrium", icon: RefreshCw, chapter: CH_4 },
+  { to: "/electro", label: "Voltaic Forge", icon: Zap, chapter: CH_4 },
+  { to: "/titration", label: "Titration Lab", icon: Beaker, chapter: CH_4 },
+  { to: "/decay", label: "Radioactive Decay", icon: Radiation, chapter: CH_4 },
+  { to: "/quiz", label: "3D Quiz", icon: ClipboardList, chapter: CH_5 },
+  { to: "/duel", label: "Duel", icon: Swords, chapter: CH_ARCADE },
+  { to: "/duels", label: "Class Duels", icon: Swords, chapter: CH_ARCADE },
+  { to: "/table-game", label: "Placement Trials", icon: Crosshair, chapter: CH_ARCADE },
+  { to: "/leaderboard", label: "Hall of Records", icon: Trophy, chapter: CH_ARCADE },
+  { to: "/shop", label: "The Emporium", icon: Store, chapter: CH_ARCADE },
+  { to: "/scanner", label: "AR Scanner", icon: ScanLine, chapter: CH_FIELD, primary: true },
+  { to: "/scavenger", label: "Scavenger Hunt", icon: ScanSearch, chapter: CH_FIELD, primary: true },
 ];
+
+const CHAPTERS = [CH_BENCH, CH_1, CH_2, CH_3, CH_4, CH_5, CH_ARCADE, CH_FIELD];
 
 function useActive() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -139,19 +153,110 @@ function usePageTurn(pathname: string): string {
 }
 
 /**
- * App shell for the student area.
- * Desktop: persistent left sidebar. Mobile: top bar + bottom tab nav.
+ * The Table of Contents — the book's full map, opened from the top bar or ⌘K.
+ * Chapters as columns of quiet links; replaces the old always-there sidebar.
+ */
+function TableOfContents({ onClose }: { onClose: () => void }) {
+  const isActive = useActive();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 md:p-8">
+      <div
+        className="fixed inset-0 bg-black/55 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden
+      />
+      <div className="glass-strong relative z-10 w-full max-w-4xl rounded-2xl p-5 md:p-7">
+        <div className="mb-5 flex items-center gap-2.5">
+          <BookOpen className="h-4.5 w-4.5 text-gold" />
+          <h2 className="font-display text-base tracking-[0.1em]">Table of Contents</h2>
+          <button
+            onClick={onClose}
+            aria-label="Close contents"
+            className="ml-auto flex h-8 w-8 items-center justify-center rounded-full text-parchment/70 transition-colors hover:bg-teal/10 hover:text-spectral"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
+          {CHAPTERS.map((chapter) => (
+            <div key={chapter}>
+              <p className="mb-1.5 px-1 text-[10px] uppercase tracking-[0.2em] text-parchment/45">
+                {chapter}
+              </p>
+              <ul className="space-y-0.5">
+                {NAV.filter((n) => n.chapter === chapter).map((item) => {
+                  const active = isActive(item.to);
+                  return (
+                    <li key={item.to}>
+                      <Link
+                        to={item.to as any}
+                        onClick={onClose}
+                        className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-[13px] transition-colors hover:bg-teal/8"
+                        style={{
+                          color: active ? "var(--color-emerald-elixir)" : "var(--color-parchment)",
+                          background: active
+                            ? "color-mix(in oklab, var(--color-emerald-elixir) 8%, transparent)"
+                            : undefined,
+                        }}
+                      >
+                        <item.icon className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className="font-display tracking-[0.03em]">{item.label}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <p className="mt-5 text-center text-[10px] text-parchment/40">
+          Press <kbd className="rounded border border-current/30 px-1">⌘K</kbd> anywhere to open
+          the contents · <kbd className="rounded border border-current/30 px-1">Esc</kbd> to close
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * App shell for the student area — the app as a book.
+ * Desktop: floating glass top bar (cover → home, Contents overlay) + a
+ * bottom pager that flips pages in order. Mobile: top bar + bottom tab nav.
  */
 export function StudentShell({ title, children }: { title?: string; children: ReactNode }) {
   const navigate = useNavigate();
   const isActive = useActive();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
+  const [tocOpen, setTocOpen] = useState(false);
   const turnClass = usePageTurn(pathname);
   const pageIndex = pageIndexOf(pathname);
   const prevPage = pageIndex > 0 ? NAV[pageIndex - 1] : null;
   const nextPage = pageIndex >= 0 && pageIndex < NAV.length - 1 ? NAV[pageIndex + 1] : null;
   useAIVerdictLog();
+
+  // ⌘K / Ctrl+K toggles the Table of Contents.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setTocOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -166,74 +271,47 @@ export function StudentShell({ title, children }: { title?: string; children: Re
       {/* Ambient colour under the glass */}
       <div className="bg-aurora pointer-events-none fixed inset-0 z-0" />
 
-      {/* ── Desktop sidebar — floating glass rail ── */}
-      <aside className="glass-strong hidden md:flex fixed inset-y-3 left-3 z-40 w-60 flex-col rounded-2xl px-4 py-5 overflow-hidden">
-        <Link to="/" className="relative flex items-center gap-2.5 px-2 mb-8">
+      {/* ── Desktop top bar — the book's cover strip ── */}
+      <header className="glass-strong hidden md:flex fixed top-3 inset-x-3 z-40 h-14 items-center gap-4 rounded-2xl px-4">
+        <Link to="/app" className="flex items-center gap-2.5">
           <img src="/images/logo-outline.png" alt="" className="h-8 w-8 object-contain" />
-          <span className="font-display text-lg tracking-[0.15em]">AlcheMix</span>
+          <span className="font-display text-base tracking-[0.15em]">AlcheMix</span>
         </Link>
 
-        <nav className="scroll-slim relative flex-1 min-h-0 space-y-1 overflow-y-auto">
-          {NAV.map((item) => {
-            const active = !item.disabled && isActive(item.to);
-            const Inner = (
-              <span
-                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors"
-                style={{
-                  color: item.disabled
-                    ? "color-mix(in oklab, var(--color-parchment) 55%, transparent)"
-                    : active
-                      ? "var(--color-emerald-elixir)"
-                      : "var(--color-parchment)",
-                  background: active
-                    ? "color-mix(in oklab, var(--color-emerald-elixir) 8%, transparent)"
-                    : "transparent",
-                }}
-              >
-                <item.icon className="h-4 w-4 flex-shrink-0" />
-                <span className="font-display tracking-[0.04em]">{item.label}</span>
-                {item.disabled && (
-                  <span className="ml-auto text-[8px] tracking-[0.15em] uppercase text-gold">
-                    AI
-                  </span>
-                )}
-              </span>
-            );
-            return item.disabled ? (
-              <div
-                key={item.label}
-                className="cursor-not-allowed opacity-80"
-                title="Needs AI setup"
-              >
-                {Inner}
-              </div>
-            ) : (
-              <Link
-                key={item.label}
-                to={item.to as any}
-                className={`block rounded-lg ${active ? "" : "hover:bg-teal/5"}`}
-              >
-                {Inner}
-              </Link>
-            );
-          })}
-        </nav>
+        {pageIndex !== -1 && (
+          <span className="flex items-center gap-2 text-parchment/60">
+            <span className="text-parchment/30">/</span>
+            <span className="text-[10px] uppercase tracking-[0.18em]">
+              {NAV[pageIndex].chapter}
+            </span>
+            <span className="text-parchment/30">·</span>
+            <span className="font-display text-[13px] tracking-[0.05em] text-parchment">
+              {NAV[pageIndex].label}
+            </span>
+          </span>
+        )}
 
-        {/* Footer: controls */}
-        <div
-          className="mt-4 flex items-center justify-between rounded-xl px-3 py-2.5"
-          style={{ border: "1px solid var(--color-border)" }}
-        >
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => setTocOpen(true)}
+            className="flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] text-parchment transition-colors hover:bg-teal/10 hover:text-emerald-elixir"
+            style={{ border: "1px solid var(--color-border)" }}
+          >
+            <BookOpen className="h-3.5 w-3.5" />
+            <span className="font-display tracking-[0.06em]">Contents</span>
+            <kbd className="text-[9px] text-parchment/45">⌘K</kbd>
+          </button>
           <ThemeToggle className="!h-8 !w-8" />
           <button
             onClick={handleSignOut}
-            className="inline-flex items-center gap-1.5 text-[11px] text-parchment/70 hover:text-crimson transition"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-parchment/60 transition-colors hover:bg-crimson/10 hover:text-crimson"
             aria-label="Sign out"
+            title="Sign out"
           >
-            <LogOut className="h-3.5 w-3.5" /> Sign out
+            <LogOut className="h-3.5 w-3.5" />
           </button>
         </div>
-      </aside>
+      </header>
 
       {/* ── Mobile top bar — floating glass ── */}
       <header className="glass-strong md:hidden fixed top-2 inset-x-2 z-40 flex items-center justify-between h-14 px-4 rounded-2xl">
@@ -247,17 +325,18 @@ export function StudentShell({ title, children }: { title?: string; children: Re
       </header>
 
       {/* ── Content — each route enters like a turning page ── */}
-      <main className="relative z-10 md:pl-[16.75rem]">
-        {/* Full-bleed: content fills the whole area beside the rail, with only
-            a small symmetric gap — no max-width cap. */}
-        <div key={pathname} className={`w-full px-5 pt-20 pb-28 md:pt-8 md:pb-24 md:pl-6 md:pr-6 ${turnClass}`}>
+      <main className="relative z-10">
+        <div
+          key={pathname}
+          className={`w-full px-5 pt-20 pb-28 md:px-8 md:pt-24 md:pb-24 ${turnClass}`}
+        >
           {children}
         </div>
       </main>
 
       {/* ── The Grimoire pager — flip to the previous/next page of the book ── */}
       {pageIndex !== -1 && (
-        <div className="glass-strong hidden md:flex fixed bottom-3 z-40 items-center gap-1 rounded-full px-1.5 py-1.5 left-[calc(50%+8.375rem)] -translate-x-1/2">
+        <div className="glass-strong hidden md:flex fixed bottom-3 left-1/2 z-40 -translate-x-1/2 items-center gap-1 rounded-full px-1.5 py-1.5">
           {prevPage ? (
             <Link
               to={prevPage.to as any}
@@ -272,7 +351,11 @@ export function StudentShell({ title, children }: { title?: string; children: Re
               <ChevronLeft className="h-4 w-4" />
             </span>
           )}
-          <span className="flex items-center gap-2 px-2 text-parchment/80">
+          <button
+            onClick={() => setTocOpen(true)}
+            className="flex items-center gap-2 rounded-full px-2 py-1 text-parchment/80 transition-colors hover:bg-teal/10"
+            title="Open the Table of Contents"
+          >
             <BookOpen className="h-3.5 w-3.5 text-gold" />
             <span className="font-display text-[11px] tracking-[0.08em] whitespace-nowrap">
               {NAV[pageIndex].label}
@@ -280,7 +363,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
             <span className="text-[10px] text-parchment/45 whitespace-nowrap">
               {pageIndex + 1} / {NAV.length}
             </span>
-          </span>
+          </button>
           {nextPage ? (
             <Link
               to={nextPage.to as any}
@@ -298,6 +381,9 @@ export function StudentShell({ title, children }: { title?: string; children: Re
         </div>
       )}
 
+      {/* ── Table of Contents overlay ── */}
+      {tocOpen && <TableOfContents onClose={() => setTocOpen(false)} />}
+
       {/* ── Ask the Alchemist — the mentor, on every student page ── */}
       <AskAlchemist context={title} />
 
@@ -308,7 +394,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
             className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
             onClick={() => setMoreOpen(false)}
           />
-          <div className="glass-strong fixed bottom-[5rem] inset-x-3 z-50 rounded-2xl p-2">
+          <div className="glass-strong scroll-slim fixed bottom-[5rem] inset-x-3 z-50 max-h-[65vh] overflow-y-auto rounded-2xl p-2">
             <p className="px-3 py-2 text-[10px] tracking-[0.25em] uppercase text-parchment/50">
               More modules
             </p>
