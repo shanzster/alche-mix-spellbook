@@ -1,10 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
-import { Gauge, Thermometer, Box, Atom } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Gauge, Thermometer, Box, Atom, Swords, Star, Loader2, CheckCircle2, XCircle,
+  SlidersHorizontal, RotateCcw, ScrollText,
+} from "lucide-react";
 import { ModuleShell } from "../components/ModuleShell";
 import { RequireAuth } from "../components/RequireAuth";
 import { ConceptCard, DidYouKnow } from "../components/Learn";
-import { useUserProfile, logPractice } from "../lib/profile";
+import { useUserProfile, logPractice, recordTrial, type TrialResult } from "../lib/profile";
+import { useAI } from "../lib/useAI";
+import type { GeneratedProblem, GradeResult } from "../lib/ai";
 
 export const Route = createFileRoute("/gas-laws")({
   component: () => (
@@ -126,8 +131,343 @@ function Slider({
   );
 }
 
+// ── Trial of the Alchemist — a 5-problem AI-generated run ───────────────────
+const TRIAL_LEN = 5;
+const starsFor = (score: number) => (score >= 5 ? 3 : score === 4 ? 2 : score === 3 ? 1 : 0);
+
+/** Best-effort read of T/V/n values out of a generated question's text. */
+function parseSimValues(question: string): { T?: number; V?: number; n?: number } | null {
+  const grab = (re: RegExp) => {
+    const m = question.match(re);
+    const v = m ? parseFloat(m[1]) : NaN;
+    return Number.isFinite(v) ? v : undefined;
+  };
+  const T = grab(/(\d+(?:\.\d+)?)\s*(?:K|kelvin)\b/i);
+  const V = grab(/(\d+(?:\.\d+)?)\s*(?:L|litre|liter)s?\b/);
+  const n = grab(/(\d+(?:\.\d+)?)\s*(?:mol|mole)s?\b/i);
+  if (T === undefined && V === undefined && n === undefined) return null;
+  return { T, V, n };
+}
+
+function TrialStars({ stars, size = "h-5 w-5" }: { stars: number; size?: string }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      {[0, 1, 2].map((i) => (
+        <Star
+          key={i}
+          className={size}
+          style={{
+            color: i < stars ? "var(--color-gold)" : "color-mix(in oklab, var(--color-parchment) 25%, transparent)",
+            fill: i < stars ? "var(--color-gold)" : "transparent",
+          }}
+        />
+      ))}
+    </span>
+  );
+}
+
+function TrialOfTheAlchemist({
+  uid,
+  best,
+  onApplyToSim,
+}: {
+  uid: string | null;
+  best?: TrialResult;
+  onApplyToSim: (vals: { T?: number; V?: number; n?: number }) => void;
+}) {
+  const { generateProblem, gradeAnswer, busy } = useAI();
+  const [phase, setPhase] = useState<"intro" | "run" | "done">("intro");
+  const [runSeed, setRunSeed] = useState("");
+  const [index, setIndex] = useState(0);
+  const [problem, setProblem] = useState<GeneratedProblem | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [answer, setAnswer] = useState("");
+  const [grade, setGrade] = useState<GradeResult | null>(null);
+  const [gradeError, setGradeError] = useState(false);
+  const [score, setScore] = useState(0);
+
+  const loadProblem = useCallback(
+    async (i: number, seed: string) => {
+      setProblem(null);
+      setGrade(null);
+      setGradeError(false);
+      setAnswer("");
+      setLoadError(false);
+      try {
+        const p = await generateProblem({ topic: "gas-laws", seed: `${seed}-p${i}` });
+        setProblem(p);
+      } catch {
+        setLoadError(true);
+      }
+    },
+    [generateProblem],
+  );
+
+  const start = () => {
+    const seed = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    setRunSeed(seed);
+    setScore(0);
+    setIndex(0);
+    setPhase("run");
+    void loadProblem(0, seed);
+  };
+
+  const submit = async () => {
+    if (!problem || grade || busy || !answer.trim()) return;
+    setGradeError(false);
+    try {
+      const res = await gradeAnswer({
+        question: problem.question,
+        studentAnswer: answer.trim(),
+        correctAnswer: String(problem.answer),
+        topic: "gas-laws",
+      });
+      setGrade(res);
+      if (res.isCorrect) setScore((s) => s + 1);
+    } catch {
+      setGradeError(true); // grading failed — the attempt is not consumed
+    }
+  };
+
+  const next = () => {
+    if (index + 1 >= TRIAL_LEN) {
+      setPhase("done");
+      void recordTrial(uid, "gas-laws", { score, outOf: TRIAL_LEN, stars: starsFor(score) });
+    } else {
+      setIndex(index + 1);
+      void loadProblem(index + 1, runSeed);
+    }
+  };
+
+  const simVals = problem ? parseSimValues(problem.question) : null;
+  const usedFallback = problem?.source === "fallback" || grade?.source === "fallback";
+  const panel = (extra?: React.CSSProperties): React.CSSProperties => ({
+    background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)",
+    border: "1px solid var(--color-border)",
+    ...extra,
+  });
+
+  return (
+    <div
+      className="rounded-2xl p-6"
+      style={{
+        background: "color-mix(in oklab, var(--color-slate-sunken) 65%, transparent)",
+        border: "1px solid color-mix(in oklab, var(--color-gold) 25%, var(--color-border))",
+      }}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <span className="inline-flex items-center gap-2 text-[11px] tracking-[0.2em] uppercase text-gold">
+          <Swords className="h-4 w-4" /> Trial of the Alchemist
+        </span>
+        {phase === "run" && (
+          <span className="text-xs text-parchment/70">
+            Problem <span className="text-gold font-display">{index + 1}</span> / {TRIAL_LEN}
+            <span className="mx-2 opacity-40">·</span>
+            Score <span className="text-emerald-elixir font-display">{score}</span>
+          </span>
+        )}
+      </div>
+
+      {/* ── Intro ── */}
+      {phase === "intro" && (
+        <div className="space-y-4">
+          <p className="text-sm text-parchment/80 leading-relaxed">
+            Five conjured gas-law problems, one attempt each. Answer with a number — the Alchemist
+            grades your work and reveals the full working. Score 3 or more to earn stars.
+          </p>
+          {best && (
+            <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={panel()}>
+              <TrialStars stars={best.stars} />
+              <span className="text-sm text-parchment/80">
+                Your best: <span className="text-gold font-display">{best.best}</span>/{best.outOf}
+                <span className="mx-2 opacity-40">·</span>
+                {best.plays} {best.plays === 1 ? "attempt" : "attempts"}
+              </span>
+            </div>
+          )}
+          <button
+            onClick={start}
+            className="rounded-full px-6 py-2.5 text-sm tracking-[0.12em] uppercase transition hover:brightness-110"
+            style={{
+              background: "color-mix(in oklab, var(--color-gold) 18%, transparent)",
+              border: "1px solid color-mix(in oklab, var(--color-gold) 45%, transparent)",
+              color: "var(--color-gold)",
+            }}
+          >
+            Begin the trial
+          </button>
+        </div>
+      )}
+
+      {/* ── Run ── */}
+      {phase === "run" && (
+        <div className="space-y-4">
+          {!problem && !loadError && (
+            <div className="flex items-center gap-2 rounded-xl px-4 py-6 text-sm text-parchment/70" style={panel()}>
+              <Loader2 className="h-4 w-4 animate-spin text-gold" /> Conjuring a fresh problem…
+            </div>
+          )}
+          {loadError && (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl px-4 py-4 text-sm" style={panel()}>
+              <span className="text-crimson">The conjuring fizzled — check your connection.</span>
+              <button
+                onClick={() => void loadProblem(index, runSeed)}
+                className="rounded-full px-4 py-1.5 text-xs tracking-[0.12em] uppercase text-gold"
+                style={{ border: "1px solid color-mix(in oklab, var(--color-gold) 40%, transparent)" }}
+              >
+                Try again
+              </button>
+            </div>
+          )}
+
+          {problem && (
+            <>
+              <p className="text-sm text-parchment leading-relaxed rounded-xl px-4 py-4" style={panel()}>
+                {problem.question}
+              </p>
+
+              {!grade && (
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={panel()}>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="any"
+                      value={answer}
+                      onChange={(e) => setAnswer(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
+                      placeholder="Your answer"
+                      className="w-32 bg-transparent text-parchment font-display text-lg outline-none placeholder:text-parchment/40 placeholder:font-sans placeholder:text-sm"
+                    />
+                    {problem.unit && <span className="text-xs text-parchment/60">{problem.unit}</span>}
+                  </div>
+                  <button
+                    onClick={() => void submit()}
+                    disabled={busy || !answer.trim()}
+                    className="inline-flex items-center gap-2 rounded-full px-5 py-2 text-sm tracking-[0.12em] uppercase transition disabled:opacity-50 hover:brightness-110"
+                    style={{
+                      background: "color-mix(in oklab, var(--color-emerald-elixir) 16%, transparent)",
+                      border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 40%, transparent)",
+                      color: "var(--color-emerald-elixir)",
+                    }}
+                  >
+                    {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Submit
+                  </button>
+                  {gradeError && (
+                    <span className="text-xs text-crimson">Grading failed — submit again.</span>
+                  )}
+                </div>
+              )}
+
+              {grade && (
+                <div className="space-y-3">
+                  <p
+                    className="flex items-center gap-2 text-sm font-medium"
+                    style={{ color: grade.isCorrect ? "var(--color-emerald-elixir)" : "var(--color-crimson)" }}
+                  >
+                    {grade.isCorrect ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                    {grade.isCorrect ? "Correct — the elixir holds." : "Not quite."}
+                    {!grade.isCorrect && (grade.correctAnswer ?? String(problem.answer)) && (
+                      <span className="text-parchment/70 font-normal">
+                        Expected: {grade.correctAnswer ?? String(problem.answer)}{problem.unit ? ` ${problem.unit}` : ""}
+                      </span>
+                    )}
+                  </p>
+
+                  {grade.explanation.length > 0 && (
+                    <ul className="space-y-1 text-sm text-parchment/80 rounded-xl px-4 py-3" style={panel()}>
+                      {grade.explanation.map((line, i) => (
+                        <li key={i}>{line}</li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {problem.workingSteps.length > 0 && (
+                    <div className="rounded-xl px-4 py-3" style={panel()}>
+                      <p className="inline-flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase text-teal mb-2">
+                        <ScrollText className="h-3.5 w-3.5" /> The working, step by step
+                      </p>
+                      <ol className="list-decimal list-inside space-y-1 text-sm text-parchment/80">
+                        {problem.workingSteps.map((s, i) => (
+                          <li key={i}>{s}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={next}
+                      className="rounded-full px-5 py-2 text-sm tracking-[0.12em] uppercase transition hover:brightness-110"
+                      style={{
+                        background: "color-mix(in oklab, var(--color-gold) 18%, transparent)",
+                        border: "1px solid color-mix(in oklab, var(--color-gold) 45%, transparent)",
+                        color: "var(--color-gold)",
+                      }}
+                    >
+                      {index + 1 >= TRIAL_LEN ? "Finish the trial" : "Next problem"}
+                    </button>
+                    {simVals && (
+                      <button
+                        onClick={() => onApplyToSim(simVals)}
+                        className="inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-xs tracking-[0.12em] uppercase text-teal transition hover:brightness-110"
+                        style={{ border: "1px solid color-mix(in oklab, var(--color-teal, #2dd4bf) 40%, transparent)" }}
+                      >
+                        <SlidersHorizontal className="h-3.5 w-3.5" /> Set up the simulator like this
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {usedFallback && (
+                <p className="text-[11px] text-parchment/50">
+                  Running on the offline problem bank — answers are graded locally.
+                </p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Done ── */}
+      {phase === "done" && (
+        <div className="space-y-4 text-center py-2">
+          <TrialStars stars={starsFor(score)} size="h-8 w-8" />
+          <p className="font-display text-3xl text-parchment">
+            <span className="text-gold">{score}</span> / {TRIAL_LEN}
+          </p>
+          <p className="text-sm text-parchment/70">
+            {score >= 5 && "Flawless — the Alchemist bows to you."}
+            {score === 4 && "Nearly perfect — one more step to mastery."}
+            {score === 3 && "The trial is passed. Sharpen your working and return."}
+            {score < 3 && "The trial bests you this time — study the simulator and try again."}
+          </p>
+          {best && (
+            <p className="text-xs text-parchment/60">
+              Best so far: {Math.max(best.best, score)}/{TRIAL_LEN}
+            </p>
+          )}
+          <button
+            onClick={start}
+            className="inline-flex items-center gap-2 rounded-full px-6 py-2.5 text-sm tracking-[0.12em] uppercase transition hover:brightness-110"
+            style={{
+              background: "color-mix(in oklab, var(--color-gold) 18%, transparent)",
+              border: "1px solid color-mix(in oklab, var(--color-gold) 45%, transparent)",
+              color: "var(--color-gold)",
+            }}
+          >
+            <RotateCcw className="h-4 w-4" /> Retry with fresh problems
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function GasLaws() {
-  const { uid } = useUserProfile();
+  const { uid, profile } = useUserProfile();
   const [solve, setSolve] = useState<Solve>("P");
   const [T, setT] = useState(300);
   const [V, setV] = useState(22.4);
@@ -149,6 +489,16 @@ function GasLaws() {
 
   const tvn = useRef({ T: shownT, V: shownV, n });
   useEffect(() => { tvn.current = { T: shownT, V: shownV, n }; }, [shownT, shownV, n]);
+
+  /** Pre-fill the sliders from a trial problem's values (best-effort). */
+  const applyToSim = useCallback((vals: { T?: number; V?: number; n?: number }) => {
+    const clamp = (v: number, r: { min: number; max: number }) => Math.min(r.max, Math.max(r.min, v));
+    setSolve("P"); // T and V stay editable; the sim solves for pressure
+    if (vals.T !== undefined) setT(clamp(vals.T, RANGES.T));
+    if (vals.V !== undefined) setV(clamp(vals.V, RANGES.V));
+    if (vals.n !== undefined) setN(clamp(vals.n, RANGES.n));
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   const SolveToggle = (
     <div className="inline-flex rounded-full p-1" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }}>
@@ -217,6 +567,15 @@ function GasLaws() {
           Car airbags use this: a chemical reaction makes a burst of gas, and PV = nRT means that gas <em>must</em> expand
           to fill the bag in ~30 milliseconds. Scuba divers watch it too — pressure rising with depth shrinks the air in their lungs.
         </DidYouKnow>
+      </div>
+
+      {/* Trial of the Alchemist — 5 AI-conjured problems, best run saved */}
+      <div className="mt-8">
+        <TrialOfTheAlchemist
+          uid={uid}
+          best={profile?.trials?.["gas-laws"]}
+          onApplyToSim={applyToSim}
+        />
       </div>
     </ModuleShell>
   );

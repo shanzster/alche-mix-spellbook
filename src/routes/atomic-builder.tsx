@@ -1,11 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Minus, Plus, RotateCcw, RefreshCw, Atom, Target, Check, Sparkles } from "lucide-react";
+import { Minus, Plus, RotateCcw, RefreshCw, Atom, Target, Check, Sparkles, Swords, Timer, Trophy, Star } from "lucide-react";
 import { ModuleShell } from "../components/ModuleShell";
 import { RequireAuth } from "../components/RequireAuth";
 import { BohrModel3D } from "../components/BohrModel3D";
 import { ConceptCard, DidYouKnow } from "../components/Learn";
-import { useUserProfile, logPractice } from "../lib/profile";
+import { useUserProfile, logPractice, recordTrial, type TrialResult } from "../lib/profile";
 
 export const Route = createFileRoute("/atomic-builder")({
   component: () => (
@@ -128,8 +128,278 @@ const MISSIONS: Mission[] = [
   },
 ];
 
+// ── Trial (persisted PhET-style game mode) ──────────────────────────────────
+const TRIAL_TOTAL = 15;
+const trialStars = (s: number) => (s >= 13 ? 3 : s >= 10 ? 2 : s >= 7 ? 1 : 0);
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/** Elements 1–20 that form a familiar single-atom ion, with its usual charge. */
+const COMMON_IONS: { z: number; charge: number }[] = [
+  { z: 3, charge: 1 },  { z: 7, charge: -3 }, { z: 8, charge: -2 },  { z: 9, charge: -1 },
+  { z: 11, charge: 1 }, { z: 12, charge: 2 }, { z: 13, charge: 3 },  { z: 15, charge: -3 },
+  { z: 16, charge: -2 },{ z: 17, charge: -1 },{ z: 19, charge: 1 },  { z: 20, charge: 2 },
+];
+
+const SUP_DIGIT: Record<number, string> = { 2: "²", 3: "³" };
+/** e.g. ionLabel("Mg", 2) → "Mg²⁺", ionLabel("Cl", -1) → "Cl⁻". */
+function ionLabel(sym: string, charge: number): string {
+  return `${sym}${SUP_DIGIT[Math.abs(charge)] ?? ""}${charge > 0 ? "⁺" : "⁻"}`;
+}
+/** e.g. chargeText(-2) → "2−". */
+function chargeText(charge: number): string {
+  return `${Math.abs(charge)}${charge > 0 ? "+" : "−"}`;
+}
+
+interface Challenge {
+  level: 1 | 2 | 3;
+  tag: string;
+  prompt: string;
+  p: number;
+  e: number;
+  /** Only levels that pin the isotope constrain neutrons. */
+  n?: number;
+}
+
+/** 3 levels × 5 randomized challenges: neutral atoms → ions → isotope ions. */
+function buildChallenges(): Challenge[] {
+  const out: Challenge[] = [];
+  for (const el of shuffle(ELEMENTS).slice(0, 5)) {
+    out.push({
+      level: 1, tag: "Neutral atom",
+      prompt: `Build a neutral ${el.name} atom.`,
+      p: el.z, e: el.z,
+    });
+  }
+  for (const ion of shuffle(COMMON_IONS).slice(0, 5)) {
+    const el = ELEMENTS[ion.z - 1];
+    out.push({
+      level: 2, tag: "Ion",
+      prompt: `Build the ion ${ionLabel(el.symbol, ion.charge)} — ${el.name} with a ${chargeText(ion.charge)} charge.`,
+      p: el.z, e: el.z - ion.charge,
+    });
+  }
+  for (const ion of shuffle(COMMON_IONS).slice(0, 5)) {
+    const el = ELEMENTS[ion.z - 1];
+    const n = el.commonN + (Math.random() < 0.5 ? 1 : 2);
+    out.push({
+      level: 3, tag: "Isotope ion",
+      prompt: `Build the isotope ${el.symbol}-${el.z + n} as an ion with a ${chargeText(ion.charge)} charge.`,
+      p: el.z, e: el.z - ion.charge, n,
+    });
+  }
+  return out;
+}
+
+function StarRow({ n, size = 4 }: { n: number; size?: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      {[0, 1, 2].map((i) => (
+        <Star key={i}
+          style={{
+            width: size * 4, height: size * 4,
+            color: i < n ? "var(--color-gold)" : "color-mix(in oklab, var(--color-parchment) 35%, transparent)",
+            fill: i < n ? "var(--color-gold)" : "transparent",
+          }} />
+      ))}
+    </span>
+  );
+}
+
+function BestRunPanel({ best }: { best?: TrialResult }) {
+  if (!best) return null;
+  return (
+    <div className="mx-auto mt-5 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-xl px-4 py-2.5 text-sm"
+      style={{ background: "color-mix(in oklab, var(--color-gold) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)" }}>
+      <span className="text-[10px] uppercase tracking-[0.2em] text-parchment/60">Best run</span>
+      <span className="font-display text-gold">{best.best}/{best.outOf}</span>
+      <StarRow n={best.stars} />
+      {best.timeSec !== undefined && <span className="text-parchment/70">{best.timeSec}s</span>}
+      <span className="text-xs text-parchment/50">{best.plays} play{best.plays === 1 ? "" : "s"}</span>
+    </div>
+  );
+}
+
+function AtomTrial({ uid, best }: { uid: string | null; best?: TrialResult }) {
+  const [phase, setPhase] = useState<"intro" | "play" | "done">("intro");
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [idx, setIdx] = useState(0);
+  const [p, setP] = useState(1);
+  const [n, setN] = useState(0);
+  const [e, setE] = useState(1);
+  const [attempts, setAttempts] = useState(0);
+  const [result, setResult] = useState<"pending" | "correct" | "revealed">("pending");
+  const [score, setScore] = useState(0);
+  const [timed, setTimed] = useState(false);
+  const [seconds, setSeconds] = useState(0);
+
+  useEffect(() => {
+    if (phase !== "play" || !timed) return;
+    const id = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(id);
+  }, [phase, timed]);
+
+  const resetBuild = () => { setP(1); setN(0); setE(1); setAttempts(0); setResult("pending"); };
+
+  const start = () => {
+    setChallenges(buildChallenges());
+    setIdx(0);
+    setScore(0);
+    setSeconds(0);
+    resetBuild();
+    setPhase("play");
+  };
+
+  const ch = challenges[idx];
+
+  const check = () => {
+    if (!ch || result !== "pending") return;
+    const ok = p === ch.p && e === ch.e && (ch.n === undefined || n === ch.n);
+    if (ok) {
+      setScore((s) => s + 1);
+      setResult("correct");
+    } else if (attempts + 1 >= 2) {
+      setResult("revealed");
+    } else {
+      setAttempts((a) => a + 1);
+    }
+  };
+
+  const nextChallenge = () => {
+    if (idx + 1 >= challenges.length) {
+      setPhase("done");
+      if (uid) {
+        logPractice(uid, "atomic-builder");
+        recordTrial(uid, "atomic-builder", {
+          score,
+          outOf: TRIAL_TOTAL,
+          stars: trialStars(score),
+          ...(timed ? { timeSec: seconds } : {}),
+        });
+      }
+    } else {
+      setIdx((i) => i + 1);
+      resetBuild();
+    }
+  };
+
+  // Live read of what's currently on the bench, so mistakes are diagnosable.
+  const liveEl = p >= 1 && p <= MAX_Z ? ELEMENTS[p - 1] : null;
+  const liveCharge = p - e;
+  const liveLine = liveEl
+    ? `On your bench: ${liveEl.name}-${p + n}, ${liveCharge === 0 ? "neutral" : `charge ${chargeText(liveCharge)}`}.`
+    : "On your bench: set 1–20 protons.";
+
+  if (phase === "intro") {
+    return (
+      <div className="rounded-2xl p-10 text-center"
+        style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 68%, transparent)", border: "1px solid var(--color-border)" }}>
+        <Swords className="h-12 w-12 text-gold mx-auto mb-4" />
+        <h2 className="font-display text-2xl mb-2">The Builder's Trial</h2>
+        <p className="text-parchment text-sm max-w-md mx-auto mb-2">
+          15 randomized builds across 3 levels — neutral atoms, then ions, then isotope ions.
+          You get 2 attempts at each before the answer is revealed.
+        </p>
+        <p className="text-xs text-parchment/60 mb-6">13+ correct earns 3 stars · 10+ two · 7+ one. Stars pay out aurum.</p>
+        <label className="mb-6 inline-flex cursor-pointer items-center gap-2 text-xs uppercase tracking-[0.15em] text-parchment/70">
+          <input type="checkbox" checked={timed} onChange={(ev) => setTimed(ev.target.checked)} className="accent-[var(--color-gold)]" />
+          <Timer className="h-3.5 w-3.5" /> Timed run
+        </label>
+        <div>
+          <button onClick={start} className="btn-arcane btn-arcane-hover"><Swords className="h-4 w-4" /> Begin the Trial</button>
+        </div>
+        <BestRunPanel best={best} />
+      </div>
+    );
+  }
+
+  if (phase === "done") {
+    const stars = trialStars(score);
+    return (
+      <div className="rounded-2xl p-10 text-center"
+        style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 68%, transparent)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent)" }}>
+        <Trophy className="h-12 w-12 text-gold mx-auto mb-4" />
+        <h2 className="font-display text-3xl mb-2">{score === TRIAL_TOTAL ? "A flawless forging!" : "Trial complete"}</h2>
+        <p className="font-display text-5xl text-teal my-4">{score}/{TRIAL_TOTAL}</p>
+        <div className="mb-2 flex justify-center"><StarRow n={stars} size={5} /></div>
+        {timed && <p className="text-sm text-parchment/70 mb-2">Finished in {seconds}s</p>}
+        <p className="text-sm text-parchment mb-6">
+          {stars === 3 ? "Master builder — protons, electrons and neutrons all obey you."
+            : stars >= 1 ? "Solid work. Rerun the Trial to push for more stars."
+            : "Revisit the missions tab, then try the Trial again."}
+        </p>
+        <button onClick={start} className="btn-arcane btn-arcane-hover"><RefreshCw className="h-4 w-4" /> Run it again</button>
+        <div><BestRunPanel best={best} /></div>
+      </div>
+    );
+  }
+
+  if (!ch) return null;
+
+  return (
+    <div>
+      {/* Progress bar */}
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <span className="rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.2em]"
+          style={{ background: "color-mix(in oklab, var(--color-gold) 12%, transparent)", border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)", color: "var(--color-gold)" }}>
+          Level {ch.level} · {ch.tag}
+        </span>
+        <div className="flex items-center gap-4 text-xs uppercase tracking-[0.2em] text-parchment/60">
+          {timed && <span className="inline-flex items-center gap-1.5 font-display text-sm normal-case tracking-normal text-teal"><Timer className="h-4 w-4" /> {seconds}s</span>}
+          <span>Challenge {idx + 1} / {TRIAL_TOTAL}</span>
+          <span className="text-gold">Score {score}</span>
+        </div>
+      </div>
+
+      {/* Challenge card */}
+      <div className="rounded-2xl p-6"
+        style={{
+          background: `color-mix(in oklab, ${result === "correct" ? "var(--color-emerald-elixir)" : result === "revealed" ? "var(--color-crimson)" : "var(--color-slate-sunken)"} ${result === "pending" ? 68 : 10}%, transparent)`,
+          border: `1px solid color-mix(in oklab, ${result === "correct" ? "var(--color-emerald-elixir)" : result === "revealed" ? "var(--color-crimson)" : "var(--color-parchment)"} 30%, transparent)`,
+        }}>
+        <p className="font-display text-xl text-spectral">{ch.prompt}</p>
+        <p className="mt-2 text-sm text-parchment/70">{liveLine}</p>
+
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          <Stepper label="Protons"   hint="which element"  value={p} onChange={setP} min={1} max={MAX_Z} color="#e0b457" />
+          <Stepper label="Neutrons"  hint="which isotope"  value={n} onChange={setN} min={0} max={30}    color="#9aa7bd" />
+          <Stepper label="Electrons" hint="which charge"   value={e} onChange={setE} min={0} max={30}    color="#2dd4bf" />
+        </div>
+
+        {result === "pending" ? (
+          <div className="mt-5 flex flex-wrap items-center gap-4">
+            <button onClick={check} className="btn-arcane btn-arcane-hover"><Check className="h-4 w-4" /> Check my atom</button>
+            <span className="text-xs uppercase tracking-[0.15em]" style={{ color: attempts > 0 ? "var(--color-gold)" : "var(--color-parchment)" }}>
+              {attempts > 0 ? "Not quite — 1 attempt left. Recheck each particle count." : "2 attempts, then the answer is revealed."}
+            </span>
+          </div>
+        ) : (
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+            <span className="text-sm" style={{ color: result === "correct" ? "var(--color-emerald-elixir)" : "var(--color-crimson)" }}>
+              {result === "correct"
+                ? "Correct — that's exactly the particle recipe."
+                : `Revealed: it needs ${ch.p} protons${ch.n !== undefined ? `, ${ch.n} neutrons` : ""} and ${ch.e} electrons.`}
+            </span>
+            <button onClick={nextChallenge} className="btn-arcane btn-arcane-hover">
+              {idx + 1 >= TRIAL_TOTAL ? "See results" : "Next challenge"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AtomicBuilder() {
-  const { uid } = useUserProfile();
+  const { uid, profile } = useUserProfile();
+  const [tab, setTab] = useState<"missions" | "trial">("missions");
   const [protons, setProtons]     = useState(6); // Carbon by default
   const [neutrons, setNeutrons]   = useState(6);
   const [electrons, setElectrons] = useState(6);
@@ -189,13 +459,31 @@ function AtomicBuilder() {
   const setNeutral = () => setElectrons(protons);
   const reset = () => { setProtons(6); setNeutrons(6); setElectrons(6); };
 
+  const TabToggle = (
+    <div className="inline-flex rounded-full p-1" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }}>
+      {(["missions", "trial"] as const).map((t) => (
+        <button key={t} onClick={() => setTab(t)}
+          className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs tracking-[0.12em] uppercase transition"
+          style={tab === t ? { background: "color-mix(in oklab, var(--color-emerald-elixir) 18%, transparent)", color: "var(--color-emerald-elixir)" } : { color: "var(--color-parchment)" }}>
+          {t === "missions" ? <Target className="h-3.5 w-3.5" /> : <Swords className="h-3.5 w-3.5" />}
+          {t === "missions" ? "Missions" : "Trial"}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
     <ModuleShell
       title="Atomic Builder"
       eyebrow="Build-an-Atom Lab"
       icon={Atom}
       subtitle="Every atom in the universe is just three particles — protons, neutrons and electrons. Add or remove them here and watch which element you make, whether it's charged, and whether it's radioactive."
+      right={TabToggle}
     >
+      {tab === "trial" ? (
+        <AtomTrial uid={uid} best={profile?.trials?.["atomic-builder"]} />
+      ) : (
+      <>
       {/* Mission — the point of the lab, up top. */}
       <div className="mb-6 rounded-2xl p-5"
         style={{ background: `color-mix(in oklab, ${solved ? "var(--color-emerald-elixir)" : "var(--color-gold)"} ${solved ? 12 : 9}%, transparent)`, border: `1px solid color-mix(in oklab, ${solved ? "var(--color-emerald-elixir)" : "var(--color-gold)"} ${solved ? 45 : 30}%, transparent)`, boxShadow: solved ? "0 0 30px -12px var(--color-emerald-elixir)" : "none" }}>
@@ -339,6 +627,8 @@ function AtomicBuilder() {
           Scientists measure how much is left to <span className="text-spectral">date bones and artefacts</span> thousands of years old.
         </DidYouKnow>
       </div>
+      </>
+      )}
     </ModuleShell>
   );
 }

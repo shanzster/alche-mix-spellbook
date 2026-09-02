@@ -3,7 +3,7 @@ import {
   collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import type { Mastery, TopicGrade } from "./profile";
+import type { Mastery, StudentProfile, TopicGrade } from "./profile";
 
 // A class doc lives at classes/{CODE} — the join code *is* the document id.
 export interface ClassInfo {
@@ -125,4 +125,103 @@ export async function setStudentGrade(
 export async function getStudentPractice(studentUid: string): Promise<Record<string, number>> {
   const snap = await getDoc(doc(db, "users", studentUid));
   return (snap.data()?.practice as Record<string, number>) ?? {};
+}
+
+// ── Class analytics (Performance Matrix) ────────────────────────────────────
+
+/** One rostered student plus their live user doc (null until/unless it exists). */
+export interface StudentSnapshot {
+  uid: string;
+  name: string | null;
+  data: StudentProfile | null;
+}
+
+/**
+ * Live user docs for a whole roster — the same one-listener-per-student pattern
+ * as the Evidence feed. Read-only; `loading` clears once every doc has answered.
+ */
+export function useClassProfiles(roster: RosterEntry[]) {
+  const [students, setStudents] = useState<StudentSnapshot[]>([]);
+  const [loading, setLoading] = useState(true);
+  const rosterKey = roster.map((r) => r.uid).join(",");
+
+  useEffect(() => {
+    if (roster.length === 0) { setStudents([]); setLoading(false); return; }
+    setLoading(true);
+    const byUid: Record<string, StudentSnapshot> = {};
+    const answered = new Set<string>();
+    const flush = () => {
+      setStudents(roster.map((r) => byUid[r.uid] ?? { uid: r.uid, name: r.name ?? r.email, data: null }));
+      if (answered.size >= roster.length) setLoading(false);
+    };
+    const unsubs = roster.map((s) =>
+      onSnapshot(
+        doc(db, "users", s.uid),
+        (snap) => {
+          answered.add(s.uid);
+          byUid[s.uid] = {
+            uid: s.uid,
+            name: s.name ?? s.email,
+            data: snap.exists() ? ({ uid: s.uid, ...snap.data() } as StudentProfile) : null,
+          };
+          flush();
+        },
+        (err) => { console.error("useClassProfiles:", err); answered.add(s.uid); flush(); },
+      ),
+    );
+    return () => unsubs.forEach((u) => u());
+    // Re-subscribe only when the set of students changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rosterKey]);
+
+  return { students, loading };
+}
+
+/** Sum of the numeric practice counters (skips the `lastActiveAt` timestamp). */
+export function practiceTotal(practice: StudentProfile["practice"]): number {
+  if (!practice) return 0;
+  return Object.values(practice as Record<string, unknown>)
+    .reduce<number>((sum, v) => (typeof v === "number" ? sum + v : sum), 0);
+}
+
+/** Epoch ms of the student's last recorded activity, when derivable. */
+export function lastActiveMillis(practice: StudentProfile["practice"]): number | null {
+  const v = (practice as Record<string, unknown> | undefined)?.lastActiveAt;
+  if (v && typeof v === "object" && typeof (v as { toMillis?: unknown }).toMillis === "function") {
+    return (v as { toMillis(): number }).toMillis();
+  }
+  return null;
+}
+
+/** Roster-wide trouble signals for one curriculum concept. */
+export interface ConceptTrouble {
+  conceptId: string;
+  /** Total lapses (forgotten reviews) across the roster. */
+  lapses: number;
+  /** Students whose review of this concept is currently overdue. */
+  overdue: number;
+  /** Students with any review state for this concept. */
+  tracked: number;
+}
+
+/**
+ * Misconception radar: aggregates SM-2 review states across a roster and
+ * returns the concepts with trouble, worst first (most overdue, then lapses).
+ */
+export function aggregateConceptTrouble(
+  profiles: (StudentProfile | null)[],
+  now = Date.now(),
+): ConceptTrouble[] {
+  const byId: Record<string, ConceptTrouble> = {};
+  for (const p of profiles) {
+    for (const [conceptId, r] of Object.entries(p?.reviews ?? {})) {
+      const t = (byId[conceptId] ??= { conceptId, lapses: 0, overdue: 0, tracked: 0 });
+      t.tracked += 1;
+      t.lapses += r.lapses ?? 0;
+      if (r.dueAt <= now) t.overdue += 1;
+    }
+  }
+  return Object.values(byId)
+    .filter((t) => t.lapses > 0 || t.overdue > 0)
+    .sort((a, b) => b.overdue - a.overdue || b.lapses - a.lapses);
 }

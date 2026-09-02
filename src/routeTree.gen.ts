@@ -11,7 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TitrationRouteImport } from './routes/titration'
 import { Route as TeacherRouteImport } from './routes/teacher'
+import { Route as TableGameRouteImport } from './routes/table-game'
 import { Route as StudyRouteImport } from './routes/study'
+import { Route as StatesRouteImport } from './routes/states'
+import { Route as StartersRouteImport } from './routes/starters'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ScavengerRouteImport } from './routes/scavenger'
 import { Route as ScannerRouteImport } from './routes/scanner'
@@ -27,6 +30,7 @@ import { Route as GasLawsRouteImport } from './routes/gas-laws'
 import { Route as EquationBalancerRouteImport } from './routes/equation-balancer'
 import { Route as ElementsRouteImport } from './routes/elements'
 import { Route as DecayRouteImport } from './routes/decay'
+import { Route as CodexRouteImport } from './routes/codex'
 import { Route as CardsRouteImport } from './routes/cards'
 import { Route as AtomicBuilderRouteImport } from './routes/atomic-builder'
 import { Route as AppRouteImport } from './routes/app'
@@ -44,9 +48,24 @@ const TeacherRoute = TeacherRouteImport.update({
   path: '/teacher',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TableGameRoute = TableGameRouteImport.update({
+  id: '/table-game',
+  path: '/table-game',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StudyRoute = StudyRouteImport.update({
   id: '/study',
   path: '/study',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatesRoute = StatesRouteImport.update({
+  id: '/states',
+  path: '/states',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StartersRoute = StartersRouteImport.update({
+  id: '/starters',
+  path: '/starters',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SignupRoute = SignupRouteImport.update({
@@ -124,6 +143,11 @@ const DecayRoute = DecayRouteImport.update({
   path: '/decay',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CodexRoute = CodexRouteImport.update({
+  id: '/codex',
+  path: '/codex',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CardsRoute = CardsRouteImport.update({
   id: '/cards',
   path: '/cards',
@@ -162,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRoute
   '/atomic-builder': typeof AtomicBuilderRoute
   '/cards': typeof CardsRoute
+  '/codex': typeof CodexRoute
   '/decay': typeof DecayRoute
   '/elements': typeof ElementsRoute
   '/equation-balancer': typeof EquationBalancerRoute
@@ -177,7 +202,10 @@ export interface FileRoutesByFullPath {
   '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
   '/signup': typeof SignupRoute
+  '/starters': typeof StartersRoute
+  '/states': typeof StatesRoute
   '/study': typeof StudyRoute
+  '/table-game': typeof TableGameRoute
   '/teacher': typeof TeacherRoute
   '/titration': typeof TitrationRoute
 }
@@ -188,6 +216,7 @@ export interface FileRoutesByTo {
   '/app': typeof AppRoute
   '/atomic-builder': typeof AtomicBuilderRoute
   '/cards': typeof CardsRoute
+  '/codex': typeof CodexRoute
   '/decay': typeof DecayRoute
   '/elements': typeof ElementsRoute
   '/equation-balancer': typeof EquationBalancerRoute
@@ -203,7 +232,10 @@ export interface FileRoutesByTo {
   '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
   '/signup': typeof SignupRoute
+  '/starters': typeof StartersRoute
+  '/states': typeof StatesRoute
   '/study': typeof StudyRoute
+  '/table-game': typeof TableGameRoute
   '/teacher': typeof TeacherRoute
   '/titration': typeof TitrationRoute
 }
@@ -215,6 +247,7 @@ export interface FileRoutesById {
   '/app': typeof AppRoute
   '/atomic-builder': typeof AtomicBuilderRoute
   '/cards': typeof CardsRoute
+  '/codex': typeof CodexRoute
   '/decay': typeof DecayRoute
   '/elements': typeof ElementsRoute
   '/equation-balancer': typeof EquationBalancerRoute
@@ -230,7 +263,10 @@ export interface FileRoutesById {
   '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
   '/signup': typeof SignupRoute
+  '/starters': typeof StartersRoute
+  '/states': typeof StatesRoute
   '/study': typeof StudyRoute
+  '/table-game': typeof TableGameRoute
   '/teacher': typeof TeacherRoute
   '/titration': typeof TitrationRoute
 }
@@ -243,6 +279,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/atomic-builder'
     | '/cards'
+    | '/codex'
     | '/decay'
     | '/elements'
     | '/equation-balancer'
@@ -258,7 +295,10 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/scavenger'
     | '/signup'
+    | '/starters'
+    | '/states'
     | '/study'
+    | '/table-game'
     | '/teacher'
     | '/titration'
   fileRoutesByTo: FileRoutesByTo
@@ -269,6 +309,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/atomic-builder'
     | '/cards'
+    | '/codex'
     | '/decay'
     | '/elements'
     | '/equation-balancer'
@@ -284,7 +325,10 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/scavenger'
     | '/signup'
+    | '/starters'
+    | '/states'
     | '/study'
+    | '/table-game'
     | '/teacher'
     | '/titration'
   id:
@@ -295,6 +339,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/atomic-builder'
     | '/cards'
+    | '/codex'
     | '/decay'
     | '/elements'
     | '/equation-balancer'
@@ -310,7 +355,10 @@ export interface FileRouteTypes {
     | '/scanner'
     | '/scavenger'
     | '/signup'
+    | '/starters'
+    | '/states'
     | '/study'
+    | '/table-game'
     | '/teacher'
     | '/titration'
   fileRoutesById: FileRoutesById
@@ -322,6 +370,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRoute
   AtomicBuilderRoute: typeof AtomicBuilderRoute
   CardsRoute: typeof CardsRoute
+  CodexRoute: typeof CodexRoute
   DecayRoute: typeof DecayRoute
   ElementsRoute: typeof ElementsRoute
   EquationBalancerRoute: typeof EquationBalancerRoute
@@ -337,7 +386,10 @@ export interface RootRouteChildren {
   ScannerRoute: typeof ScannerRoute
   ScavengerRoute: typeof ScavengerRoute
   SignupRoute: typeof SignupRoute
+  StartersRoute: typeof StartersRoute
+  StatesRoute: typeof StatesRoute
   StudyRoute: typeof StudyRoute
+  TableGameRoute: typeof TableGameRoute
   TeacherRoute: typeof TeacherRoute
   TitrationRoute: typeof TitrationRoute
 }
@@ -358,11 +410,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TeacherRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/table-game': {
+      id: '/table-game'
+      path: '/table-game'
+      fullPath: '/table-game'
+      preLoaderRoute: typeof TableGameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/study': {
       id: '/study'
       path: '/study'
       fullPath: '/study'
       preLoaderRoute: typeof StudyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/states': {
+      id: '/states'
+      path: '/states'
+      fullPath: '/states'
+      preLoaderRoute: typeof StatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/starters': {
+      id: '/starters'
+      path: '/starters'
+      fullPath: '/starters'
+      preLoaderRoute: typeof StartersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/signup': {
@@ -470,6 +543,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DecayRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/codex': {
+      id: '/codex'
+      path: '/codex'
+      fullPath: '/codex'
+      preLoaderRoute: typeof CodexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cards': {
       id: '/cards'
       path: '/cards'
@@ -522,6 +602,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRoute,
   AtomicBuilderRoute: AtomicBuilderRoute,
   CardsRoute: CardsRoute,
+  CodexRoute: CodexRoute,
   DecayRoute: DecayRoute,
   ElementsRoute: ElementsRoute,
   EquationBalancerRoute: EquationBalancerRoute,
@@ -537,7 +618,10 @@ const rootRouteChildren: RootRouteChildren = {
   ScannerRoute: ScannerRoute,
   ScavengerRoute: ScavengerRoute,
   SignupRoute: SignupRoute,
+  StartersRoute: StartersRoute,
+  StatesRoute: StatesRoute,
   StudyRoute: StudyRoute,
+  TableGameRoute: TableGameRoute,
   TeacherRoute: TeacherRoute,
   TitrationRoute: TitrationRoute,
 }

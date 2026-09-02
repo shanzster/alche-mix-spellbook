@@ -1,9 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Minus, Plus, Check, Timer, GraduationCap, RotateCcw, ArrowRight, Trophy, Scale } from "lucide-react";
+import { Minus, Plus, Check, Timer, GraduationCap, RotateCcw, ArrowRight, Trophy, Scale, Star } from "lucide-react";
 import { ModuleShell } from "../components/ModuleShell";
 import { RequireAuth } from "../components/RequireAuth";
-import { useUserProfile, logPractice } from "../lib/profile";
+import { useUserProfile, logPractice, recordTrial, type TrialResult } from "../lib/profile";
 import { ConceptCard, DidYouKnow } from "../components/Learn";
 
 export const Route = createFileRoute("/equation-balancer")({
@@ -15,19 +15,49 @@ export const Route = createFileRoute("/equation-balancer")({
 });
 
 // ── Data ────────────────────────────────────────────────────────────────────
+type Difficulty = "easy" | "medium" | "hard";
 interface Species { formula: string; answer: number }
-interface Equation { id: string; reactants: Species[]; products: Species[] }
+interface Equation { id: string; difficulty: Difficulty; reactants: Species[]; products: Species[] }
 
+// All formulas are parser-simple (no parentheses); every `answer` set balances.
 const EQUATIONS: Equation[] = [
-  { id: "water",    reactants: [{ formula: "H2", answer: 2 }, { formula: "O2", answer: 1 }], products: [{ formula: "H2O", answer: 2 }] },
-  { id: "ammonia",  reactants: [{ formula: "N2", answer: 1 }, { formula: "H2", answer: 3 }], products: [{ formula: "NH3", answer: 2 }] },
-  { id: "methane",  reactants: [{ formula: "CH4", answer: 1 }, { formula: "O2", answer: 2 }], products: [{ formula: "CO2", answer: 1 }, { formula: "H2O", answer: 2 }] },
-  { id: "salt",     reactants: [{ formula: "Na", answer: 2 }, { formula: "Cl2", answer: 1 }], products: [{ formula: "NaCl", answer: 2 }] },
-  { id: "rust",     reactants: [{ formula: "Fe", answer: 4 }, { formula: "O2", answer: 3 }], products: [{ formula: "Fe2O3", answer: 2 }] },
-  { id: "propane",  reactants: [{ formula: "C3H8", answer: 1 }, { formula: "O2", answer: 5 }], products: [{ formula: "CO2", answer: 3 }, { formula: "H2O", answer: 4 }] },
-  { id: "peroxide", reactants: [{ formula: "H2O2", answer: 2 }], products: [{ formula: "H2O", answer: 2 }, { formula: "O2", answer: 1 }] },
-  { id: "alumina",  reactants: [{ formula: "Al", answer: 4 }, { formula: "O2", answer: 3 }], products: [{ formula: "Al2O3", answer: 2 }] },
+  // Easy — simple synthesis, two or three species.
+  { id: "water",     difficulty: "easy", reactants: [{ formula: "H2", answer: 2 }, { formula: "O2", answer: 1 }], products: [{ formula: "H2O", answer: 2 }] },
+  { id: "salt",      difficulty: "easy", reactants: [{ formula: "Na", answer: 2 }, { formula: "Cl2", answer: 1 }], products: [{ formula: "NaCl", answer: 2 }] },
+  { id: "ammonia",   difficulty: "easy", reactants: [{ formula: "N2", answer: 1 }, { formula: "H2", answer: 3 }], products: [{ formula: "NH3", answer: 2 }] },
+  { id: "hcl",       difficulty: "easy", reactants: [{ formula: "H2", answer: 1 }, { formula: "Cl2", answer: 1 }], products: [{ formula: "HCl", answer: 2 }] },
+  { id: "magnesia",  difficulty: "easy", reactants: [{ formula: "Mg", answer: 2 }, { formula: "O2", answer: 1 }], products: [{ formula: "MgO", answer: 2 }] },
+  { id: "quicklime", difficulty: "easy", reactants: [{ formula: "Ca", answer: 2 }, { formula: "O2", answer: 1 }], products: [{ formula: "CaO", answer: 2 }] },
+  { id: "kbr",       difficulty: "easy", reactants: [{ formula: "K", answer: 2 }, { formula: "Br2", answer: 1 }], products: [{ formula: "KBr", answer: 2 }] },
+  { id: "li3n",      difficulty: "easy", reactants: [{ formula: "Li", answer: 6 }, { formula: "N2", answer: 1 }], products: [{ formula: "Li3N", answer: 2 }] },
+  // Medium — decomposition, displacement, metal oxides.
+  { id: "peroxide",  difficulty: "medium", reactants: [{ formula: "H2O2", answer: 2 }], products: [{ formula: "H2O", answer: 2 }, { formula: "O2", answer: 1 }] },
+  { id: "rust",      difficulty: "medium", reactants: [{ formula: "Fe", answer: 4 }, { formula: "O2", answer: 3 }], products: [{ formula: "Fe2O3", answer: 2 }] },
+  { id: "alumina",   difficulty: "medium", reactants: [{ formula: "Al", answer: 4 }, { formula: "O2", answer: 3 }], products: [{ formula: "Al2O3", answer: 2 }] },
+  { id: "chlorate",  difficulty: "medium", reactants: [{ formula: "KClO3", answer: 2 }], products: [{ formula: "KCl", answer: 2 }, { formula: "O2", answer: 3 }] },
+  { id: "zinc-acid", difficulty: "medium", reactants: [{ formula: "Zn", answer: 1 }, { formula: "HCl", answer: 2 }], products: [{ formula: "ZnCl2", answer: 1 }, { formula: "H2", answer: 1 }] },
+  { id: "na-water",  difficulty: "medium", reactants: [{ formula: "Na", answer: 2 }, { formula: "H2O", answer: 2 }], products: [{ formula: "NaOH", answer: 2 }, { formula: "H2", answer: 1 }] },
+  { id: "fecl3",     difficulty: "medium", reactants: [{ formula: "Fe", answer: 2 }, { formula: "Cl2", answer: 3 }], products: [{ formula: "FeCl3", answer: 2 }] },
+  { id: "methane",   difficulty: "medium", reactants: [{ formula: "CH4", answer: 1 }, { formula: "O2", answer: 2 }], products: [{ formula: "CO2", answer: 1 }, { formula: "H2O", answer: 2 }] },
+  // Hard — combustion and redox with big coefficients.
+  { id: "propane",   difficulty: "hard", reactants: [{ formula: "C3H8", answer: 1 }, { formula: "O2", answer: 5 }], products: [{ formula: "CO2", answer: 3 }, { formula: "H2O", answer: 4 }] },
+  { id: "ethane",    difficulty: "hard", reactants: [{ formula: "C2H6", answer: 2 }, { formula: "O2", answer: 7 }], products: [{ formula: "CO2", answer: 4 }, { formula: "H2O", answer: 6 }] },
+  { id: "acetylene", difficulty: "hard", reactants: [{ formula: "C2H2", answer: 2 }, { formula: "O2", answer: 5 }], products: [{ formula: "CO2", answer: 4 }, { formula: "H2O", answer: 2 }] },
+  { id: "ethanol",   difficulty: "hard", reactants: [{ formula: "C2H6O", answer: 1 }, { formula: "O2", answer: 3 }], products: [{ formula: "CO2", answer: 2 }, { formula: "H2O", answer: 3 }] },
+  { id: "methanol",  difficulty: "hard", reactants: [{ formula: "CH4O", answer: 2 }, { formula: "O2", answer: 3 }], products: [{ formula: "CO2", answer: 2 }, { formula: "H2O", answer: 4 }] },
+  { id: "glucose",   difficulty: "hard", reactants: [{ formula: "C6H12O6", answer: 1 }, { formula: "O2", answer: 6 }], products: [{ formula: "CO2", answer: 6 }, { formula: "H2O", answer: 6 }] },
+  { id: "nh3-burn",  difficulty: "hard", reactants: [{ formula: "NH3", answer: 4 }, { formula: "O2", answer: 3 }], products: [{ formula: "N2", answer: 2 }, { formula: "H2O", answer: 6 }] },
+  { id: "ostwald",   difficulty: "hard", reactants: [{ formula: "NH3", answer: 4 }, { formula: "O2", answer: 5 }], products: [{ formula: "NO", answer: 4 }, { formula: "H2O", answer: 6 }] },
 ];
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
 
 /** Parse a simple formula (no parentheses) into an element→count map. */
 function parseFormula(formula: string): Record<string, number> {
@@ -178,10 +208,45 @@ function EquationCard({ eq, onSolved }: { eq: Equation; onSolved: () => void }) 
 }
 
 const ATTACK_COUNT = 5;
+const attackStars = (timeSec: number) => (timeSec < 60 ? 3 : timeSec < 120 ? 2 : 1);
+
+const DIFFICULTIES: { key: Difficulty; label: string; blurb: string }[] = [
+  { key: "easy",   label: "Apprentice", blurb: "simple synthesis" },
+  { key: "medium", label: "Adept",      blurb: "decomposition & displacement" },
+  { key: "hard",   label: "Master",     blurb: "combustion, big coefficients" },
+];
+
+function StarRow({ n }: { n: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      {[0, 1, 2].map((i) => (
+        <Star key={i} className="h-4 w-4"
+          style={{
+            color: i < n ? "var(--color-gold)" : "color-mix(in oklab, var(--color-parchment) 35%, transparent)",
+            fill: i < n ? "var(--color-gold)" : "transparent",
+          }} />
+      ))}
+    </span>
+  );
+}
+
+function BestTimePanel({ best }: { best?: TrialResult }) {
+  if (!best?.timeSec) return null;
+  return (
+    <div className="mx-auto mt-5 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-xl px-4 py-2.5 text-sm"
+      style={{ background: "color-mix(in oklab, var(--color-gold) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)" }}>
+      <span className="text-[10px] uppercase tracking-[0.2em] text-parchment/60">Fastest clear</span>
+      <span className="font-display text-gold">{best.timeSec}s</span>
+      <StarRow n={best.stars} />
+      <span className="text-xs text-parchment/50">{best.plays} run{best.plays === 1 ? "" : "s"}</span>
+    </div>
+  );
+}
 
 function EquationBalancer() {
-  const { uid } = useUserProfile();
+  const { uid, profile } = useUserProfile();
   const [mode, setMode] = useState<"practice" | "attack">("practice");
+  const [difficulty, setDifficulty] = useState<Difficulty>("easy");
 
   // Practice state
   const [pIdx, setPIdx] = useState(0);
@@ -201,8 +266,8 @@ function EquationBalancer() {
   }, [running]);
 
   const startAttack = () => {
-    const shuffled = [...EQUATIONS].sort((a, b) => a.id.localeCompare(b.id)).slice(0, ATTACK_COUNT);
-    setAttackList(shuffled);
+    const pool = EQUATIONS.filter((eq) => eq.difficulty === difficulty);
+    setAttackList(shuffle(pool).slice(0, ATTACK_COUNT));
     setAIdx(0);
     setSeconds(0);
     setFinished(false);
@@ -220,11 +285,21 @@ function EquationBalancer() {
     if (aIdx + 1 >= attackList.length) {
       setRunning(false);
       setFinished(true);
-      if (uid) logPractice(uid, "equation-balancer", attackList.length);
+      if (uid) {
+        logPractice(uid, "equation-balancer", attackList.length);
+        recordTrial(uid, "equation-balancer", {
+          score: ATTACK_COUNT,
+          outOf: ATTACK_COUNT,
+          stars: attackStars(seconds),
+          timeSec: seconds,
+        });
+      }
     } else {
       setAIdx((i) => i + 1);
     }
   };
+
+  const bestAttack = profile?.trials?.["equation-balancer"];
 
   const ModeToggle = (
     <div className="inline-flex rounded-full p-1" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }}>
@@ -276,11 +351,13 @@ function EquationBalancer() {
           <Trophy className="h-12 w-12 text-gold mx-auto mb-4" />
           <h2 className="font-display text-3xl mb-2">All balanced!</h2>
           <p className="text-parchment mb-1">You cleared {ATTACK_COUNT} equations in</p>
-          <p className="font-display text-4xl text-teal mb-6">{seconds}s</p>
+          <p className="font-display text-4xl text-teal mb-3">{seconds}s</p>
+          <div className="mb-4 flex justify-center"><StarRow n={attackStars(seconds)} /></div>
           <p className="text-sm text-parchment mb-6">Every atom is accounted for on both sides — that's a balanced equation.</p>
           <button onClick={startAttack} className="btn-arcane btn-arcane-hover">
             <Timer className="h-4 w-4" /> Race again
           </button>
+          <div><BestTimePanel best={bestAttack} /></div>
         </div>
       ) : running ? (
         <div>
@@ -297,10 +374,26 @@ function EquationBalancer() {
           style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 68%, transparent)", border: "1px solid var(--color-border)" }}>
           <Timer className="h-12 w-12 text-teal mx-auto mb-4" />
           <h2 className="font-display text-2xl mb-2">Time Attack</h2>
-          <p className="text-parchment text-sm mb-6 max-w-sm mx-auto">Balance {ATTACK_COUNT} equations as fast as you can. The clock starts the moment you hit go.</p>
+          <p className="text-parchment text-sm mb-2 max-w-sm mx-auto">Balance {ATTACK_COUNT} equations as fast as you can. The clock starts the moment you hit go.</p>
+          <p className="text-xs text-parchment/60 mb-6">Under 60s earns 3 stars · under 120s two · any finish one.</p>
+          {/* Difficulty picker */}
+          <div className="mb-6 flex flex-wrap justify-center gap-2">
+            {DIFFICULTIES.map((d) => (
+              <button key={d.key} onClick={() => setDifficulty(d.key)}
+                className="rounded-xl px-4 py-2.5 text-left transition hover:-translate-y-0.5"
+                style={{
+                  background: `color-mix(in oklab, ${difficulty === d.key ? "var(--color-emerald-elixir)" : "var(--color-slate-sunken)"} ${difficulty === d.key ? 14 : 62}%, transparent)`,
+                  border: `1px solid color-mix(in oklab, ${difficulty === d.key ? "var(--color-emerald-elixir)" : "var(--color-parchment)"} ${difficulty === d.key ? 45 : 20}%, transparent)`,
+                }}>
+                <div className="font-display text-sm" style={{ color: difficulty === d.key ? "var(--color-emerald-elixir)" : "var(--color-spectral)" }}>{d.label}</div>
+                <div className="text-[10px] uppercase tracking-[0.12em] text-parchment/55">{d.blurb}</div>
+              </button>
+            ))}
+          </div>
           <button onClick={startAttack} className="btn-arcane btn-arcane-hover">
             <Timer className="h-4 w-4" /> Start the clock
           </button>
+          <div><BestTimePanel best={bestAttack} /></div>
         </div>
       )}
     </ModuleShell>

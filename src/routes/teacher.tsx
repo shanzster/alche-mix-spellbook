@@ -1,17 +1,20 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   GraduationCap, Users, ClipboardCheck, Plus, Copy, Check, LogOut, BookOpen,
   Camera, Layers, Sparkles, ChevronLeft, ScanSearch, Clock, X, ImageOff, Loader2,
+  AlertTriangle, Award, ChevronDown, ChevronRight, Flame, FlaskConical, Star,
 } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { RequireRole } from "../components/RequireRole";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { signOut } from "../lib/auth";
-import { useUserProfile, type Mastery } from "../lib/profile";
+import { useUserProfile, type Mastery, type PathProgress, type PathStage } from "../lib/profile";
+import { CURRICULUM, conceptById } from "../lib/curriculum";
 import {
   createClass, useTeacherClasses, useRoster, getStudentGrades, setStudentGrade,
-  GRADE_TOPICS, type ClassInfo, type RosterEntry,
+  useClassProfiles, practiceTotal, lastActiveMillis, aggregateConceptTrouble,
+  GRADE_TOPICS, type ClassInfo, type RosterEntry, type StudentSnapshot,
 } from "../lib/teacher";
 import {
   useClassEvidence, reviewEvidence, isPendingReview, type TeacherEvidenceEntry,
@@ -340,17 +343,276 @@ function EvidenceTab({ classes }: { classes: ClassInfo[] }) {
   );
 }
 
+// ── Class Performance Matrix ────────────────────────────────────────────────
+const STAGE_META: Record<PathStage | "not-started", { label: string; color: string; fill: number }> = {
+  "not-started": { label: "—", color: "var(--color-parchment)", fill: 6 },
+  learn: { label: "Learn", color: "var(--color-wraith)", fill: 16 },
+  practise: { label: "Practise", color: "var(--color-gold)", fill: 16 },
+  assess: { label: "Assess", color: "var(--color-emerald-elixir)", fill: 12 },
+  done: { label: "Done", color: "var(--color-emerald-elixir)", fill: 26 },
+};
+
+/** "reaction-theatre" → "Reaction Theatre" (trial ids are kebab-cased module ids). */
+const prettyId = (id: string) => id.replace(/[-_]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+function daysAgoLabel(ms: number | null): string | null {
+  if (ms == null) return null;
+  const d = Math.floor((Date.now() - ms) / 86_400_000);
+  return d <= 0 ? "today" : d === 1 ? "1 day ago" : `${d} days ago`;
+}
+
+function StageChip({ pp }: { pp?: PathProgress }) {
+  const meta = STAGE_META[pp?.stage ?? "not-started"];
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="rounded-full px-2 py-0.5 text-[10px] tracking-[0.08em] uppercase whitespace-nowrap"
+        style={{
+          color: meta.color,
+          background: `color-mix(in oklab, ${meta.color} ${meta.fill}%, transparent)`,
+          border: `1px solid color-mix(in oklab, ${meta.color} ${meta.fill + 14}%, transparent)`,
+        }}>
+        {meta.label}
+      </span>
+      {pp?.best != null && <span className="text-[10px] text-parchment/60">{Math.round(pp.best * 100)}%</span>}
+    </div>
+  );
+}
+
+/** Expanded per-student drill-down under a matrix row. */
+function StudentDetail({ s }: { s: StudentSnapshot }) {
+  const d = s.data;
+  if (!d) return <p className="text-xs text-parchment/50">No profile data recorded for this student yet.</p>;
+  const trials = Object.entries(d.trials ?? {}).sort(([a], [b]) => a.localeCompare(b));
+  const stats: { icon: typeof Flame; label: string; value: string; color: string }[] = [
+    { icon: Flame, label: "Starter streak", value: `${d.starterStreak?.count ?? 0} day${(d.starterStreak?.count ?? 0) === 1 ? "" : "s"}`, color: "var(--color-gold)" },
+    { icon: Award, label: "Badges", value: String(d.badges?.length ?? 0), color: "var(--color-emerald-elixir)" },
+    { icon: FlaskConical, label: "Compounds forged", value: String(d.compounds?.length ?? 0), color: "var(--color-wraith)" },
+    { icon: BookOpen, label: "Grimoire cards", value: String(d.grimoire?.length ?? 0), color: "var(--color-emerald-elixir)" },
+    { icon: Sparkles, label: "Aurum", value: String(d.aurum ?? 0), color: "var(--color-gold)" },
+  ];
+
+  return (
+    <div className="space-y-4">
+      {/* Quick stats */}
+      <div className="flex flex-wrap gap-2">
+        {stats.map((st) => (
+          <span key={st.label} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px]"
+            style={{ background: `color-mix(in oklab, ${st.color} 10%, transparent)`, border: `1px solid color-mix(in oklab, ${st.color} 25%, transparent)` }}>
+            <st.icon className="h-3 w-3" style={{ color: st.color }} />
+            <span className="text-parchment/70">{st.label}</span>
+            <span className="font-display" style={{ color: st.color }}>{st.value}</span>
+          </span>
+        ))}
+      </div>
+
+      {/* Lesson-path breakdown */}
+      <div>
+        <p className="text-[10px] tracking-[0.18em] uppercase text-parchment/50 mb-2">Lesson paths</p>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {CURRICULUM.map((t) => {
+            const pp = d.pathProgress?.[t.id];
+            return (
+              <div key={t.id} className="flex items-center justify-between gap-2 rounded-lg px-3 py-2"
+                style={{ background: "color-mix(in oklab, var(--color-mist) 40%, transparent)", border: "1px solid var(--color-border)" }}>
+                <span className="text-xs truncate">{t.title}</span>
+                <StageChip pp={pp} />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Trial results */}
+      <div>
+        <p className="text-[10px] tracking-[0.18em] uppercase text-parchment/50 mb-2">Trials</p>
+        {trials.length === 0 ? (
+          <p className="text-xs text-parchment/50">No trials attempted yet.</p>
+        ) : (
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {trials.map(([id, t]) => (
+              <div key={id} className="rounded-lg px-3 py-2" style={{ background: "color-mix(in oklab, var(--color-mist) 40%, transparent)", border: "1px solid var(--color-border)" }}>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs truncate">{prettyId(id)}</span>
+                  <span className="flex gap-0.5 flex-shrink-0">
+                    {[0, 1, 2].map((i) => (
+                      <Star key={i} className="h-3 w-3" style={i < t.stars ? { color: "var(--color-gold)", fill: "var(--color-gold)" } : { color: "color-mix(in oklab, var(--color-parchment) 30%, transparent)" }} />
+                    ))}
+                  </span>
+                </div>
+                <p className="text-[10px] text-parchment/55 mt-1">
+                  Best {t.best}/{t.outOf} · {t.plays} play{t.plays === 1 ? "" : "s"}{t.timeSec != null ? ` · ${t.timeSec}s` : ""}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Misconception radar — concepts the class is collectively struggling with. */
+function StrugglePanel({ students, rosterSize }: { students: StudentSnapshot[]; rosterSize: number }) {
+  const trouble = aggregateConceptTrouble(students.map((s) => s.data)).slice(0, 6);
+  return (
+    <div className="rounded-2xl p-5" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
+      <h3 className="font-display text-base mb-1 inline-flex items-center gap-2">
+        <AlertTriangle className="h-4 w-4" style={{ color: "var(--color-gold)" }} /> Struggling concepts
+      </h3>
+      <p className="text-xs text-parchment/50 mb-4">Aggregated from each student's spaced-repetition reviews — overdue cards and repeated lapses flag likely misconceptions.</p>
+      {trouble.length === 0 ? (
+        <p className="text-xs text-parchment/50">No trouble signals yet — no overdue reviews or lapses across this class.</p>
+      ) : (
+        <div className="space-y-2">
+          {trouble.map((t) => {
+            const hit = conceptById(t.conceptId);
+            return (
+              <div key={t.conceptId} className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 rounded-xl px-3 py-2.5"
+                style={{ background: "color-mix(in oklab, var(--color-mist) 40%, transparent)", border: "1px solid var(--color-border)" }}>
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm">{hit?.concept.title ?? prettyId(t.conceptId)}</span>
+                  {hit && <span className="ml-2 text-[10px] tracking-[0.12em] uppercase text-parchment/45">{hit.topic.title}</span>}
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0 text-[11px]">
+                  {t.overdue > 0 && (
+                    <span className="inline-flex items-center gap-1" style={{ color: "var(--color-gold)" }}>
+                      <Clock className="h-3 w-3" /> {t.overdue} of {rosterSize} overdue
+                    </span>
+                  )}
+                  {t.lapses > 0 && (
+                    <span className="inline-flex items-center gap-1" style={{ color: "var(--color-crimson)" }}>
+                      <X className="h-3 w-3" /> {t.lapses} lapse{t.lapses === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MatrixTab({ classes }: { classes: ClassInfo[] }) {
+  const [classId, setClassId] = useState<string | null>(classes[0]?.id ?? null);
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const roster = useRoster(classId);
+  const { students, loading } = useClassProfiles(roster);
+
+  if (classes.length === 0)
+    return <p className="text-sm text-parchment/60">Create a class first to see its performance matrix.</p>;
+
+  // The class's trial set — the union of every trial anyone has attempted.
+  const trialIds = Array.from(new Set(students.flatMap((s) => Object.keys(s.data?.trials ?? {}))));
+  const maxStars = trialIds.length * 3;
+  const columnCount = CURRICULUM.length + 3; // name + topics + trials + engagement
+
+  return (
+    <div className="space-y-6">
+      {/* Class selector */}
+      <div className="flex flex-wrap gap-2">
+        {classes.map((c) => (
+          <button key={c.id} onClick={() => { setClassId(c.id); setExpanded(null); }}
+            className="rounded-full px-4 py-1.5 text-xs tracking-[0.1em] uppercase transition"
+            style={classId === c.id ? { background: `color-mix(in oklab, ${T_ACCENT} 18%, transparent)`, color: T_ACCENT } : { color: "var(--color-parchment)", border: "1px solid var(--color-border)" }}>
+            {c.name}
+          </button>
+        ))}
+      </div>
+
+      {roster.length === 0 ? (
+        <p className="text-sm text-parchment/50">No students enrolled in this class yet.</p>
+      ) : loading ? (
+        <div className="flex items-center justify-center gap-2 rounded-2xl py-14 text-sm text-parchment/60"
+          style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px solid var(--color-border)" }}>
+          <Loader2 className="h-4 w-4 animate-spin" /> Gathering class data…
+        </div>
+      ) : (
+        <>
+          {/* Matrix */}
+          <div className="rounded-2xl overflow-hidden" style={{ border: "1px solid var(--color-border)" }}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left" style={{ minWidth: "760px", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 80%, transparent)" }}>
+                    <th className="px-4 py-3 text-[10px] tracking-[0.18em] uppercase text-parchment/50 font-normal">Student</th>
+                    {CURRICULUM.map((t) => (
+                      <th key={t.id} className="px-2 py-3 text-center text-[10px] tracking-[0.1em] uppercase text-parchment/50 font-normal">{t.title}</th>
+                    ))}
+                    <th className="px-2 py-3 text-center text-[10px] tracking-[0.1em] uppercase text-parchment/50 font-normal">Trials</th>
+                    <th className="px-2 py-3 text-center text-[10px] tracking-[0.1em] uppercase text-parchment/50 font-normal">Engagement</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {students.map((s) => {
+                    const open = expanded === s.uid;
+                    const stars = Object.values(s.data?.trials ?? {}).reduce((sum, t) => sum + t.stars, 0);
+                    const total = practiceTotal(s.data?.practice);
+                    const active = daysAgoLabel(lastActiveMillis(s.data?.practice));
+                    const Chevron = open ? ChevronDown : ChevronRight;
+                    return (
+                      <Fragment key={s.uid}>
+                        <tr onClick={() => setExpanded(open ? null : s.uid)}
+                          className="cursor-pointer transition hover:bg-teal/5"
+                          style={{ borderTop: "1px solid var(--color-border)", background: open ? "color-mix(in oklab, var(--color-emerald-elixir) 6%, transparent)" : "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)" }}>
+                          <td className="px-4 py-3">
+                            <span className="inline-flex items-center gap-1.5 font-display text-sm">
+                              <Chevron className="h-3.5 w-3.5 text-parchment/40 flex-shrink-0" /> {s.name ?? "Student"}
+                            </span>
+                          </td>
+                          {CURRICULUM.map((t) => (
+                            <td key={t.id} className="px-2 py-3 text-center"><StageChip pp={s.data?.pathProgress?.[t.id]} /></td>
+                          ))}
+                          <td className="px-2 py-3 text-center">
+                            {maxStars === 0 ? (
+                              <span className="text-xs text-parchment/40">—</span>
+                            ) : (
+                              <span className="text-xs whitespace-nowrap" style={{ color: stars > 0 ? "var(--color-gold)" : "color-mix(in oklab, var(--color-parchment) 45%, transparent)" }}>
+                                {stars}★ / {maxStars}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-2 py-3 text-center">
+                            <div className="flex flex-col items-center gap-0.5">
+                              <span className="text-xs text-parchment/80 whitespace-nowrap">{total} action{total === 1 ? "" : "s"}</span>
+                              {active && <span className="text-[10px] text-parchment/50 whitespace-nowrap">{active}</span>}
+                            </div>
+                          </td>
+                        </tr>
+                        {open && (
+                          <tr style={{ borderTop: "1px solid var(--color-border)" }}>
+                            <td colSpan={columnCount} className="px-4 py-4" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 40%, transparent)" }}>
+                              <StudentDetail s={s} />
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Misconception radar */}
+          <StrugglePanel students={students} rosterSize={roster.length} />
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Scaffolded (AI / later) tools ───────────────────────────────────────────
 const SOON = [
   { icon: Layers, title: "Quiz Builder", desc: "Configure bonding targets, timed balancing & 3D identification quizzes (§2)." },
   { icon: Camera, title: "Mission Configurator", desc: "Assign specific elements per lesson & lock/unlock simulation modules (§3)." },
-  { icon: Sparkles, title: "Class Performance Matrix", desc: "Aggregate accuracy per module with high-error concept flags (§4)." },
 ];
 
 function TeacherConsole() {
   const { uid, profile } = useUserProfile();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"classes" | "gradebook" | "evidence" | "tools">("classes");
+  const [tab, setTab] = useState<"classes" | "gradebook" | "evidence" | "matrix" | "tools">("classes");
   const { classes } = useTeacherClasses(uid);
   const name = profile?.displayName?.split(" ")[0] ?? profile?.email?.split("@")[0] ?? "Educator";
 
@@ -358,6 +620,7 @@ function TeacherConsole() {
     { key: "classes", label: "Classes", icon: Users },
     { key: "gradebook", label: "Gradebook", icon: ClipboardCheck },
     { key: "evidence", label: "Evidence", icon: ScanSearch },
+    { key: "matrix", label: "Performance", icon: Sparkles },
     { key: "tools", label: "More Tools", icon: BookOpen },
   ] as const;
 
@@ -396,6 +659,7 @@ function TeacherConsole() {
         {tab === "classes" && <ClassesTab teacherId={uid ?? ""} teacherName={profile?.displayName ?? profile?.email ?? null} classes={classes} />}
         {tab === "gradebook" && <GradebookTab classes={classes} />}
         {tab === "evidence" && <EvidenceTab classes={classes} />}
+        {tab === "matrix" && <MatrixTab classes={classes} />}
         {tab === "tools" && (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {SOON.map((s) => (

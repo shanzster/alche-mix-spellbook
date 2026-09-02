@@ -1,11 +1,28 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { BookMarked, Lock, ScanLine, Sparkles, X, CalendarDays, ChevronRight, Printer, FlaskConical } from "lucide-react";
+import {
+  BookMarked,
+  Lock,
+  ScanLine,
+  Sparkles,
+  X,
+  CalendarDays,
+  ChevronRight,
+  Printer,
+  FlaskConical,
+  Compass,
+  Check,
+  Monitor,
+  Smartphone,
+} from "lucide-react";
 import { ModuleShell } from "../components/ModuleShell";
 import { RequireAuth } from "../components/RequireAuth";
 import { AR_ELEMENTS, type ARElement } from "../components/CrystalAR";
-import { useUserProfile, logPractice } from "../lib/profile";
+import { useUserProfile, logPractice, type StudentProfile } from "../lib/profile";
 import { FORGED_CARDS, type ForgedCard } from "../lib/forged";
+import { guideStatus } from "../lib/guide";
+import { usePlatform } from "../lib/platform";
+import { QuickCheck } from "../components/QuickCheck";
 
 /**
  * Print a card's face (its "itsura") on its own page. Opens a minimal print
@@ -52,8 +69,139 @@ export const Route = createFileRoute("/cards")({
 const ACCENT = "var(--color-gold)";
 const CARD_COLOR: Record<string, string> = { alchemix: "#d4b25a", helium: "#60a5fa" };
 
+/**
+ * The Grimoire Guide — the W3Schools-style table of contents of AlcheMix.
+ * Every module in the recommended order, with live done-ticks from the profile
+ * and a single highlighted "You are here" next step. Nothing is locked; the
+ * guide points the way rather than barring it.
+ */
+function GrimoireGuide({ profile, mobile }: { profile: StudentProfile | null; mobile: boolean }) {
+  const status = guideStatus(profile);
+  let lastChapter = "";
+
+  return (
+    <section className="mb-10">
+      <div className="mb-3 flex items-center gap-2 px-1">
+        <Compass className="h-4 w-4 text-emerald-elixir" />
+        <h3 className="font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+          The Grimoire Guide
+        </h3>
+        <span className="ml-auto font-display text-xs text-parchment/60">
+          {status.doneCount}/{status.total} steps
+        </span>
+      </div>
+
+      {/* Overall progress */}
+      <div
+        className="mb-4 h-2 overflow-hidden rounded-full"
+        style={{ background: "color-mix(in oklab, var(--color-parchment) 18%, transparent)" }}
+      >
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{
+            width: `${status.pct}%`,
+            background: "linear-gradient(90deg, var(--color-emerald-elixir), var(--color-gold))",
+          }}
+        />
+      </div>
+
+      <p className="mb-4 px-1 text-sm text-parchment/60">
+        {status.nextIndex === -1
+          ? "Every step of the path is complete — you've mastered the whole Grimoire. Revisit any chapter freely."
+          : "Follow the chapters in order — each one builds on the last. Your recommended next step is marked."}
+        {mobile && " Deep-study chapters open best on the website (computer)."}
+      </p>
+
+      <ol className="space-y-1.5">
+        {status.steps.map(({ step, done, detail }, i) => {
+          const isNext = i === status.nextIndex;
+          const chapterHeading = step.chapter !== lastChapter ? step.chapter : null;
+          lastChapter = step.chapter;
+          return (
+            <li key={step.id}>
+              {chapterHeading && (
+                <p className="mt-4 mb-1.5 px-1 text-[10px] tracking-[0.25em] uppercase text-parchment/45 first:mt-0">
+                  {chapterHeading}
+                </p>
+              )}
+              <Link
+                to={step.to as any}
+                className="group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-150 hover:-translate-y-0.5"
+                style={{
+                  background: isNext
+                    ? "linear-gradient(90deg, color-mix(in oklab, var(--color-emerald-elixir) 14%, transparent), color-mix(in oklab, var(--color-slate-sunken) 55%, transparent))"
+                    : "color-mix(in oklab, var(--color-slate-sunken) 45%, transparent)",
+                  border: `1px solid ${isNext ? "color-mix(in oklab, var(--color-emerald-elixir) 45%, transparent)" : done ? "color-mix(in oklab, var(--color-gold) 25%, transparent)" : "var(--color-border)"}`,
+                  boxShadow: isNext ? "0 0 26px -12px var(--color-emerald-elixir)" : "none",
+                  opacity: done || isNext ? 1 : 0.75,
+                }}
+              >
+                <span
+                  className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg font-display text-xs"
+                  style={
+                    done
+                      ? {
+                          background: "color-mix(in oklab, var(--color-gold) 16%, transparent)",
+                          color: "var(--color-gold)",
+                          border:
+                            "1px solid color-mix(in oklab, var(--color-gold) 35%, transparent)",
+                        }
+                      : {
+                          background:
+                            "color-mix(in oklab, var(--color-parchment) 10%, transparent)",
+                          color: isNext ? "var(--color-emerald-elixir)" : "var(--color-parchment)",
+                          border: "1px solid var(--color-border)",
+                        }
+                  }
+                >
+                  {done ? <Check className="h-4 w-4" /> : i + 1}
+                </span>
+                <step.icon
+                  className="h-4 w-4 flex-shrink-0"
+                  style={{
+                    color: isNext ? "var(--color-emerald-elixir)" : "var(--color-parchment)",
+                  }}
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="font-display text-sm text-spectral">{step.title}</span>
+                    {step.mobileSide && (
+                      <Smartphone
+                        className="h-3 w-3 text-parchment/50"
+                        aria-label="Best on your phone"
+                      />
+                    )}
+                    {detail && <span className="text-[10px] text-parchment/50">· {detail}</span>}
+                  </div>
+                  <p className="truncate text-xs text-parchment/55">{step.why}</p>
+                </div>
+                {isNext && (
+                  <span
+                    className="flex-shrink-0 rounded-full px-2.5 py-1 text-[9px] tracking-[0.12em] uppercase"
+                    style={{
+                      color: "var(--color-emerald-elixir)",
+                      background:
+                        "color-mix(in oklab, var(--color-emerald-elixir) 14%, transparent)",
+                      border:
+                        "1px solid color-mix(in oklab, var(--color-emerald-elixir) 40%, transparent)",
+                    }}
+                  >
+                    You are here
+                  </span>
+                )}
+                <ChevronRight className="h-4 w-4 flex-shrink-0 text-parchment/40 transition group-hover:translate-x-0.5 group-hover:text-emerald-elixir" />
+              </Link>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  );
+}
+
 function Grimoire() {
   const { uid, profile } = useUserProfile();
+  const platform = usePlatform();
   const collected = profile?.grimoire ?? [];
   const scans = profile?.grimoireScans ?? {};
   const forgedOwned = profile?.forged ?? [];
@@ -61,7 +209,9 @@ function Grimoire() {
   const [open, setOpen] = useState<ARElement | null>(null);
   const [openForged, setOpenForged] = useState<ForgedCard | null>(null);
 
-  useEffect(() => { if (uid) void logPractice(uid, "grimoire"); }, [uid]);
+  useEffect(() => {
+    if (uid) void logPractice(uid, "grimoire");
+  }, [uid]);
 
   const ownedCount = AR_ELEMENTS.filter((e) => collected.includes(e.symbol)).length;
   const forgedCards = FORGED_CARDS.filter((c) => forgedOwned.includes(c.id));
@@ -69,15 +219,20 @@ function Grimoire() {
   return (
     <ModuleShell
       title="Grimoire"
-      eyebrow="Collection Book"
-      subtitle="Every element card you've claimed with the AR Scanner, bound into your book. Tap a card to open its page."
+      eyebrow="Guidebook & Collection"
+      subtitle="Your guidebook: the Guide shows what to learn first, and every card you claim in AR is bound into the book below."
       icon={BookMarked}
       accent={ACCENT}
     >
+      {/* The learning path — what to learn first, in order */}
+      <GrimoireGuide profile={profile} mobile={platform.arCapable} />
+
       {/* Count */}
       <div className="mb-5 flex items-center justify-between px-1">
         <p className="text-sm text-parchment/70">Cards collected</p>
-        <p className="font-display text-gold">{ownedCount} <span className="text-parchment/50">/ {AR_ELEMENTS.length}</span></p>
+        <p className="font-display text-gold">
+          {ownedCount} <span className="text-parchment/50">/ {AR_ELEMENTS.length}</span>
+        </p>
       </div>
 
       {/* The collection */}
@@ -96,13 +251,21 @@ function Grimoire() {
                 boxShadow: `0 10px 34px -18px ${color}`,
               }}
             >
-              <span className="font-sans text-4xl font-semibold leading-none" style={{ color }}>{el.symbol}</span>
-              <span className="mt-1 text-[10px] text-parchment/60">{el.number} · {el.mass}</span>
+              <span className="font-sans text-4xl font-semibold leading-none" style={{ color }}>
+                {el.symbol}
+              </span>
+              <span className="mt-1 text-[10px] text-parchment/60">
+                {el.number} · {el.mass}
+              </span>
               <span className="mt-2 font-display text-sm text-spectral">{el.name}</span>
               <span className="mt-0.5 text-[10px] text-parchment/60">{el.category}</span>
               <span
                 className="mt-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[9px] tracking-[0.12em] uppercase"
-                style={{ color, background: `color-mix(in oklab, ${color} 14%, transparent)`, border: `1px solid color-mix(in oklab, ${color} 35%, transparent)` }}
+                style={{
+                  color,
+                  background: `color-mix(in oklab, ${color} 14%, transparent)`,
+                  border: `1px solid color-mix(in oklab, ${color} 35%, transparent)`,
+                }}
               >
                 <Sparkles className="h-2.5 w-2.5" /> Collected
               </span>
@@ -118,7 +281,9 @@ function Grimoire() {
             >
               <Lock className="h-6 w-6 text-parchment/40" />
               <span className="mt-3 font-display text-sm text-parchment/50">Unclaimed</span>
-              <span className="mt-1 text-center text-[10px] leading-snug text-parchment/40">Scan its card in the AR Scanner</span>
+              <span className="mt-1 text-center text-[10px] leading-snug text-parchment/40">
+                Scan its card in the AR Scanner
+              </span>
             </div>
           );
         })}
@@ -146,7 +311,11 @@ function Grimoire() {
                 <img src={card.image} alt={card.name} className="h-full w-full object-cover" />
                 <span
                   className="absolute bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full px-2.5 py-1 text-[9px] tracking-[0.12em] uppercase backdrop-blur"
-                  style={{ color: "var(--color-wraith)", background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid color-mix(in oklab, var(--color-wraith) 35%, transparent)" }}
+                  style={{
+                    color: "var(--color-wraith)",
+                    background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)",
+                    border: "1px solid color-mix(in oklab, var(--color-wraith) 35%, transparent)",
+                  }}
                 >
                   <Sparkles className="h-2.5 w-2.5" /> Forged
                 </span>
@@ -164,7 +333,9 @@ function Grimoire() {
         >
           <ScanLine className="h-4.5 w-4.5 flex-shrink-0 text-emerald-elixir" />
           <span className="flex-1 text-sm text-parchment">
-            {ownedCount === 0 ? "Your book is empty — summon your first card in the " : "Claim the missing cards in the "}
+            {ownedCount === 0
+              ? "Your book is empty — summon your first card in the "
+              : "Claim the missing cards in the "}
             <span className="font-display text-spectral">AR Scanner</span>
           </span>
           <ChevronRight className="h-4 w-4 text-parchment/40 transition group-hover:translate-x-0.5 group-hover:text-emerald-elixir" />
@@ -172,126 +343,212 @@ function Grimoire() {
       )}
 
       {/* ── Card page popup ── */}
-      {open && (() => {
-        const color = CARD_COLOR[open.key] ?? "var(--color-emerald-elixir)";
-        const stamp = scans[open.symbol];
-        const obtained = stamp?.toDate
-          ? stamp.toDate().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
-          : null;
-        return (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(null)} />
-            <div
-              className="relative w-full max-w-sm overflow-hidden rounded-2xl p-6"
-              style={{
-                background: `linear-gradient(160deg, color-mix(in oklab, ${color} 14%, transparent), color-mix(in oklab, var(--color-slate-sunken) 96%, transparent))`,
-                border: `1px solid color-mix(in oklab, ${color} 45%, transparent)`,
-                boxShadow: `0 0 70px -20px ${color}`,
-              }}
-            >
-              <button
+      {open &&
+        (() => {
+          const color = CARD_COLOR[open.key] ?? "var(--color-emerald-elixir)";
+          const stamp = scans[open.symbol];
+          const obtained = stamp?.toDate
+            ? stamp.toDate().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+            : null;
+          return (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+              <div
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                 onClick={() => setOpen(null)}
-                className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-parchment transition hover:text-spectral"
-                style={{ background: "color-mix(in oklab, var(--color-mist) 70%, transparent)", border: "1px solid var(--color-border)" }}
-                aria-label="Close"
+              />
+              <div
+                className="relative max-h-[88vh] w-full max-w-md overflow-y-auto rounded-2xl p-6"
+                style={{
+                  background: `linear-gradient(160deg, color-mix(in oklab, ${color} 14%, transparent), color-mix(in oklab, var(--color-slate-sunken) 96%, transparent))`,
+                  border: `1px solid color-mix(in oklab, ${color} 45%, transparent)`,
+                  boxShadow: `0 0 70px -20px ${color}`,
+                }}
               >
-                <X className="h-4 w-4" />
-              </button>
+                <button
+                  onClick={() => setOpen(null)}
+                  className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-parchment transition hover:text-spectral"
+                  style={{
+                    background: "color-mix(in oklab, var(--color-mist) 70%, transparent)",
+                    border: "1px solid var(--color-border)",
+                  }}
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
 
-              {/* Header: big symbol + identity */}
-              <div className="mb-4 flex items-end justify-between pr-10">
-                <span className="font-sans text-6xl font-semibold leading-none" style={{ color }}>{open.symbol}</span>
-                <div className="text-right">
-                  <div className="font-display text-lg text-spectral">{open.name}</div>
-                  <div className="text-xs text-parchment/60">No. {open.number} · {open.mass}</div>
+                {/* Header: big symbol + identity */}
+                <div className="mb-4 flex items-end justify-between pr-10">
+                  <span className="font-sans text-6xl font-semibold leading-none" style={{ color }}>
+                    {open.symbol}
+                  </span>
+                  <div className="text-right">
+                    <div className="font-display text-lg text-spectral">{open.name}</div>
+                    <div className="text-xs text-parchment/60">
+                      No. {open.number} · {open.mass}
+                    </div>
+                  </div>
+                </div>
+                <div className="mb-4 text-sm" style={{ color }}>
+                  {open.category}
+                </div>
+
+                {/* Knowledge: the mobile side gets a glimpse, the website the full page */}
+                {platform.arCapable ? (
+                  <>
+                    <ul
+                      className="space-y-1.5 border-t pt-4"
+                      style={{
+                        borderColor: "color-mix(in oklab, var(--color-parchment) 15%, transparent)",
+                      }}
+                    >
+                      <li className="flex gap-2 text-sm text-parchment/85">
+                        <span style={{ color }}>•</span> {open.facts[0]}
+                      </li>
+                    </ul>
+                    <div
+                      className="mt-4 flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs"
+                      style={{
+                        background:
+                          "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)",
+                        border:
+                          "1px solid color-mix(in oklab, var(--color-emerald-elixir) 30%, transparent)",
+                      }}
+                    >
+                      <Monitor className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-emerald-elixir" />
+                      <span className="text-parchment/80">
+                        This is a glimpse. Open your Grimoire{" "}
+                        <span className="text-spectral">on the website (computer)</span> for the
+                        full page — every fact and the quick check that earns the AR Alchemist
+                        badge.
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <ul
+                      className="space-y-1.5 border-t pt-4"
+                      style={{
+                        borderColor: "color-mix(in oklab, var(--color-parchment) 15%, transparent)",
+                      }}
+                    >
+                      {open.facts.map((f) => (
+                        <li key={f} className="flex gap-2 text-sm text-parchment/85">
+                          <span style={{ color }}>•</span> {f}
+                        </li>
+                      ))}
+                    </ul>
+
+                    {/* The in-depth check lives here, on the website side */}
+                    <div
+                      className="mt-5 border-t pt-4"
+                      style={{
+                        borderColor: "color-mix(in oklab, var(--color-parchment) 15%, transparent)",
+                      }}
+                    >
+                      <QuickCheck uid={uid} elementKey={open.key} accent={color} />
+                    </div>
+                  </>
+                )}
+
+                {/* Provenance: when it entered the book */}
+                <div
+                  className="mt-5 flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs"
+                  style={{
+                    background: "color-mix(in oklab, var(--color-mist) 55%, transparent)",
+                    border: "1px solid var(--color-border)",
+                  }}
+                >
+                  <CalendarDays className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" style={{ color }} />
+                  <span className="text-parchment/80">
+                    {obtained ? (
+                      <>
+                        Obtained on <span className="text-spectral">{obtained}</span> via the AR
+                        Scanner.
+                      </>
+                    ) : (
+                      <>Obtained via the AR Scanner — rescan the card once to record the date.</>
+                    )}
+                  </span>
                 </div>
               </div>
-              <div className="mb-4 text-sm" style={{ color }}>{open.category}</div>
-
-              {/* Facts */}
-              <ul className="space-y-1.5 border-t pt-4" style={{ borderColor: "color-mix(in oklab, var(--color-parchment) 15%, transparent)" }}>
-                {open.facts.map((f) => (
-                  <li key={f} className="flex gap-2 text-sm text-parchment/85">
-                    <span style={{ color }}>•</span> {f}
-                  </li>
-                ))}
-              </ul>
-
-              {/* Provenance: when it entered the book */}
-              <div
-                className="mt-5 flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs"
-                style={{ background: "color-mix(in oklab, var(--color-mist) 55%, transparent)", border: "1px solid var(--color-border)" }}
-              >
-                <CalendarDays className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" style={{ color }} />
-                <span className="text-parchment/80">
-                  {obtained
-                    ? <>Obtained on <span className="text-spectral">{obtained}</span> via the AR Scanner.</>
-                    : <>Obtained via the AR Scanner — rescan the card once to record the date.</>}
-                </span>
-              </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
 
       {/* ── Forged card page — shows the printable itsura ── */}
-      {openForged && (() => {
-        const stamp = forgedAt[openForged.id];
-        const obtained = stamp?.toDate
-          ? stamp.toDate().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
-          : null;
-        return (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpenForged(null)} />
-            <div
-              className="relative w-full max-w-sm overflow-hidden rounded-2xl p-6"
-              style={{
-                background: "linear-gradient(160deg, color-mix(in oklab, var(--color-wraith) 14%, transparent), color-mix(in oklab, var(--color-slate-sunken) 96%, transparent))",
-                border: "1px solid color-mix(in oklab, var(--color-wraith) 45%, transparent)",
-                boxShadow: "0 0 70px -20px var(--color-wraith)",
-              }}
-            >
-              <button
-                onClick={() => setOpenForged(null)}
-                className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full text-parchment transition hover:text-spectral"
-                style={{ background: "color-mix(in oklab, var(--color-mist) 70%, transparent)", border: "1px solid var(--color-border)" }}
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-
-              {/* The card face — its itsura */}
-              <img
-                src={openForged.image}
-                alt={openForged.name}
-                className="mx-auto mb-5 max-h-[52vh] w-auto rounded-xl shadow-2xl"
-              />
-
-              {/* Provenance */}
+      {openForged &&
+        (() => {
+          const stamp = forgedAt[openForged.id];
+          const obtained = stamp?.toDate
+            ? stamp.toDate().toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
+            : null;
+          return (
+            <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
               <div
-                className="mb-4 flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs"
-                style={{ background: "color-mix(in oklab, var(--color-mist) 55%, transparent)", border: "1px solid var(--color-border)" }}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                onClick={() => setOpenForged(null)}
+              />
+              <div
+                className="relative w-full max-w-sm overflow-hidden rounded-2xl p-6"
+                style={{
+                  background:
+                    "linear-gradient(160deg, color-mix(in oklab, var(--color-wraith) 14%, transparent), color-mix(in oklab, var(--color-slate-sunken) 96%, transparent))",
+                  border: "1px solid color-mix(in oklab, var(--color-wraith) 45%, transparent)",
+                  boxShadow: "0 0 70px -20px var(--color-wraith)",
+                }}
               >
-                <CalendarDays className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-wraith" />
-                <span className="text-parchment/80">
-                  {obtained
-                    ? <>Forged on <span className="text-spectral">{obtained}</span> in the AR Scanner.</>
-                    : <>Forged in the AR Scanner by Alche-mixing.</>}
-                </span>
-              </div>
+                <button
+                  onClick={() => setOpenForged(null)}
+                  className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full text-parchment transition hover:text-spectral"
+                  style={{
+                    background: "color-mix(in oklab, var(--color-mist) 70%, transparent)",
+                    border: "1px solid var(--color-border)",
+                  }}
+                  aria-label="Close"
+                >
+                  <X className="h-4 w-4" />
+                </button>
 
-              {/* Print the card */}
-              <button
-                onClick={() => printCardImage(openForged.image, openForged.name)}
-                className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium text-slate-sunken transition hover:brightness-110"
-                style={{ background: "var(--color-wraith)" }}
-              >
-                <Printer className="h-4.5 w-4.5" /> Print this card
-              </button>
+                {/* The card face — its itsura */}
+                <img
+                  src={openForged.image}
+                  alt={openForged.name}
+                  className="mx-auto mb-5 max-h-[52vh] w-auto rounded-xl shadow-2xl"
+                />
+
+                {/* Provenance */}
+                <div
+                  className="mb-4 flex items-start gap-2 rounded-xl px-3 py-2.5 text-xs"
+                  style={{
+                    background: "color-mix(in oklab, var(--color-mist) 55%, transparent)",
+                    border: "1px solid var(--color-border)",
+                  }}
+                >
+                  <CalendarDays className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-wraith" />
+                  <span className="text-parchment/80">
+                    {obtained ? (
+                      <>
+                        Forged on <span className="text-spectral">{obtained}</span> in the AR
+                        Scanner.
+                      </>
+                    ) : (
+                      <>Forged in the AR Scanner by Alche-mixing.</>
+                    )}
+                  </span>
+                </div>
+
+                {/* Print the card */}
+                <button
+                  onClick={() => printCardImage(openForged.image, openForged.name)}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-medium text-slate-sunken transition hover:brightness-110"
+                  style={{ background: "var(--color-wraith)" }}
+                >
+                  <Printer className="h-4.5 w-4.5" /> Print this card
+                </button>
+              </div>
             </div>
-          </div>
-        );
-      })()}
+          );
+        })()}
     </ModuleShell>
   );
 }

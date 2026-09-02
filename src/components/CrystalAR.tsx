@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { Camera, Loader2, ScanLine, Sparkles, X, AlertTriangle, FlaskConical } from "lucide-react";
 import { BohrModel3D } from "./BohrModel3D";
+import { cardBySymbol, combine } from "../lib/cards";
+import { forgedFromMix, formulaDisplay, type ForgedCard } from "../lib/forged";
 
 /**
  * Image-trigger AR scanner (multi-card).
@@ -186,18 +188,38 @@ function playChime() {
 
 type Status = "idle" | "starting" | "scanning" | "found" | "error";
 
-// The forged card the mix ceremony currently reveals. One sample for now;
-// later this is chosen from the two cards being mixed.
+// The forged card the mythic ceremony reveals. Any pair involving the mythic
+// "Ax" card (not a real element) keeps this hardcoded sample reveal; pairs of
+// REAL element cards go through the chemistry combiner instead (see startMix).
 const MIX_FORGED_ID = "3rd_card";
 const MIX_FORGED_IMAGE = "/other_cards/3rd_card.png";
+
+// What the ceremony resolved to — decided when the button is pressed, shown
+// when the swirl ends.
+type MixOutcome =
+  | { kind: "mythic" } // the hardcoded sample card (pairs involving "Ax")
+  | { kind: "forged"; card: ForgedCard } // a real compound from combine()
+  | { kind: "refused"; reason: string }; // chemically impossible — teach why
+
+/** Why a visible target that ISN'T a combinable element card refuses to mix. */
+function refusalFor(el: ARElement): string {
+  if (/noble gas/i.test(el.category)) {
+    return `${el.name}'s shell is already full — it bonds with nothing.`;
+  }
+  return `${el.name} doesn't take part in ordinary bonding — it refuses the cauldron.`;
+}
 
 export function CrystalAR({
   onFound,
   onMix,
 }: {
   onFound?: (elementKey: string) => void;
-  /** Fires once the mix reveals a new card, so the host can register it. */
-  onMix?: (forgedId: string) => void;
+  /**
+   * Fires once the mix reveals a new card, so the host can register it.
+   * `formula` is set when the card is a real forged compound (id `mix:<formula>`),
+   * so the host can also record the compound itself.
+   */
+  onMix?: (forgedId: string, formula?: string) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -211,9 +233,13 @@ export function CrystalAR({
   // How many element cards are on screen at once — the "Alche-mix them?" button
   // only appears when two or more are visible together.
   const [visibleCount, setVisibleCount] = useState(0);
-  // The mix ceremony: idle → swirling (Bohr atom) → revealed (new card pops up).
-  const [mixPhase, setMixPhase] = useState<"idle" | "swirling" | "revealed">("idle");
+  // The mix ceremony: idle → swirling (Bohr atom) → revealed (new card pops up)
+  // or refused (the mixture chemically refuses — a teaching moment).
+  const [mixPhase, setMixPhase] = useState<"idle" | "swirling" | "revealed" | "refused">("idle");
+  const [mixOutcome, setMixOutcome] = useState<MixOutcome>({ kind: "mythic" });
   const mixTimerRef = useRef<number | null>(null);
+  // Symbols of the targets currently on screen — read when the mix starts.
+  const visibleSymbolsRef = useRef<Set<string>>(new Set());
 
   const stop = async () => {
     const mindar = mindarRef.current;
@@ -238,21 +264,59 @@ export function CrystalAR({
     setStatus("idle");
     resetMix();
     setVisibleCount(0);
+    visibleSymbolsRef.current.clear();
   };
 
   // ── Alche-mix ceremony ──────────────────────────────────────────────────────
-  // Kick off the swirl, then reveal the new element card. Purely presentational
-  // for now — the swirl runs for a fixed beat, then the new card pops up.
+  // Decide the outcome from the two visible cards, run the swirl for a beat,
+  // then reveal it. Three outcomes:
+  //   • mythic  — the pair involves the "Ax" card (not a real element): the
+  //               original hardcoded sample reveal, unchanged.
+  //   • forged  — both symbols are real element cards and combine() succeeds:
+  //               the real compound's data card.
+  //   • refused — the chemistry says no (noble gas, two metals, …): a shorter
+  //               swirl, then a teaching panel with the reason.
   const startMix = () => {
     if (mixPhase !== "idle") return;
+
+    const symbols = [...visibleSymbolsRef.current];
+    let outcome: MixOutcome = { kind: "mythic" };
+    if (!symbols.includes("Ax") && symbols.length >= 2) {
+      const [a, b] = [cardBySymbol(symbols[0]), cardBySymbol(symbols[1])];
+      if (a && b) {
+        const mix = combine(a, b);
+        const card = forgedFromMix(mix);
+        outcome = card
+          ? { kind: "forged", card }
+          : { kind: "refused", reason: mix.reason ?? "No compound forms from this pair." };
+      } else {
+        // A visible target that isn't a combinable element card (e.g. Helium).
+        const stubborn = AR_ELEMENTS.find((e) => symbols.includes(e.symbol) && !cardBySymbol(e.symbol));
+        outcome = {
+          kind: "refused",
+          reason: stubborn ? refusalFor(stubborn) : "These cards refuse to combine.",
+        };
+      }
+    }
+
+    setMixOutcome(outcome);
     setMixPhase("swirling");
     playChime();
     if (mixTimerRef.current) window.clearTimeout(mixTimerRef.current);
     mixTimerRef.current = window.setTimeout(() => {
-      setMixPhase("revealed");
       mixTimerRef.current = null;
-      onMix?.(MIX_FORGED_ID); // register the new card to the Grimoire
-    }, 2600);
+      if (outcome.kind === "refused") {
+        setMixPhase("refused"); // nothing to register — the lesson IS the reveal
+        return;
+      }
+      setMixPhase("revealed");
+      if (outcome.kind === "forged") {
+        // Register the compound card AND the formula to the Grimoire.
+        onMix?.(outcome.card.id, outcome.card.formula);
+      } else {
+        onMix?.(MIX_FORGED_ID); // register the new card to the Grimoire
+      }
+    }, outcome.kind === "refused" ? 1500 : 2600); // a refusal fizzles sooner
   };
   const resetMix = () => {
     if (mixTimerRef.current) {
@@ -438,6 +502,7 @@ export function CrystalAR({
 
         anchor.onTargetFound = () => {
           visibleAnchors.add(i);
+          visibleSymbolsRef.current.add(el.symbol);
           setVisibleCount(visibleAnchors.size);
           setStatus("found");
           setFoundName(el.name);
@@ -451,6 +516,7 @@ export function CrystalAR({
         };
         anchor.onTargetLost = () => {
           visibleAnchors.delete(i);
+          visibleSymbolsRef.current.delete(el.symbol);
           setVisibleCount(visibleAnchors.size);
           if (visibleAnchors.size === 0) setStatus("scanning");
         };
@@ -700,8 +766,8 @@ export function CrystalAR({
         </div>
       )}
 
-      {/* ── Mix ceremony: the new element card pops up ── */}
-      {mixPhase === "revealed" && (
+      {/* ── Mix ceremony: the new element card pops up (mythic sample) ── */}
+      {mixPhase === "revealed" && mixOutcome.kind === "mythic" && (
         <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-slate-sunken/90 p-6 backdrop-blur">
           <img
             src={MIX_FORGED_IMAGE}
@@ -716,6 +782,84 @@ export function CrystalAR({
             className="inline-flex items-center gap-2 rounded-full border border-parchment/25 bg-slate-sunken/70 px-5 py-2.5 text-parchment transition hover:bg-parchment/10"
           >
             Claim &amp; keep scanning
+          </button>
+        </div>
+      )}
+
+      {/* ── Mix ceremony: a REAL compound forged — its data card pops up ── */}
+      {mixPhase === "revealed" && mixOutcome.kind === "forged" && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 overflow-y-auto bg-slate-sunken/90 p-6 backdrop-blur">
+          <div
+            className="animate-card-pop flex w-full max-w-xs flex-col items-center gap-3 rounded-2xl p-6 text-center shadow-2xl"
+            style={{
+              background:
+                "linear-gradient(160deg, color-mix(in oklab, var(--color-wraith) 14%, transparent), color-mix(in oklab, var(--color-slate-sunken) 96%, transparent))",
+              border: "1.5px solid color-mix(in oklab, var(--color-wraith) 50%, transparent)",
+              boxShadow: "0 0 60px -18px var(--color-wraith)",
+            }}
+          >
+            {mixOutcome.card.bond && (
+              <span
+                className="inline-flex items-center gap-1 rounded-full px-3 py-1 text-[10px] tracking-[0.15em] uppercase"
+                style={{
+                  color: mixOutcome.card.bond === "ionic" ? "var(--color-gold)" : "var(--color-emerald-elixir)",
+                  background:
+                    mixOutcome.card.bond === "ionic"
+                      ? "color-mix(in oklab, var(--color-gold) 14%, transparent)"
+                      : "color-mix(in oklab, var(--color-emerald-elixir) 14%, transparent)",
+                  border:
+                    mixOutcome.card.bond === "ionic"
+                      ? "1px solid color-mix(in oklab, var(--color-gold) 40%, transparent)"
+                      : "1px solid color-mix(in oklab, var(--color-emerald-elixir) 40%, transparent)",
+                }}
+              >
+                {mixOutcome.card.bond} bond
+              </span>
+            )}
+            <span className="font-sans text-6xl font-semibold text-spectral">
+              {formulaDisplay(mixOutcome.card.formula ?? "")}
+            </span>
+            <span className="font-display text-lg text-parchment">{mixOutcome.card.name}</span>
+            {mixOutcome.card.uses && (
+              <span className="text-sm text-parchment/70">{mixOutcome.card.uses}</span>
+            )}
+            {mixOutcome.card.hazard && (
+              <span className="inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.12em] text-crimson">
+                <AlertTriangle className="h-3.5 w-3.5" /> {mixOutcome.card.hazard}
+              </span>
+            )}
+          </div>
+          <p className="flex items-center gap-1.5 text-sm text-gold text-glow-teal">
+            <Sparkles className="h-4 w-4" /> New compound forged into your Grimoire
+          </p>
+          <button
+            onClick={resetMix}
+            className="inline-flex items-center gap-2 rounded-full border border-parchment/25 bg-slate-sunken/70 px-5 py-2.5 text-parchment transition hover:bg-parchment/10"
+          >
+            Claim &amp; keep scanning
+          </button>
+        </div>
+      )}
+
+      {/* ── Mix ceremony: the mixture refuses — a teaching moment, not an error ── */}
+      {mixPhase === "refused" && mixOutcome.kind === "refused" && (
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 bg-slate-sunken/90 p-6 backdrop-blur">
+          <div
+            className="flex w-full max-w-xs flex-col items-center gap-3 rounded-2xl p-6 text-center"
+            style={{
+              background: "color-mix(in oklab, var(--color-gold) 8%, transparent)",
+              border: "1px solid color-mix(in oklab, var(--color-gold) 35%, transparent)",
+            }}
+          >
+            <FlaskConical className="h-8 w-8 text-gold" />
+            <p className="font-display text-lg text-spectral">The mixture refuses</p>
+            <p className="text-sm text-parchment/80">{mixOutcome.reason}</p>
+          </div>
+          <button
+            onClick={resetMix}
+            className="inline-flex items-center gap-2 rounded-full border border-parchment/25 bg-slate-sunken/70 px-5 py-2.5 text-parchment transition hover:bg-parchment/10"
+          >
+            Wise words — keep scanning
           </button>
         </div>
       )}

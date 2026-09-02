@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { X, Atom, Zap } from "lucide-react";
 import { FloatingNav } from "../components/FloatingNav";
+import { loreFor } from "../lib/element-lore";
 
 // ── Bohr Model SVG ────────────────────────────────────────────────────────────
 function BohrModel({ electrons, color }: { electrons: string; color: string }) {
@@ -210,6 +211,7 @@ function ElementBlob({ el, onClick }: { el: Element; onClick: () => void }) {
 
 function ElementModal({ el, onClose }: { el: Element; onClose: () => void }) {
   const color = CATEGORY_COLORS[el.category];
+  const lore = loreFor(el.symbol);
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
       onClick={onClose}
@@ -249,7 +251,19 @@ function ElementModal({ el, onClose }: { el: Element; onClose: () => void }) {
             </div>
           </div>
 
-          <h2 className="font-display text-3xl">{el.name}</h2>
+          <h2 className="font-display text-3xl flex items-center justify-center gap-3">
+            {el.name}
+            {lore?.alchemySymbol && (
+              <span
+                className="text-4xl leading-none"
+                style={{ color: "var(--color-gold)", textShadow: "0 0 14px color-mix(in oklab, var(--color-gold) 55%, transparent)" }}
+                title="Alchemical symbol"
+                aria-label="Alchemical symbol"
+              >
+                {lore.alchemySymbol}
+              </span>
+            )}
+          </h2>
           <p className="text-xs tracking-[0.3em] uppercase mt-1" style={{ color }}>{el.category}</p>
           <span className={`inline-block mt-2 rounded-full px-3 py-0.5 text-[10px] tracking-[0.25em] uppercase font-display ${el.tier === "Core" ? "bg-wraith/20 text-wraith border border-wraith/40" : el.tier === "Common" ? "bg-gold/20 text-gold border border-gold/40" : "bg-crimson/20 text-crimson border border-crimson/40"}`}>
             Tier {el.tier === "Core" ? "1 — Core" : el.tier === "Common" ? "2 — Common" : "3 — Expert"}
@@ -296,6 +310,37 @@ function ElementModal({ el, onClose }: { el: Element; onClose: () => void }) {
           <div className="text-[10px] tracking-[0.3em] uppercase mb-2" style={{ color }}>Did you know?</div>
           <p className="text-parchment text-sm leading-relaxed">{el.fact}</p>
         </div>
+
+        {/* Lore */}
+        {lore && (
+          <div className="rounded-lg p-4 mt-4"
+            style={{ background: "color-mix(in oklab, var(--color-mist) 80%, transparent)", border: "1px solid color-mix(in oklab, var(--color-parchment) 15%, transparent)" }}>
+            <div className="text-[10px] tracking-[0.3em] uppercase mb-3" style={{ color }}>Lore</div>
+            <div className="space-y-3">
+              <div>
+                <div className="text-[10px] tracking-[0.25em] text-parchment/60 uppercase mb-1">The Name</div>
+                <p className="text-parchment text-sm leading-relaxed">{lore.etymology}</p>
+              </div>
+              <div>
+                <div className="text-[10px] tracking-[0.25em] text-parchment/60 uppercase mb-1">The History</div>
+                <p className="text-parchment text-sm leading-relaxed">{lore.history}</p>
+              </div>
+              {lore.alchemy && (
+                <div className="rounded-lg p-3 flex gap-3 items-start"
+                  style={{ background: "color-mix(in oklab, var(--color-gold) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)" }}>
+                  {lore.alchemySymbol && (
+                    <span className="text-2xl leading-none flex-shrink-0 mt-0.5"
+                      style={{ color: "var(--color-gold)" }} aria-hidden="true">{lore.alchemySymbol}</span>
+                  )}
+                  <div>
+                    <div className="text-[10px] tracking-[0.25em] text-gold uppercase mb-1">The Alchemist's Eye</div>
+                    <p className="text-parchment text-sm leading-relaxed">{lore.alchemy}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -327,7 +372,7 @@ function ElementsPage() {
         {/* Header */}
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 rounded-full border border-wraith/30 bg-wraith/10 px-4 py-1.5 text-xs tracking-[0.3em] text-wraith uppercase mb-4">
-            <Atom className="h-3 w-3" /> All 12 Elements
+            <Atom className="h-3 w-3" /> {ELEMENTS.length} Elements Explored
           </div>
           <h1 className="font-display text-4xl md:text-5xl mb-4">The Periodic Table</h1>
           <p className="text-parchment max-w-xl mx-auto">Click any element to learn more. Each blob represents a unique element — colour-coded by category.</p>

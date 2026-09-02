@@ -1,10 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Check, X, Trophy, Timer, RefreshCw, Brain } from "lucide-react";
+import { Check, X, Trophy, Timer, RefreshCw, Brain, Star } from "lucide-react";
 import { ModuleShell } from "../components/ModuleShell";
 import { RequireAuth } from "../components/RequireAuth";
 import { BohrModel3D } from "../components/BohrModel3D";
-import { useUserProfile, logPractice } from "../lib/profile";
+import { useUserProfile, logPractice, recordTrial } from "../lib/profile";
 
 export const Route = createFileRoute("/quiz")({
   component: () => (
@@ -29,7 +29,7 @@ const QUIZ_ELEMENTS: QEl[] = [
   { sym: "Ca", name: "Calcium",   electrons: "2,8,8,2", color: "#fb923c", nucleus: "#fdba74" },
 ];
 
-type Kind = "id" | "shells" | "valence";
+type Kind = "id" | "shells" | "valence" | "config";
 interface Q { kind: Kind; el: QEl; prompt: string; options: string[]; answer: string; explain: string }
 
 const QUESTION_COUNT = 6;
@@ -45,10 +45,22 @@ function shuffle<T>(arr: T[]): T[] {
 
 function buildQuiz(): Q[] {
   const els = shuffle(QUIZ_ELEMENTS).slice(0, QUESTION_COUNT);
-  const kinds: Kind[] = ["id", "shells", "valence"];
+  const kinds: Kind[] = ["id", "shells", "valence", "config"];
   return els.map((el, i) => {
     const shells = el.electrons.split(",");
     const kind = kinds[i % kinds.length];
+    if (kind === "config") {
+      const distractors = shuffle(
+        Array.from(new Set(QUIZ_ELEMENTS.map((e) => e.electrons))).filter((c) => c !== el.electrons),
+      ).slice(0, 3);
+      return {
+        kind, el,
+        prompt: `Which shell diagram matches ${el.name}'s electron configuration?`,
+        options: shuffle([el.electrons, ...distractors]),
+        answer: el.electrons,
+        explain: `Count the electrons ring by ring, from the centre outwards — ${el.name} fills its shells as ${el.electrons}.`,
+      };
+    }
     if (kind === "id") {
       const distractors = shuffle(QUIZ_ELEMENTS.filter((e) => e.sym !== el.sym)).slice(0, 3).map((e) => e.name);
       return {
@@ -75,8 +87,24 @@ function buildQuiz(): Q[] {
   });
 }
 
+const quizStars = (score: number) => (score >= 6 ? 3 : score === 5 ? 2 : score === 4 ? 1 : 0);
+
+function StarRow({ n }: { n: number }) {
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      {[0, 1, 2].map((i) => (
+        <Star key={i} className="h-4 w-4"
+          style={{
+            color: i < n ? "var(--color-gold)" : "color-mix(in oklab, var(--color-parchment) 35%, transparent)",
+            fill: i < n ? "var(--color-gold)" : "transparent",
+          }} />
+      ))}
+    </span>
+  );
+}
+
 function Quiz() {
-  const { uid } = useUserProfile();
+  const { uid, profile } = useUserProfile();
   const [phase, setPhase] = useState<"intro" | "play" | "done">("intro");
   const [quiz, setQuiz] = useState<Q[]>([]);
   const [idx, setIdx] = useState(0);
@@ -104,6 +132,11 @@ function Quiz() {
       if (uid && !saved) {
         setSaved(true);
         logPractice(uid, "quiz");
+        recordTrial(uid, "quiz", {
+          score: correct,
+          outOf: QUESTION_COUNT,
+          stars: quizStars(correct),
+        });
       }
     } else {
       setIdx((i) => i + 1);
@@ -129,6 +162,15 @@ function Quiz() {
           <h2 className="font-display text-2xl mb-2">Ready to be tested?</h2>
           <p className="text-parchment text-sm max-w-sm mx-auto mb-6">{QUESTION_COUNT} questions, each built around a live 3D atom. Every answer comes with an explanation so you learn as you go.</p>
           <button onClick={start} className="btn-arcane btn-arcane-hover"><Timer className="h-4 w-4" /> Begin</button>
+          {profile?.trials?.quiz && (
+            <div className="mx-auto mt-5 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-xl px-4 py-2.5 text-sm"
+              style={{ background: "color-mix(in oklab, var(--color-gold) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)" }}>
+              <span className="text-[10px] uppercase tracking-[0.2em] text-parchment/60">Best run</span>
+              <span className="font-display text-gold">{profile.trials.quiz.best}/{profile.trials.quiz.outOf}</span>
+              <StarRow n={profile.trials.quiz.stars} />
+              <span className="text-xs text-parchment/50">{profile.trials.quiz.plays} play{profile.trials.quiz.plays === 1 ? "" : "s"}</span>
+            </div>
+          )}
         </div>
       )}
 
@@ -187,6 +229,7 @@ function Quiz() {
           <Trophy className="h-12 w-12 text-gold mx-auto mb-4" />
           <h2 className="font-display text-3xl mb-2">{correct === quiz.length ? "Flawless!" : "Quiz complete"}</h2>
           <p className="font-display text-5xl text-teal my-4">{correct}/{quiz.length}</p>
+          <div className="mb-4 flex justify-center"><StarRow n={quizStars(correct)} /></div>
           <p className="text-sm text-parchment mb-6">
             {correct === quiz.length ? "Every atom identified correctly. Nicely done." : "Review the ones you missed and try again to lock it in."}
           </p>

@@ -50,6 +50,25 @@ export interface StudentProfile {
   pathProgress?: Record<string, PathProgress>;
   /** Spaced-repetition schedule, keyed by concept id (see lib/learning.ts). */
   reviews?: Record<string, ReviewState>;
+  /** Best results on module Trials (game screens), keyed by trial id. */
+  trials?: Record<string, TrialResult>;
+  /** Aurum — the reward currency earned from Trials and daily Starters. */
+  aurum?: number;
+  /** Daily "Starters for Ten" streak. `lastDay` is a YYYY-MM-DD key. */
+  starterStreak?: { count: number; lastDay: string };
+}
+
+/** A student's best recorded run on a module Trial (a PhET-style game screen). */
+export interface TrialResult {
+  /** Best score achieved (same scale as `outOf`). */
+  best: number;
+  outOf: number;
+  /** Stars earned on the best run (0–3). */
+  stars: number;
+  /** Fastest completion, if the trial is timed. */
+  timeSec?: number;
+  /** Total attempts, all runs. */
+  plays: number;
 }
 
 /** Furthest stage a student has reached on a topic's guided path. */
@@ -125,6 +144,92 @@ export async function logPractice(uid: string | null, moduleId: string, inc = 1)
     });
   } catch (err) {
     console.error("logPractice failed:", err);
+  }
+}
+
+/**
+ * Records a Trial run (a module's game screen). Keeps the BEST result — higher
+ * score wins; on an equal score a faster time wins. Every run increments
+ * `plays` and earns aurum (stars × 5, +5 bonus for a perfect score).
+ * Best-effort; never thrown.
+ */
+export async function recordTrial(
+  uid: string | null,
+  trialId: string,
+  run: { score: number; outOf: number; stars: number; timeSec?: number },
+): Promise<void> {
+  if (!uid) return;
+  try {
+    const ref = doc(db, "users", uid);
+    const snap = await getDoc(ref);
+    const prev = (snap.data() as StudentProfile | undefined)?.trials?.[trialId];
+    const improved =
+      !prev ||
+      run.score > prev.best ||
+      (run.score === prev.best &&
+        run.timeSec !== undefined &&
+        (prev.timeSec === undefined || run.timeSec < prev.timeSec));
+    const next: TrialResult = improved
+      ? {
+          best: run.score,
+          outOf: run.outOf,
+          stars: run.stars,
+          ...(run.timeSec !== undefined ? { timeSec: run.timeSec } : {}),
+          plays: (prev?.plays ?? 0) + 1,
+        }
+      : { ...prev, plays: prev.plays + 1 };
+    const earned = run.stars * 5 + (run.score >= run.outOf ? 5 : 0);
+    await updateDoc(ref, {
+      [`trials.${trialId}`]: next,
+      aurum: increment(earned),
+      [`practice.${trialId}-trial`]: increment(1),
+      "practice.lastActiveAt": serverTimestamp(),
+    });
+  } catch (err) {
+    console.error("recordTrial failed:", err);
+  }
+}
+
+/** Grant aurum directly (e.g. daily Starters). Best-effort; never thrown. */
+export async function earnAurum(uid: string | null, amount: number): Promise<void> {
+  if (!uid || amount <= 0) return;
+  try {
+    await updateDoc(doc(db, "users", uid), { aurum: increment(amount) });
+  } catch (err) {
+    console.error("earnAurum failed:", err);
+  }
+}
+
+/**
+ * Records a completed daily "Starters for Ten" run and advances the streak:
+ * same day → unchanged; consecutive day → +1; otherwise reset to 1.
+ * `dayKey` is local YYYY-MM-DD. Best-effort; never thrown.
+ */
+export async function recordStarterRun(
+  uid: string | null,
+  dayKey: string,
+  score: number,
+): Promise<void> {
+  if (!uid) return;
+  try {
+    const ref = doc(db, "users", uid);
+    const snap = await getDoc(ref);
+    const prev = (snap.data() as StudentProfile | undefined)?.starterStreak;
+    let count = 1;
+    if (prev?.lastDay === dayKey) {
+      count = prev.count; // already played today — streak unchanged
+    } else if (prev) {
+      const ms = Date.parse(dayKey) - Date.parse(prev.lastDay);
+      if (ms > 0 && ms <= 36 * 3600 * 1000) count = prev.count + 1;
+    }
+    await updateDoc(ref, {
+      starterStreak: { count, lastDay: dayKey },
+      aurum: increment(Math.max(1, score)),
+      "practice.starters": increment(1),
+      "practice.lastActiveAt": serverTimestamp(),
+    });
+  } catch (err) {
+    console.error("recordStarterRun failed:", err);
   }
 }
 
