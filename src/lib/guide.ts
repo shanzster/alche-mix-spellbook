@@ -26,6 +26,13 @@ import {
   FlaskConical,
   Thermometer,
   Crosshair,
+  Swords,
+  Activity,
+  RefreshCw,
+  Zap,
+  Magnet,
+  Droplets,
+  Coffee,
 } from "lucide-react";
 import { CURRICULUM } from "./curriculum";
 import type { StudentProfile } from "./profile";
@@ -124,6 +131,15 @@ export const GUIDE: GuideStep[] = [
     done: (p) => practised(p, "molecules"),
   },
   {
+    id: "forces",
+    chapter: CH3,
+    title: "Invisible Bonds",
+    to: "/forces",
+    icon: Magnet,
+    why: "Between molecules there are forces too — they decide what boils when.",
+    done: (p) => practised(p, "forces"),
+  },
+  {
     id: "reactions",
     chapter: CH3,
     title: "Reaction Theatre",
@@ -164,6 +180,51 @@ export const GUIDE: GuideStep[] = [
     done: (p) => practised(p, "gas-laws"),
   },
   {
+    id: "solutions",
+    chapter: CH4,
+    title: "The Elixir Bench",
+    to: "/solutions",
+    icon: Droplets,
+    why: "Mix real solutes and master molarity — the language of every lab recipe.",
+    done: (p) => practised(p, "solutions"),
+  },
+  {
+    id: "thermo",
+    chapter: CH4,
+    title: "Cauldron of Heat",
+    to: "/thermo",
+    icon: Coffee,
+    why: "Reactions give and take heat — measure it with a calorimeter.",
+    done: (p) => practised(p, "thermo"),
+  },
+  {
+    id: "rates",
+    chapter: CH4,
+    title: "Reaction Rates",
+    to: "/rates",
+    icon: Activity,
+    why: "Why do some reactions race and others crawl? Collision theory, live.",
+    done: (p) => practised(p, "rates"),
+  },
+  {
+    id: "equilibrium",
+    chapter: CH4,
+    title: "Equilibrium",
+    to: "/equilibrium",
+    icon: RefreshCw,
+    why: "Some reactions run both ways — stress the balance and predict the shift.",
+    done: (p) => practised(p, "equilibrium"),
+  },
+  {
+    id: "electro",
+    chapter: CH4,
+    title: "The Voltaic Forge",
+    to: "/electro",
+    icon: Zap,
+    why: "Chemistry makes electricity — build a battery from two metals.",
+    done: (p) => practised(p, "electro"),
+  },
+  {
     id: "titration",
     chapter: CH4,
     title: "Titration Lab",
@@ -189,6 +250,20 @@ export const GUIDE: GuideStep[] = [
     icon: ClipboardList,
     why: "Prove you can identify elements from their rotating atoms alone.",
     done: (p) => practised(p, "quiz"),
+  },
+  {
+    id: "duel",
+    chapter: CH5,
+    title: "Duel the Alchemist",
+    to: "/duel",
+    icon: Swords,
+    why: "Everything you've learned, weaponised — win a duel where the stats are real chemistry.",
+    done: (p) =>
+      Object.values(p?.duelRecord ?? {}).some((d) => (d?.wins ?? 0) > 0),
+    detail: (p) => {
+      const wins = Object.values(p?.duelRecord ?? {}).reduce((s, d) => s + (d?.wins ?? 0), 0);
+      return wins > 0 ? `${wins} victories` : null;
+    },
   },
   {
     id: "starters",

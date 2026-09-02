@@ -1,25 +1,41 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Grid3x3, Search, Orbit, Box, Check, FlaskConical,
-  Palette, Thermometer, TrendingUp, History,
+  Palette, Thermometer, TrendingUp, History, Link2, X, ScrollText,
 } from "lucide-react";
 import { ModuleShell } from "../components/ModuleShell";
 import { RequireAuth } from "../components/RequireAuth";
 import { BohrModel3D } from "../components/BohrModel3D";
 import { ConceptCard, DidYouKnow } from "../components/Learn";
 import { useUserProfile, logPractice } from "../lib/profile";
+import { loreFor } from "../lib/element-lore";
 import {
   PERIODIC_ELEMENTS, FBLOCK_MARKERS, type TableElement, type ElementCategory,
 } from "../lib/periodic-table-data";
 
+interface PeriodicTableSearch {
+  /** Deep link: element symbol, e.g. ?element=Fe (case-insensitive). */
+  element?: string;
+}
+
 export const Route = createFileRoute("/periodic-table")({
+  validateSearch: (search: Record<string, unknown>): PeriodicTableSearch =>
+    typeof search.element === "string" && search.element.length > 0
+      ? { element: search.element }
+      : {},
   component: () => (
     <RequireAuth>
       <PeriodicTable />
     </RequireAuth>
   ),
 });
+
+function numberForSymbol(symbol: string | undefined): number | undefined {
+  if (!symbol) return undefined;
+  const q = symbol.toLowerCase();
+  return PERIODIC_ELEMENTS.find((e) => e.symbol.toLowerCase() === q)?.number;
+}
 
 // ── Category colours (family key, as on the classic wall chart) ─────────────
 const CATEGORY_COLORS: Record<ElementCategory, string> = {
@@ -244,9 +260,15 @@ function Cell({ el, active, look, onClick }: { el: TableElement; active: boolean
 
 function PeriodicTable() {
   const { uid } = useUserProfile();
-  const [selectedNum, setSelectedNum] = useState(6); // Carbon
+  const { element: elementParam } = Route.useSearch();
+  const navigate = useNavigate();
+
+  const [selectedNum, setSelectedNum] = useState<number | null>(
+    () => numberForSymbol(elementParam) ?? 6, // Carbon by default
+  );
   const [view, setView] = useState<"bohr" | "3d">("3d");
   const [search, setSearch] = useState("");
+  const [copied, setCopied] = useState(false);
 
   // Lens state.
   const [lens, setLens] = useState<Lens>("family");
@@ -254,14 +276,62 @@ function PeriodicTable() {
   const [trendKey, setTrendKey] = useState<TrendKey>("electronegativity");
   const [year, setYear] = useState(2016);
 
+  const detailRef = useRef<HTMLDivElement>(null);
+  // True only when the page loaded with a valid ?element= deep link.
+  const deepLinked = useRef(numberForSymbol(elementParam) !== undefined);
+  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
   useEffect(() => { if (uid) logPractice(uid, "periodic-table"); }, [uid]);
 
+  // Deep link: scroll the auto-opened detail panel into view on load.
+  useEffect(() => {
+    if (!deepLinked.current) return;
+    const t = setTimeout(
+      () => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      150,
+    );
+    return () => clearTimeout(t);
+  }, []);
+
+  // Keep the selection in sync if the URL changes underneath us.
+  useEffect(() => {
+    const num = numberForSymbol(elementParam);
+    if (num !== undefined) setSelectedNum(num);
+  }, [elementParam]);
+
+  useEffect(() => () => clearTimeout(copyTimer.current), []);
+
+  const selectElement = (el: TableElement) => {
+    setSelectedNum(el.number);
+    setCopied(false);
+    navigate({ to: "/periodic-table", search: { element: el.symbol }, replace: true });
+  };
+
+  const closeDetail = () => {
+    setSelectedNum(null);
+    setCopied(false);
+    navigate({ to: "/periodic-table", search: {}, replace: true });
+  };
+
+  const copyLink = async (symbol: string) => {
+    const url = `${window.location.origin}/periodic-table?element=${symbol}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      clearTimeout(copyTimer.current);
+      copyTimer.current = setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Clipboard unavailable (permissions / non-secure context) — no feedback.
+    }
+  };
+
   const selected = useMemo(
-    () => PERIODIC_ELEMENTS.find((e) => e.number === selectedNum)!,
+    () => (selectedNum === null ? undefined : PERIODIC_ELEMENTS.find((e) => e.number === selectedNum)),
     [selectedNum],
   );
-  const rich = RICH[selected.number];
-  const color = CATEGORY_COLORS[selected.category];
+  const rich = selected ? RICH[selected.number] : undefined;
+  const lore = selected ? loreFor(selected.symbol) : undefined;
+  const color = selected ? CATEGORY_COLORS[selected.category] : MISSING_COLOR;
 
   // Search dims non-matching cells (keeps the grid's spatial layout intact).
   const q = search.trim().toLowerCase();
@@ -418,7 +488,7 @@ function PeriodicTable() {
               el={el}
               active={el.number === selectedNum}
               look={look(el)}
-              onClick={() => setSelectedNum(el.number)}
+              onClick={() => selectElement(el)}
             />
           ))}
 
@@ -439,22 +509,58 @@ function PeriodicTable() {
       </div>
 
       {/* ── Detail panel for the selected element ── */}
-      <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      {selected && (
+      <div ref={detailRef} className="mt-8 grid scroll-mt-4 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {/* Viewer */}
         <div>
-          <div className="mb-4 flex items-center gap-4">
+          <div className="mb-4 flex items-start gap-4">
             <div className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-xl font-sans"
               style={{ background: `color-mix(in oklab, ${color} 16%, transparent)`, border: `2px solid color-mix(in oklab, ${color} 55%, transparent)`, boxShadow: `0 0 24px -8px ${color}`, color }}>
               <span className="text-2xl font-semibold leading-none">{selected.symbol}</span>
               <span className="mt-0.5 text-[10px] opacity-70">{selected.number}</span>
             </div>
-            <div>
-              <h2 className="font-display text-2xl">{selected.name}</h2>
+            <div className="min-w-0">
+              <h2 className="flex items-center gap-3 font-display text-2xl">
+                {selected.name}
+                {lore?.alchemySymbol && (
+                  <span
+                    className="text-3xl leading-none"
+                    style={{ color: "var(--color-gold)", textShadow: "0 0 14px color-mix(in oklab, var(--color-gold) 55%, transparent)" }}
+                    title="Alchemical symbol"
+                    aria-label="Alchemical symbol"
+                  >
+                    {lore.alchemySymbol}
+                  </span>
+                )}
+              </h2>
               <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.12em]">
                 <span className="rounded-full px-2 py-0.5" style={{ color, background: `color-mix(in oklab, ${color} 12%, transparent)`, border: `1px solid color-mix(in oklab, ${color} 30%, transparent)` }}>{selected.category}</span>
                 {rich && <span className="text-parchment/60">{rich.state}</span>}
                 <span className="text-parchment/60">{selected.mass} u</span>
               </div>
+            </div>
+            <div className="ml-auto flex flex-shrink-0 items-center gap-2">
+              <button
+                onClick={() => copyLink(selected.symbol)}
+                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] uppercase tracking-[0.12em] transition hover:brightness-125"
+                style={{
+                  background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)",
+                  border: "1px solid var(--color-border)",
+                  color: copied ? "var(--color-teal)" : "var(--color-parchment)",
+                }}
+                title={`Copy a link to ${selected.name}`}
+              >
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
+                <span className="hidden sm:inline">{copied ? "Copied" : "Copy link"}</span>
+              </button>
+              <button
+                onClick={closeDetail}
+                aria-label="Close element details"
+                className="rounded-full p-1.5 text-parchment/60 transition hover:text-spectral"
+                style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }}
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
           </div>
 
@@ -520,8 +626,42 @@ function PeriodicTable() {
               </p>
             </div>
           )}
+
+          {/* ── Lore: etymology, history, and the alchemist's tradition ── */}
+          {lore && (
+            <div className="rounded-xl p-4" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
+              <div className="mb-3 flex items-center gap-2" style={{ color }}>
+                <ScrollText className="h-3.5 w-3.5" />
+                <span className="font-display text-[10px] uppercase tracking-[0.2em]">Lore</span>
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <div className="mb-1 text-[10px] uppercase tracking-[0.25em] text-parchment/60">The Name</div>
+                  <p className="text-sm leading-relaxed text-parchment">{lore.etymology}</p>
+                </div>
+                <div>
+                  <div className="mb-1 text-[10px] uppercase tracking-[0.25em] text-parchment/60">The History</div>
+                  <p className="text-sm leading-relaxed text-parchment">{lore.history}</p>
+                </div>
+                {lore.alchemy && (
+                  <div className="flex items-start gap-3 rounded-lg p-3"
+                    style={{ background: "color-mix(in oklab, var(--color-gold) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)" }}>
+                    {lore.alchemySymbol && (
+                      <span className="mt-0.5 flex-shrink-0 text-2xl leading-none"
+                        style={{ color: "var(--color-gold)" }} aria-hidden="true">{lore.alchemySymbol}</span>
+                    )}
+                    <div>
+                      <div className="mb-1 text-[10px] uppercase tracking-[0.25em] text-gold">The Alchemist's Eye</div>
+                      <p className="text-sm leading-relaxed text-parchment">{lore.alchemy}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
+      )}
     </ModuleShell>
   );
 }

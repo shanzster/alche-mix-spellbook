@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Fragment, useEffect, useState } from "react";
 import {
-  GraduationCap, Users, ClipboardCheck, Plus, Copy, Check, LogOut, BookOpen,
-  Camera, Layers, Sparkles, ChevronLeft, ScanSearch, Clock, X, ImageOff, Loader2,
+  GraduationCap, Users, ClipboardCheck, Plus, Copy, Check, LogOut,  BookOpen,
+  Layers, Sparkles, ChevronLeft, ScanSearch, Clock, X, ImageOff, Loader2,
   AlertTriangle, Award, ChevronDown, ChevronRight, Flame, FlaskConical, Star,
+  ListChecks, Pencil, Trash2, ArrowUp, ArrowDown, Wand2,
 } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { RequireRole } from "../components/RequireRole";
@@ -14,7 +15,10 @@ import { CURRICULUM, conceptById } from "../lib/curriculum";
 import {
   createClass, useTeacherClasses, useRoster, getStudentGrades, setStudentGrade,
   useClassProfiles, practiceTotal, lastActiveMillis, aggregateConceptTrouble,
+  useClassAssignments, saveQuiz, deleteQuiz, saveMission, deleteMission,
+  validateQuiz, validateMission, newAssignmentId, MODULE_CATALOG, moduleById,
   GRADE_TOPICS, type ClassInfo, type RosterEntry, type StudentSnapshot,
+  type QuizDef, type QuizQuestion, type MissionDef, type MissionTarget,
 } from "../lib/teacher";
 import {
   useClassEvidence, reviewEvidence, isPendingReview, type TeacherEvidenceEntry,
@@ -603,16 +607,423 @@ function MatrixTab({ classes }: { classes: ClassInfo[] }) {
   );
 }
 
-// ── Scaffolded (AI / later) tools ───────────────────────────────────────────
-const SOON = [
-  { icon: Layers, title: "Quiz Builder", desc: "Configure bonding targets, timed balancing & 3D identification quizzes (§2)." },
-  { icon: Camera, title: "Mission Configurator", desc: "Assign specific elements per lesson & lock/unlock simulation modules (§3)." },
-];
+// ── Shared bits for the authoring tabs ──────────────────────────────────────
+function ClassPills({ classes, classId, onPick }: { classes: ClassInfo[]; classId: string | null; onPick: (id: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2 mb-5">
+      {classes.map((c) => (
+        <button key={c.id} onClick={() => onPick(c.id)}
+          className="rounded-full px-4 py-1.5 text-xs tracking-[0.1em] uppercase transition"
+          style={classId === c.id ? { background: `color-mix(in oklab, ${T_ACCENT} 18%, transparent)`, color: T_ACCENT } : { color: "var(--color-parchment)", border: "1px solid var(--color-border)" }}>
+          {c.name}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const fieldStyle = { background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" } as const;
+const cardStyle = { background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" } as const;
+
+function AuthorEmpty({ icon: Icon, title, desc }: { icon: typeof Layers; title: string; desc: string }) {
+  return (
+    <div className="rounded-2xl px-5 py-10 text-center" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px dashed color-mix(in oklab, var(--color-parchment) 30%, transparent)" }}>
+      <Icon className="h-8 w-8 text-parchment/50 mx-auto mb-3" />
+      <p className="font-display text-base mb-1">{title}</p>
+      <p className="text-sm text-parchment/60">{desc}</p>
+    </div>
+  );
+}
+
+// ── Quiz Builder ────────────────────────────────────────────────────────────
+const BLANK_QUESTION = (): QuizQuestion => ({ prompt: "", choices: ["", "", "", ""], answer: 0, hint: "" });
+
+function QuizEditor({ classId, initial, onDone }: { classId: string; initial: QuizDef; onDone: () => void }) {
+  const [title, setTitle] = useState(initial.title);
+  const [questions, setQuestions] = useState<QuizQuestion[]>(
+    initial.questions.length ? initial.questions.map((q) => ({ ...q, choices: [...q.choices], hint: q.hint ?? "" })) : [BLANK_QUESTION()],
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const patchQ = (i: number, patch: Partial<QuizQuestion>) =>
+    setQuestions((prev) => prev.map((q, j) => (j === i ? { ...q, ...patch } : q)));
+
+  const save = async () => {
+    const err = validateQuiz(title, questions);
+    if (err) { setError(err); return; }
+    setError(null);
+    setSaving(true);
+    try {
+      await saveQuiz(classId, { ...initial, title, questions });
+      onDone();
+    } catch (e) {
+      console.error("saveQuiz failed:", e);
+      setError("Could not save the quiz — check your connection and try again.");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div>
+      <button onClick={onDone} className="inline-flex items-center gap-1.5 text-xs tracking-[0.15em] uppercase text-parchment/60 hover:text-teal transition mb-4">
+        <ChevronLeft className="h-3.5 w-3.5" /> Back to quizzes
+      </button>
+
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Quiz title (e.g. Atomic Structure check-in)"
+        className="w-full rounded-lg px-4 py-2.5 text-sm text-spectral placeholder:text-parchment/40 outline-none mb-4" style={fieldStyle} />
+
+      <div className="space-y-4">
+        {questions.map((q, i) => (
+          <div key={i} className="rounded-2xl p-4" style={cardStyle}>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <span className="text-[10px] tracking-[0.18em] uppercase text-parchment/50">Question {i + 1}</span>
+              <button onClick={() => setQuestions((prev) => prev.filter((_, j) => j !== i))} disabled={questions.length === 1}
+                className="inline-flex items-center gap-1 text-[11px] text-parchment/50 hover:text-crimson transition disabled:opacity-40">
+                <Trash2 className="h-3.5 w-3.5" /> Remove
+              </button>
+            </div>
+            <input value={q.prompt} onChange={(e) => patchQ(i, { prompt: e.target.value })} placeholder="The question prompt…"
+              className="w-full rounded-lg px-3 py-2 text-sm text-spectral placeholder:text-parchment/40 outline-none mb-3" style={fieldStyle} />
+            <div className="grid gap-2 sm:grid-cols-2">
+              {q.choices.map((c, ci) => (
+                <label key={ci} className="flex items-center gap-2 rounded-lg px-3 py-2 cursor-pointer"
+                  style={{
+                    background: "color-mix(in oklab, var(--color-mist) 45%, transparent)",
+                    border: q.answer === ci
+                      ? `1px solid color-mix(in oklab, ${T_ACCENT} 55%, transparent)`
+                      : "1px solid var(--color-border)",
+                  }}>
+                  <input type="radio" name={`correct-${initial.id}-${i}`} checked={q.answer === ci} onChange={() => patchQ(i, { answer: ci })}
+                    className="accent-current flex-shrink-0" style={{ accentColor: T_ACCENT }} title="Mark as the correct answer" />
+                  <input value={c} placeholder={`Choice ${ci + 1}`}
+                    onChange={(e) => patchQ(i, { choices: q.choices.map((x, xi) => (xi === ci ? e.target.value : x)) })}
+                    className="flex-1 min-w-0 bg-transparent text-sm text-spectral placeholder:text-parchment/40 outline-none" />
+                  {q.answer === ci && <Check className="h-3.5 w-3.5 flex-shrink-0" style={{ color: T_ACCENT }} />}
+                </label>
+              ))}
+            </div>
+            <input value={q.hint ?? ""} onChange={(e) => patchQ(i, { hint: e.target.value })} placeholder="Optional hint (shown after a miss)"
+              className="w-full rounded-lg px-3 py-2 text-xs text-spectral placeholder:text-parchment/40 outline-none mt-2" style={fieldStyle} />
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 mt-4">
+        <button onClick={() => setQuestions((prev) => [...prev, BLANK_QUESTION()])}
+          className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs tracking-[0.1em] uppercase transition hover:-translate-y-0.5"
+          style={{ color: "var(--color-parchment)", border: "1px solid var(--color-border)" }}>
+          <Plus className="h-3.5 w-3.5" /> Add question
+        </button>
+        <button onClick={save} disabled={saving} className="btn-arcane btn-arcane-hover disabled:opacity-60">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Save quiz
+        </button>
+        {error && (
+          <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: "var(--color-crimson)" }}>
+            <AlertTriangle className="h-3.5 w-3.5" /> {error}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Per-quiz class results, read live from the rostered students' own docs. */
+function QuizResults({ quiz, students }: { quiz: QuizDef; students: StudentSnapshot[] }) {
+  const [open, setOpen] = useState(false);
+  const taken = students.filter((s) => s.data?.assignmentResults?.[quiz.id]);
+  const avg = taken.length
+    ? Math.round((taken.reduce((sum, s) => { const r = s.data!.assignmentResults![quiz.id]; return sum + (r.outOf ? r.score / r.outOf : 0); }, 0) / taken.length) * 100)
+    : null;
+  const Chevron = open ? ChevronDown : ChevronRight;
+
+  return (
+    <div className="mt-3 pt-3" style={{ borderTop: "1px solid var(--color-border)" }}>
+      <button onClick={() => setOpen((o) => !o)} className="flex w-full items-center justify-between text-left">
+        <span className="inline-flex items-center gap-1.5 text-xs text-parchment/70">
+          <Chevron className="h-3.5 w-3.5 text-parchment/40" />
+          {students.length === 0
+            ? "No students enrolled yet"
+            : `${taken.length} of ${students.length} taken${avg != null ? ` · class average ${avg}%` : ""}`}
+        </span>
+        <span className="text-[10px] tracking-[0.15em] uppercase text-parchment/45">Results</span>
+      </button>
+      {open && students.length > 0 && (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {students.map((s) => {
+            const r = s.data?.assignmentResults?.[quiz.id];
+            const pct = r?.outOf ? Math.round((r.score / r.outOf) * 100) : null;
+            const tone = pct == null ? "var(--color-parchment)" : pct >= 70 ? T_ACCENT : pct >= 40 ? "var(--color-gold)" : "var(--color-crimson)";
+            return (
+              <span key={s.uid} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px]"
+                style={{ background: `color-mix(in oklab, ${tone} ${r ? 10 : 5}%, transparent)`, border: `1px solid color-mix(in oklab, ${tone} ${r ? 30 : 15}%, transparent)`, opacity: r ? 1 : 0.6 }}>
+                <span className="text-parchment/80">{s.name ?? "Student"}</span>
+                <span className="font-display" style={{ color: tone }}>{r ? `${r.score}/${r.outOf}` : "—"}</span>
+              </span>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function QuizBuilderTab({ classes }: { classes: ClassInfo[] }) {
+  const [classId, setClassId] = useState<string | null>(classes[0]?.id ?? null);
+  const [editing, setEditing] = useState<QuizDef | null>(null);
+  const [seedTopic, setSeedTopic] = useState(CURRICULUM[0]?.id ?? "");
+  const { quizzes, loading } = useClassAssignments(classId);
+  const roster = useRoster(classId);
+  const { students } = useClassProfiles(roster);
+
+  if (classes.length === 0) return <p className="text-sm text-parchment/60">Create a class first to author quizzes.</p>;
+
+  if (editing && classId) return <QuizEditor classId={classId} initial={editing} onDone={() => setEditing(null)} />;
+
+  const startBlank = () =>
+    setEditing({ id: newAssignmentId("qz"), title: "", questions: [], createdAt: Date.now() });
+
+  const seedFromCurriculum = () => {
+    const topic = CURRICULUM.find((t) => t.id === seedTopic);
+    if (!topic) return;
+    setEditing({
+      id: newAssignmentId("qz"),
+      title: `${topic.title} — concept check`,
+      questions: topic.concepts.map((c) => ({
+        prompt: c.question.prompt,
+        choices: [...c.question.choices],
+        answer: c.question.answer,
+        hint: c.question.hint,
+      })),
+      createdAt: Date.now(),
+    });
+  };
+
+  return (
+    <div>
+      <ClassPills classes={classes} classId={classId} onPick={(id) => { setClassId(id); setEditing(null); }} />
+
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
+        <button onClick={startBlank} className="btn-arcane btn-arcane-hover justify-center">
+          <Plus className="h-4 w-4" /> New quiz
+        </button>
+        <div className="flex items-center gap-2">
+          <select value={seedTopic} onChange={(e) => setSeedTopic(e.target.value)}
+            className="rounded-lg px-3 py-2 text-sm text-spectral outline-none" style={fieldStyle}>
+            {CURRICULUM.map((t) => <option key={t.id} value={t.id}>{t.title}</option>)}
+          </select>
+          <button onClick={seedFromCurriculum}
+            className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs tracking-[0.1em] uppercase transition hover:-translate-y-0.5 whitespace-nowrap"
+            style={{ background: "color-mix(in oklab, var(--color-gold) 12%, transparent)", color: "var(--color-gold)", border: "1px solid color-mix(in oklab, var(--color-gold) 35%, transparent)" }}>
+            <Wand2 className="h-3.5 w-3.5" /> Seed from curriculum
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 py-10 text-sm text-parchment/60"><Loader2 className="h-4 w-4 animate-spin" /> Loading quizzes…</div>
+      ) : quizzes.length === 0 ? (
+        <AuthorEmpty icon={Layers} title="No quizzes yet"
+          desc="Build one from scratch, or seed it with a curriculum topic's concept questions and edit from there. Students see it on their Assignments page." />
+      ) : (
+        <div className="space-y-4">
+          {quizzes.map((q) => (
+            <div key={q.id} className="rounded-2xl p-5" style={cardStyle}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="font-display text-base truncate">{q.title}</h3>
+                  <p className="text-xs text-parchment/55 mt-0.5">
+                    {q.questions.length} question{q.questions.length === 1 ? "" : "s"} · created {new Date(q.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button onClick={() => setEditing(q)} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] tracking-[0.1em] uppercase transition hover:-translate-y-0.5"
+                    style={{ color: T_ACCENT, border: `1px solid color-mix(in oklab, ${T_ACCENT} 35%, transparent)` }}>
+                    <Pencil className="h-3 w-3" /> Edit
+                  </button>
+                  <button onClick={() => { if (classId && window.confirm(`Delete “${q.title}”? Students will no longer see it.`)) void deleteQuiz(classId, q.id); }}
+                    className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] tracking-[0.1em] uppercase transition hover:-translate-y-0.5"
+                    style={{ color: "var(--color-crimson)", border: "1px solid color-mix(in oklab, var(--color-crimson) 35%, transparent)" }}>
+                    <Trash2 className="h-3 w-3" /> Delete
+                  </button>
+                </div>
+              </div>
+              <QuizResults quiz={q} students={students} />
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Mission Configurator ────────────────────────────────────────────────────
+function MissionEditor({ classId, initial, onDone }: { classId: string; initial: MissionDef; onDone: () => void }) {
+  const [title, setTitle] = useState(initial.title);
+  const [note, setNote] = useState(initial.note ?? "");
+  const [targets, setTargets] = useState<MissionTarget[]>(initial.targets.map((t) => ({ ...t })));
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const picked = new Set(targets.map((t) => t.moduleId));
+  const add = (id: string) => {
+    const m = moduleById(id);
+    if (!m || picked.has(id)) return;
+    setTargets((prev) => [...prev, { moduleId: m.id, label: m.label, practiceKey: m.practiceKey }]);
+  };
+  const move = (i: number, dir: -1 | 1) =>
+    setTargets((prev) => {
+      const j = i + dir;
+      if (j < 0 || j >= prev.length) return prev;
+      const next = [...prev];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
+    });
+
+  const save = async () => {
+    const err = validateMission(title, targets);
+    if (err) { setError(err); return; }
+    setError(null);
+    setSaving(true);
+    try {
+      await saveMission(classId, { ...initial, title, note, targets });
+      onDone();
+    } catch (e) {
+      console.error("saveMission failed:", e);
+      setError("Could not save the mission — check your connection and try again.");
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div>
+      <button onClick={onDone} className="inline-flex items-center gap-1.5 text-xs tracking-[0.15em] uppercase text-parchment/60 hover:text-teal transition mb-4">
+        <ChevronLeft className="h-3.5 w-3.5" /> Back to missions
+      </button>
+
+      <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Mission title (e.g. Week 3 — Atoms & the Table)"
+        className="w-full rounded-lg px-4 py-2.5 text-sm text-spectral placeholder:text-parchment/40 outline-none mb-3" style={fieldStyle} />
+      <textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="A note to the class (optional) — what to focus on, due date, encouragement…"
+        className="w-full rounded-lg px-4 py-2.5 text-sm text-spectral placeholder:text-parchment/40 outline-none resize-y mb-4" style={fieldStyle} />
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Catalog */}
+        <div className="rounded-2xl p-4" style={cardStyle}>
+          <p className="text-[10px] tracking-[0.18em] uppercase text-parchment/50 mb-3">Module catalog — tap to add</p>
+          <div className="flex flex-wrap gap-2">
+            {MODULE_CATALOG.map((m) => {
+              const used = picked.has(m.id);
+              return (
+                <button key={m.id} onClick={() => add(m.id)} disabled={used}
+                  className="rounded-full px-3 py-1.5 text-xs transition disabled:cursor-default"
+                  style={used
+                    ? { background: `color-mix(in oklab, ${T_ACCENT} 12%, transparent)`, color: T_ACCENT, border: `1px solid color-mix(in oklab, ${T_ACCENT} 30%, transparent)`, opacity: 0.55 }
+                    : { color: "var(--color-parchment)", border: "1px solid var(--color-border)" }}>
+                  {used ? <Check className="inline h-3 w-3 mr-1 -mt-px" /> : <Plus className="inline h-3 w-3 mr-1 -mt-px" />}{m.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Ordered checklist */}
+        <div className="rounded-2xl p-4" style={cardStyle}>
+          <p className="text-[10px] tracking-[0.18em] uppercase text-parchment/50 mb-3">Checklist — in order</p>
+          {targets.length === 0 ? (
+            <p className="text-xs text-parchment/50">Nothing picked yet. Add modules from the catalog; students complete them in this order.</p>
+          ) : (
+            <div className="space-y-1.5">
+              {targets.map((t, i) => (
+                <div key={t.moduleId} className="flex items-center gap-2 rounded-lg px-3 py-2"
+                  style={{ background: "color-mix(in oklab, var(--color-mist) 45%, transparent)", border: "1px solid var(--color-border)" }}>
+                  <span className="font-display text-xs text-parchment/50 w-5 flex-shrink-0">{i + 1}.</span>
+                  <span className="text-sm flex-1 min-w-0 truncate">{t.label}</span>
+                  <button onClick={() => move(i, -1)} disabled={i === 0} className="text-parchment/50 hover:text-teal transition disabled:opacity-30" aria-label="Move up"><ArrowUp className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => move(i, 1)} disabled={i === targets.length - 1} className="text-parchment/50 hover:text-teal transition disabled:opacity-30" aria-label="Move down"><ArrowDown className="h-3.5 w-3.5" /></button>
+                  <button onClick={() => setTargets((prev) => prev.filter((_, j) => j !== i))} className="text-parchment/50 hover:text-crimson transition" aria-label="Remove"><X className="h-3.5 w-3.5" /></button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 mt-4">
+        <button onClick={save} disabled={saving} className="btn-arcane btn-arcane-hover disabled:opacity-60">
+          {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Save mission
+        </button>
+        {error && (
+          <span className="inline-flex items-center gap-1.5 text-xs" style={{ color: "var(--color-crimson)" }}>
+            <AlertTriangle className="h-3.5 w-3.5" /> {error}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function MissionsTab({ classes }: { classes: ClassInfo[] }) {
+  const [classId, setClassId] = useState<string | null>(classes[0]?.id ?? null);
+  const [editing, setEditing] = useState<MissionDef | null>(null);
+  const { missions, loading } = useClassAssignments(classId);
+
+  if (classes.length === 0) return <p className="text-sm text-parchment/60">Create a class first to compose missions.</p>;
+  if (editing && classId) return <MissionEditor classId={classId} initial={editing} onDone={() => setEditing(null)} />;
+
+  return (
+    <div>
+      <ClassPills classes={classes} classId={classId} onPick={(id) => { setClassId(id); setEditing(null); }} />
+
+      <button onClick={() => setEditing({ id: newAssignmentId("ms"), title: "", note: "", targets: [], createdAt: Date.now() })}
+        className="btn-arcane btn-arcane-hover mb-6">
+        <Plus className="h-4 w-4" /> New mission
+      </button>
+
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 py-10 text-sm text-parchment/60"><Loader2 className="h-4 w-4 animate-spin" /> Loading missions…</div>
+      ) : missions.length === 0 ? (
+        <AuthorEmpty icon={ListChecks} title="No missions yet"
+          desc="Compose an ordered checklist of modules with a note to the class. Students tick items off automatically as they practise." />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {missions.map((m) => (
+            <div key={m.id} className="rounded-2xl p-5" style={cardStyle}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="font-display text-base truncate">{m.title}</h3>
+                  {m.note ? <p className="text-xs text-parchment/60 mt-1 leading-relaxed">“{m.note}”</p> : null}
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button onClick={() => setEditing(m)} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] tracking-[0.1em] uppercase transition hover:-translate-y-0.5"
+                    style={{ color: T_ACCENT, border: `1px solid color-mix(in oklab, ${T_ACCENT} 35%, transparent)` }}>
+                    <Pencil className="h-3 w-3" /> Edit
+                  </button>
+                  <button onClick={() => { if (classId && window.confirm(`Delete “${m.title}”?`)) void deleteMission(classId, m.id); }}
+                    className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] tracking-[0.1em] uppercase transition hover:-translate-y-0.5"
+                    style={{ color: "var(--color-crimson)", border: "1px solid color-mix(in oklab, var(--color-crimson) 35%, transparent)" }}>
+                    <Trash2 className="h-3 w-3" /> Delete
+                  </button>
+                </div>
+              </div>
+              <ol className="mt-3 space-y-1">
+                {m.targets.map((t, i) => (
+                  <li key={t.moduleId} className="text-xs text-parchment/70">
+                    <span className="font-display text-parchment/45 mr-1.5">{i + 1}.</span>{t.label}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function TeacherConsole() {
   const { uid, profile } = useUserProfile();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"classes" | "gradebook" | "evidence" | "matrix" | "tools">("classes");
+  const [tab, setTab] = useState<"classes" | "gradebook" | "evidence" | "matrix" | "quizzes" | "missions">("classes");
   const { classes } = useTeacherClasses(uid);
   const name = profile?.displayName?.split(" ")[0] ?? profile?.email?.split("@")[0] ?? "Educator";
 
@@ -621,7 +1032,8 @@ function TeacherConsole() {
     { key: "gradebook", label: "Gradebook", icon: ClipboardCheck },
     { key: "evidence", label: "Evidence", icon: ScanSearch },
     { key: "matrix", label: "Performance", icon: Sparkles },
-    { key: "tools", label: "More Tools", icon: BookOpen },
+    { key: "quizzes", label: "Quiz Builder", icon: Layers },
+    { key: "missions", label: "Missions", icon: ListChecks },
   ] as const;
 
   return (
@@ -646,7 +1058,7 @@ function TeacherConsole() {
         <PageHeader eyebrow="Educator Console" title={`Welcome, ${name}.`} subtitle="Set up classes, enrol students with a join code, and grade their progress." icon={GraduationCap} />
 
         {/* Tabs */}
-        <div className="inline-flex rounded-full p-1 mb-8" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }}>
+        <div className="inline-flex flex-wrap rounded-full p-1 mb-8" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }}>
           {TABS.map((t) => (
             <button key={t.key} onClick={() => setTab(t.key)}
               className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs tracking-[0.1em] uppercase transition"
@@ -660,18 +1072,8 @@ function TeacherConsole() {
         {tab === "gradebook" && <GradebookTab classes={classes} />}
         {tab === "evidence" && <EvidenceTab classes={classes} />}
         {tab === "matrix" && <MatrixTab classes={classes} />}
-        {tab === "tools" && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {SOON.map((s) => (
-              <div key={s.title} className="rounded-2xl p-5 opacity-75" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-                <span className="flex h-10 w-10 items-center justify-center rounded-xl mb-3" style={{ background: "color-mix(in oklab, var(--color-gold) 12%, transparent)", color: "var(--color-gold)" }}><s.icon className="h-5 w-5" /></span>
-                <h3 className="font-display text-base mb-1">{s.title}</h3>
-                <p className="text-xs text-parchment/60 leading-relaxed mb-2">{s.desc}</p>
-                <span className="text-[9px] tracking-[0.2em] uppercase text-gold">Coming soon</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {tab === "quizzes" && <QuizBuilderTab classes={classes} />}
+        {tab === "missions" && <MissionsTab classes={classes} />}
       </div>
     </div>
   );

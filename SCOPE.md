@@ -66,20 +66,34 @@ Gemini (`GEMINI_API_KEY`, server-only via `createServerFn`) · Nitro/Cloudflare.
 | /equation-balancer | Equation Balancer | 24 equations, 3 difficulties, persisted Time Attack |
 | /codex | Compound Codex | Discovery encyclopedia over the real combiner (~25 compounds) |
 | /gas-laws | Gas Laws | PV=nRT sim + AI-generated 5-problem trial |
+| /solutions | The Elixir Bench | Solutions & molarity: real solubility limits, particles view, commissions trial |
+| /thermo | Cauldron of Heat | Coffee-cup calorimetry, real ΔH data, guided q=mcΔT assay |
+| /rates | Reaction Rates | Collision theory sim: temp/concentration/surface/catalyst, quick check |
+| /equilibrium | Equilibrium | N₂O₄⇌NO₂ with emergent K, Le Chatelier stresses, Haber tab |
+| /electro | The Voltaic Forge | Build galvanic cells from real potentials, animated e⁻ flow, trial |
+| /forces | Invisible Bonds | IMF sim + 5-substance boiling-point race, quick check |
 | /titration | Titration Lab | Strong + weak acid, 3 indicators, pour realism, unknown assay |
 | /decay | Radioactive Decay | 6 isotopes, half-life slider |
 | /quiz | 3D Visual Quiz | 4 question templates, persisted bests |
+| /duel | Duel the Alchemist | vs-AI card battles (easy/medium/hard), stats from real chemistry, forge move |
+| /leaderboard | Hall of Records | Class leaderboards (stars/duels/compounds/streaks) via roster denormalization |
+| /shop | The Emporium | Aurum sink: frames, titles, charms with equip slots |
+| /assignments | Assignments | Teacher-authored quizzes + missions, student-side |
 | /scanner | AR Scanner (mobile) | MindAR; Alche-mix ceremony runs the REAL combiner; noble gases refuse; forged compounds render as SVG data-cards |
 | /scavenger | AI Scavenger Hunt | COCO-SSD + Gemini deep scan; teacher evidence inbox |
 | /elements | Element Explorer (public) | ~44 curated elements + lore (etymology/history/alchemy symbols for all 118 in `src/lib/element-lore.ts`) |
 
 **Cross-cutting:** Ask the Alchemist mentor chat on every student page ·
-persistent Trials (`profile.trials`, stars) · **aurum currency (earn-only —
-no shop yet)** · starter streaks · badges.
+persistent Trials (`profile.trials`, stars) · aurum currency with The Emporium
+as its sink · starter streaks · badges · offline service worker (public/sw.js,
+conservative caching) · periodic-table deep links (`?element=Fe`) with lore in
+the detail panel.
 
 **Teacher:** classes/join codes · gradebook (5 topics) · scavenger evidence
 review · **Performance tab** (class matrix, drill-downs, struggling-concepts
-radar). **Admin:** teacher ID + face-match verification, user/class management.
+radar) · **Quiz Builder** (with curriculum seeding + live class results) ·
+**Mission Configurator** — all authored content stored on the class doc.
+**Admin:** teacher ID + face-match verification, user/class management.
 
 **Key libs:** `profile.ts` (data model + `recordTrial`/`earnAurum`/
 `recordStarterRun`) · `curriculum.ts` + `learning.ts` (content + SM-2 + paths)
@@ -90,27 +104,19 @@ radar). **Admin:** teacher ID + face-match verification, user/class management.
 
 ## In scope — next (in priority order)
 
-1. **Duel the Alchemist (battles v1)** — vs-AI card battles using existing
-   data: HP = valence electrons, attack = |oxidation state|, turn order by
-   state of matter, abilities from real properties (Fe rusts, Na + water
-   explodes, noble gases can't attack), forged compounds as trump cards.
-   Client-only + existing profile. Winnings in aurum. *Design agreed, not built.*
-2. **Async class duels (battles v2)** — challenge classmates, correspondence
-   turns via Firestore `battles/{id}` + `onSnapshot` (same pattern as the
-   evidence feed). Then **v3**: live duels + card trading with teacher approval.
-3. **Aurum shop** — spend the currency: card frames, grimoire cosmetics,
-   hint scrolls, card packs. (Currency already accrues; a sink is needed.)
-4. **More AR targets** — the physical set is 12 cards; only 2 compiled targets
-   (`public/targets.mind`, via `npm run compile:ar`). Closing this gap makes
-   real forging shine.
-5. **Teacher authoring** — Quiz Builder and Mission Configurator placeholders
-   in the teacher console; model on ChemCollective's data-driven problem format.
-6. **Class leaderboards / live quiz mode** — trial stars per class; later a
-   Kahoot-style hosted session over the existing question bank.
-7. **Remaining sim topics** — reaction rates, equilibrium, thermochemistry,
-   electrochemistry/galvanic cells, intermolecular forces, solutions/molarity.
-8. **Offline service worker, deep links, richer element pages** (lore into
-   /periodic-table detail panel), scaffolding levels per activity.
+1. **Async class duels (battles v2)** — /duels route + `duels/{id}` Firestore
+   collection (rules already deployed): correspondence turns between
+   classmates over the deterministic duel engine. *In progress.*
+2. **Battles v3** — live duels + card trading with teacher approval.
+3. **More AR targets** — the physical set is 12 cards; only 2 compiled targets
+   (`public/targets.mind`, via `npm run compile:ar`). **Blocked on card
+   artwork assets** — the compile pipeline is ready.
+4. **Live class quiz mode** — Kahoot-style hosted session over the existing
+   question bank (teacher hosts, per-question class accuracy live).
+5. **Scaffolding levels per activity** (LabXchange's 1/2/3 prompt-detail
+   pattern) and richer per-element study pages for the ~98 non-RICH elements.
+6. **Aurum consumables** — hint scrolls usable in Codex/trials (the shop
+   currently sells cosmetics only).
 
 ## Out of scope (deliberate — do not build unless the owner changes this)
 

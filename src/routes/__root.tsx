@@ -139,6 +139,20 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  // PWA: register the offline service worker (production only — it would
+  // fight the dev server / HMR otherwise).
+  useEffect(() => {
+    if (
+      typeof window !== "undefined" &&
+      "serviceWorker" in navigator &&
+      import.meta.env.PROD
+    ) {
+      navigator.serviceWorker.register("/sw.js").catch((error) => {
+        console.warn("Service worker registration failed:", error);
+      });
+    }
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}

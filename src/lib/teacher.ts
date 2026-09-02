@@ -127,6 +127,176 @@ export async function getStudentPractice(studentUid: string): Promise<Record<str
   return (snap.data()?.practice as Record<string, number>) ?? {};
 }
 
+// ── Teacher-authored assignments (stored ON the class doc) ──────────────────
+// Firestore rules let a teacher update their own class doc and any signed-in
+// user read it — so quizzes and missions live as array fields on the doc
+// itself (no new collections). Students save results to their OWN user doc
+// via `recordAssignmentResult` in lib/profile.ts.
+
+export interface QuizQuestion {
+  prompt: string;
+  /** Exactly four choices. */
+  choices: string[];
+  /** Index into `choices` of the correct answer. */
+  answer: number;
+  /** Optional nudge shown to a student who misses the question. */
+  hint?: string;
+}
+
+export interface QuizDef {
+  id: string;
+  title: string;
+  questions: QuizQuestion[];
+  /** Epoch millis (serverTimestamp can't live inside array elements). */
+  createdAt: number;
+}
+
+/** One step of a mission checklist — denormalised so old missions survive catalog edits. */
+export interface MissionTarget {
+  moduleId: string;
+  label: string;
+  /** The `profile.practice` counter that proves the module was practised. */
+  practiceKey: string;
+}
+
+export interface MissionDef {
+  id: string;
+  title: string;
+  /** The teacher's note to the class. */
+  note?: string;
+  /** Ordered checklist. */
+  targets: MissionTarget[];
+  createdAt: number;
+}
+
+/** A module a mission can point at. `practiceKey` matches what the module logs via `logPractice`. */
+export interface ModuleCatalogEntry {
+  id: string;
+  label: string;
+  route: string;
+  practiceKey: string;
+}
+
+/** Fixed catalog of assignable modules — routes and practice keys are real. */
+export const MODULE_CATALOG: ModuleCatalogEntry[] = [
+  { id: "lab-safety", label: "Lab Safety", route: "/lab-safety", practiceKey: "lab-safety" },
+  { id: "atomic-builder", label: "Atomic Builder", route: "/atomic-builder", practiceKey: "atomic-builder" },
+  { id: "periodic-table", label: "Periodic Table", route: "/periodic-table", practiceKey: "periodic-table" },
+  { id: "table-game", label: "Placement Trials", route: "/table-game", practiceKey: "table-game" },
+  { id: "states", label: "States of Matter", route: "/states", practiceKey: "states" },
+  { id: "study", label: "The Study", route: "/study", practiceKey: "conceptsReviewed" },
+  { id: "molecules", label: "Molecule Shapes", route: "/molecules", practiceKey: "molecules" },
+  { id: "reactions", label: "Reaction Theatre", route: "/reactions", practiceKey: "reactions" },
+  { id: "equation-balancer", label: "Equation Balancer", route: "/equation-balancer", practiceKey: "equation-balancer" },
+  { id: "codex", label: "Compound Codex", route: "/codex", practiceKey: "codex" },
+  { id: "gas-laws", label: "Gas Laws", route: "/gas-laws", practiceKey: "gas-laws" },
+  { id: "titration", label: "Titration Lab", route: "/titration", practiceKey: "titration" },
+  { id: "decay", label: "Radioactive Decay", route: "/decay", practiceKey: "decay" },
+  { id: "quiz", label: "3D Visual Quiz", route: "/quiz", practiceKey: "quiz" },
+  { id: "starters", label: "Starters for Ten", route: "/starters", practiceKey: "starters" },
+];
+
+export const moduleById = (id: string): ModuleCatalogEntry | undefined =>
+  MODULE_CATALOG.find((m) => m.id === id);
+
+/** Collision-safe id for a quiz or mission ("qz-…" / "ms-…"). */
+export function newAssignmentId(prefix: string): string {
+  return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+}
+
+/** Client-side validation. Returns an error message, or null when the quiz is sound. */
+export function validateQuiz(title: string, questions: QuizQuestion[]): string | null {
+  if (!title.trim()) return "Give the quiz a title.";
+  if (questions.length === 0) return "Add at least one question.";
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+    if (!q.prompt.trim()) return `Question ${i + 1} needs a prompt.`;
+    if (q.choices.length !== 4 || q.choices.some((c) => !c.trim()))
+      return `Question ${i + 1} needs all four choices filled in.`;
+    if (!Number.isInteger(q.answer) || q.answer < 0 || q.answer > 3)
+      return `Question ${i + 1} needs exactly one correct answer marked.`;
+  }
+  return null;
+}
+
+export function validateMission(title: string, targets: MissionTarget[]): string | null {
+  if (!title.trim()) return "Give the mission a title.";
+  if (targets.length === 0) return "Pick at least one module for the checklist.";
+  return null;
+}
+
+/**
+ * Live quizzes + missions from one class doc. Works for the teacher console
+ * AND the student assignments page (rules allow any signed-in user to read).
+ */
+export function useClassAssignments(classId: string | null) {
+  const [quizzes, setQuizzes] = useState<QuizDef[]>([]);
+  const [missions, setMissions] = useState<MissionDef[]>([]);
+  const [className, setClassName] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!classId) { setQuizzes([]); setMissions([]); setClassName(null); setLoading(false); return; }
+    setLoading(true);
+    return onSnapshot(doc(db, "classes", classId), (snap) => {
+      const data = snap.data();
+      setQuizzes(((data?.quizzes as QuizDef[]) ?? []).slice().sort((a, b) => b.createdAt - a.createdAt));
+      setMissions(((data?.missions as MissionDef[]) ?? []).slice().sort((a, b) => b.createdAt - a.createdAt));
+      setClassName((data?.name as string) ?? null);
+      setLoading(false);
+    }, (err) => { console.error("useClassAssignments:", err); setLoading(false); });
+  }, [classId]);
+  return { quizzes, missions, className, loading };
+}
+
+/** Read-modify-write one array field on the class doc (create or replace by id). */
+async function upsertClassArrayItem<T extends { id: string }>(classId: string, field: string, item: T): Promise<void> {
+  const ref = doc(db, "classes", classId);
+  const snap = await getDoc(ref);
+  const list = ((snap.data()?.[field] as T[]) ?? []).slice();
+  const i = list.findIndex((x) => x.id === item.id);
+  if (i >= 0) list[i] = item; else list.push(item);
+  await updateDoc(ref, { [field]: list });
+}
+
+async function removeClassArrayItem(classId: string, field: string, id: string): Promise<void> {
+  const ref = doc(db, "classes", classId);
+  const snap = await getDoc(ref);
+  const list = ((snap.data()?.[field] as { id: string }[]) ?? []).filter((x) => x.id !== id);
+  await updateDoc(ref, { [field]: list });
+}
+
+/** Create or update a quiz on the class doc (strips empty hints — Firestore rejects `undefined`). */
+export async function saveQuiz(classId: string, quiz: QuizDef): Promise<void> {
+  const clean: QuizDef = {
+    ...quiz,
+    title: quiz.title.trim(),
+    questions: quiz.questions.map((q) => ({
+      prompt: q.prompt.trim(),
+      choices: q.choices.map((c) => c.trim()),
+      answer: q.answer,
+      ...(q.hint?.trim() ? { hint: q.hint.trim() } : {}),
+    })),
+  };
+  await upsertClassArrayItem(classId, "quizzes", clean);
+}
+
+export async function deleteQuiz(classId: string, quizId: string): Promise<void> {
+  await removeClassArrayItem(classId, "quizzes", quizId);
+}
+
+export async function saveMission(classId: string, mission: MissionDef): Promise<void> {
+  const clean: MissionDef = {
+    ...mission,
+    title: mission.title.trim(),
+    ...(mission.note?.trim() ? { note: mission.note.trim() } : { note: "" }),
+  };
+  await upsertClassArrayItem(classId, "missions", clean);
+}
+
+export async function deleteMission(classId: string, missionId: string): Promise<void> {
+  await removeClassArrayItem(classId, "missions", missionId);
+}
+
 // ── Class analytics (Performance Matrix) ────────────────────────────────────
 
 /** One rostered student plus their live user doc (null until/unless it exists). */

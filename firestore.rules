@@ -61,10 +61,25 @@ service cloud.firestore {
         function classTeacher() {
           return get(/databases/$(database)/documents/classes/$(classId)).data.teacherId;
         }
-        allow read: if signedIn() && (request.auth.uid == studentId || classTeacher() == request.auth.uid);
+        function isClassmate() {
+          return exists(/databases/$(database)/documents/classes/$(classId)/roster/$(request.auth.uid));
+        }
+        // Classmates may read each other's roster entries (name + leaderboard
+        // stats only — never the full user profile, which stays owner/teacher).
+        allow read: if signedIn() && (request.auth.uid == studentId || classTeacher() == request.auth.uid || isClassmate());
         allow create, update: if request.auth.uid == studentId;
         allow delete: if request.auth.uid == studentId || classTeacher() == request.auth.uid;
       }
+    }
+
+    // ── Duels (async card battles between classmates) ──
+    // Both players may read and advance the duel; only a listed player may
+    // create it. Turn order is enforced client-side (low stakes: it's a game).
+    match /duels/{duelId} {
+      allow read: if signedIn() && request.auth.uid in resource.data.players;
+      allow create: if signedIn() && request.auth.uid in request.resource.data.players;
+      allow update: if signedIn() && request.auth.uid in resource.data.players;
+      allow delete: if signedIn() && request.auth.uid in resource.data.players;
     }
 
     // Everything else denied by default.

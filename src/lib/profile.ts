@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { arrayUnion, doc, getDoc, increment, onSnapshot, serverTimestamp, updateDoc, type Timestamp } from "firebase/firestore";
+import { arrayUnion, doc, getDoc, increment, onSnapshot, serverTimestamp, setDoc, updateDoc, type Timestamp } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { onAuthChange } from "./auth";
 
@@ -56,6 +56,14 @@ export interface StudentProfile {
   aurum?: number;
   /** Daily "Starters for Ten" streak. `lastDay` is a YYYY-MM-DD key. */
   starterStreak?: { count: number; lastDay: string };
+  /** Shop item ids the student owns (bought with aurum). */
+  inventory?: string[];
+  /** Equipped cosmetics, keyed by slot (e.g. { frame: "frame-gilded" }). */
+  equipped?: Record<string, string>;
+  /** Duel the Alchemist record, keyed by difficulty ("easy"|"medium"|"hard"). */
+  duelRecord?: Record<string, { wins: number; losses: number }>;
+  /** Results on teacher-assigned quizzes, keyed by assignment id. */
+  assignmentResults?: Record<string, { score: number; outOf: number }>;
 }
 
 /** A student's best recorded run on a module Trial (a PhET-style game screen). */
@@ -185,8 +193,129 @@ export async function recordTrial(
       [`practice.${trialId}-trial`]: increment(1),
       "practice.lastActiveAt": serverTimestamp(),
     });
+    // Mirror the new star total onto the class leaderboard (if enrolled).
+    const after = await getDoc(ref);
+    await syncRosterStats(uid, after.data() as StudentProfile | undefined);
   } catch (err) {
     console.error("recordTrial failed:", err);
+  }
+}
+
+/**
+ * Mirrors a student's leaderboard stats onto their own class-roster entry
+ * (classes/{classId}/roster/{uid}), which classmates are allowed to read.
+ * Never mirrors anything sensitive — name + game stats only.
+ * Best-effort; never thrown.
+ */
+async function syncRosterStats(
+  uid: string,
+  data: StudentProfile | undefined,
+  overrides: { stars?: number; aurum?: number } = {},
+): Promise<void> {
+  const classId = data?.classId;
+  if (!classId) return;
+  try {
+    const trialStars = Object.values(data?.trials ?? {}).reduce((s, t) => s + (t.stars ?? 0), 0);
+    const duels = Object.values(data?.duelRecord ?? {}).reduce((s, d) => s + (d.wins ?? 0), 0);
+    await setDoc(
+      doc(db, "classes", classId, "roster", uid),
+      {
+        displayName: data?.displayName ?? data?.email?.split("@")[0] ?? "Apprentice",
+        stars: overrides.stars ?? trialStars,
+        aurum: overrides.aurum ?? data?.aurum ?? 0,
+        duelWins: duels,
+        compounds: data?.compounds?.length ?? 0,
+        streak: data?.starterStreak?.count ?? 0,
+        statsAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+  } catch (err) {
+    console.error("syncRosterStats failed:", err);
+  }
+}
+
+/**
+ * Spend aurum on a shop item. Refuses (returns false) when the student can't
+ * afford it or already owns a non-consumable. Best-effort beyond that.
+ */
+export async function spendAurum(
+  uid: string | null,
+  cost: number,
+  itemId: string,
+): Promise<boolean> {
+  if (!uid) return false;
+  try {
+    const ref = doc(db, "users", uid);
+    const snap = await getDoc(ref);
+    const data = snap.data() as StudentProfile | undefined;
+    if ((data?.aurum ?? 0) < cost) return false;
+    if (data?.inventory?.includes(itemId)) return false;
+    await updateDoc(ref, {
+      aurum: increment(-cost),
+      inventory: arrayUnion(itemId),
+      "practice.lastActiveAt": serverTimestamp(),
+    });
+    return true;
+  } catch (err) {
+    console.error("spendAurum failed:", err);
+    return false;
+  }
+}
+
+/** Equip an owned cosmetic into a slot (e.g. equipItem(uid, "frame", id)). */
+export async function equipItem(uid: string | null, slot: string, itemId: string): Promise<void> {
+  if (!uid) return;
+  try {
+    await updateDoc(doc(db, "users", uid), { [`equipped.${slot}`]: itemId });
+  } catch (err) {
+    console.error("equipItem failed:", err);
+  }
+}
+
+/**
+ * Records a finished Duel the Alchemist match: win/loss tally per difficulty,
+ * aurum payout on a win (easy 10 / medium 20 / hard 40), and a leaderboard
+ * sync. Best-effort; never thrown.
+ */
+export async function recordDuel(
+  uid: string | null,
+  difficulty: "easy" | "medium" | "hard",
+  won: boolean,
+): Promise<void> {
+  if (!uid) return;
+  try {
+    const ref = doc(db, "users", uid);
+    const payout = won ? { easy: 10, medium: 20, hard: 40 }[difficulty] : 0;
+    await updateDoc(ref, {
+      [`duelRecord.${difficulty}.${won ? "wins" : "losses"}`]: increment(1),
+      ...(payout ? { aurum: increment(payout) } : {}),
+      "practice.duel": increment(1),
+      "practice.lastActiveAt": serverTimestamp(),
+    });
+    const snap = await getDoc(ref);
+    await syncRosterStats(uid, snap.data() as StudentProfile | undefined);
+  } catch (err) {
+    console.error("recordDuel failed:", err);
+  }
+}
+
+/** Save a score on a teacher-assigned quiz (keeps the latest). */
+export async function recordAssignmentResult(
+  uid: string | null,
+  assignmentId: string,
+  score: number,
+  outOf: number,
+): Promise<void> {
+  if (!uid) return;
+  try {
+    await updateDoc(doc(db, "users", uid), {
+      [`assignmentResults.${assignmentId}`]: { score, outOf },
+      "practice.assignments": increment(1),
+      "practice.lastActiveAt": serverTimestamp(),
+    });
+  } catch (err) {
+    console.error("recordAssignmentResult failed:", err);
   }
 }
 
