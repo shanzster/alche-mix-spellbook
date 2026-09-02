@@ -76,6 +76,7 @@ Gemini (`GEMINI_API_KEY`, server-only via `createServerFn`) · Nitro/Cloudflare.
 | /decay | Radioactive Decay | 6 isotopes, half-life slider |
 | /quiz | 3D Visual Quiz | 4 question templates, persisted bests |
 | /duel | Duel the Alchemist | vs-AI card battles (easy/medium/hard), stats from real chemistry, forge move |
+| /duels | Class Duels | Async PvP vs classmates over the duel engine (duels/{id} Firestore docs) |
 | /leaderboard | Hall of Records | Class leaderboards (stars/duels/compounds/streaks) via roster denormalization |
 | /shop | The Emporium | Aurum sink: frames, titles, charms with equip slots |
 | /assignments | Assignments | Teacher-authored quizzes + missions, student-side |
@@ -104,10 +105,7 @@ radar) · **Quiz Builder** (with curriculum seeding + live class results) ·
 
 ## In scope — next (in priority order)
 
-1. **Async class duels (battles v2)** — /duels route + `duels/{id}` Firestore
-   collection (rules already deployed): correspondence turns between
-   classmates over the deterministic duel engine. *In progress.*
-2. **Battles v3** — live duels + card trading with teacher approval.
+1. **Battles v3** — live duels + card trading with teacher approval.
 3. **More AR targets** — the physical set is 12 cards; only 2 compiled targets
    (`public/targets.mind`, via `npm run compile:ar`). **Blocked on card
    artwork assets** — the compile pipeline is ready.
