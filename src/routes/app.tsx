@@ -346,8 +346,8 @@ function ClassBanner({
       <div
         className="mb-8 flex items-center gap-3 rounded-xl px-4 py-3"
         style={{
-          background: "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)",
-          border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 30%, transparent)",
+          background: "color-mix(in oklab, var(--color-emerald-elixir) 6%, transparent)",
+          border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 25%, transparent)",
         }}
       >
         <Users className="h-4 w-4 text-teal flex-shrink-0" />
@@ -423,16 +423,15 @@ function StudentHub() {
             const mobileOnly = m.arOnly && platform.ready && !platform.arCapable;
             const Row = (
               <div
-                className="group flex items-center gap-4 py-4 px-3 border-t transition-colors"
+                className="flex items-center gap-3.5 py-3 px-3 border-t"
                 style={{ borderColor: "var(--color-border)" }}
               >
                 <span
-                  className="flex h-11 w-11 items-center justify-center rounded-xl flex-shrink-0 transition-all duration-200 group-hover:scale-105"
+                  className="flex h-10 w-10 items-center justify-center rounded-xl flex-shrink-0"
                   style={{
-                    background: `linear-gradient(135deg, color-mix(in oklab, ${m.color} 24%, transparent), color-mix(in oklab, ${m.color} 8%, transparent))`,
-                    border: `1px solid color-mix(in oklab, ${m.color} 30%, transparent)`,
+                    background: "color-mix(in oklab, var(--color-parchment) 6%, transparent)",
+                    border: "1px solid var(--color-border)",
                     color: m.color,
-                    boxShadow: `0 0 18px -9px ${m.color}`,
                   }}
                 >
                   <m.icon className="h-5 w-5" />
@@ -446,9 +445,9 @@ function StudentHub() {
                         style={{
                           color: "var(--color-emerald-elixir)",
                           background:
-                            "color-mix(in oklab, var(--color-emerald-elixir) 14%, transparent)",
+                            "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)",
                           border:
-                            "1px solid color-mix(in oklab, var(--color-emerald-elixir) 40%, transparent)",
+                            "1px solid color-mix(in oklab, var(--color-emerald-elixir) 30%, transparent)",
                         }}
                       >
                         Up next
@@ -461,20 +460,13 @@ function StudentHub() {
                       : m.desc}
                   </div>
                 </div>
-                <span
-                  className="text-[10px] tracking-[0.15em] uppercase flex-shrink-0"
-                  style={{
-                    color: mobileOnly
-                      ? "var(--color-parchment)"
-                      : live
-                        ? m.color
-                        : "var(--color-parchment)",
-                  }}
-                >
-                  {mobileOnly ? "On mobile" : STATUS_LABEL[m.status]}
-                </span>
+                {(mobileOnly || !live) && (
+                  <span className="text-[10px] tracking-[0.15em] uppercase flex-shrink-0 text-parchment/70">
+                    {mobileOnly ? "On mobile" : STATUS_LABEL[m.status]}
+                  </span>
+                )}
                 {live ? (
-                  <ChevronRight className="h-4 w-4 text-parchment/40 group-hover:text-teal group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                  <ChevronRight className="h-4 w-4 text-parchment/40 flex-shrink-0" />
                 ) : (
                   <span className="w-4 flex-shrink-0" />
                 )}
@@ -508,8 +500,8 @@ function StudentHub() {
         <div
           className="mb-8 flex items-start gap-3 rounded-xl px-4 py-3"
           style={{
-            background: "color-mix(in oklab, var(--color-gold) 8%, transparent)",
-            border: "1px solid color-mix(in oklab, var(--color-gold) 28%, transparent)",
+            background: "color-mix(in oklab, var(--color-gold) 6%, transparent)",
+            border: "1px solid color-mix(in oklab, var(--color-gold) 25%, transparent)",
           }}
         >
           <ScanLine className="mt-0.5 h-4 w-4 flex-shrink-0 text-gold" />
@@ -525,10 +517,9 @@ function StudentHub() {
       <ClassBanner uid={uid} profile={profile} />
 
       {/* My Progress — populated by the teacher */}
-      <section className="mb-10">
-        <div className="flex items-center gap-2 mb-3 px-1">
-          <GraduationCap className="h-4 w-4 text-teal" />
-          <h2 className="font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+      <section className="mb-12">
+        <div className="flex items-center mb-3 px-1">
+          <h2 className="font-display text-xs tracking-[0.15em] uppercase text-parchment/60">
             My Progress
           </h2>
         </div>
@@ -543,9 +534,8 @@ function StudentHub() {
                 className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-display text-xs tracking-[0.08em]"
                 style={{
                   color: "var(--color-gold)",
-                  background: "color-mix(in oklab, var(--color-gold) 12%, transparent)",
-                  border: "1px solid color-mix(in oklab, var(--color-gold) 35%, transparent)",
-                  boxShadow: "0 0 18px -8px var(--color-gold)",
+                  background: "color-mix(in oklab, var(--color-gold) 8%, transparent)",
+                  border: "1px solid color-mix(in oklab, var(--color-gold) 28%, transparent)",
                 }}
               >
                 <Award className="h-3.5 w-3.5" /> {BADGE_META[b].label}
@@ -556,29 +546,23 @@ function StudentHub() {
 
         {!hasProgress ? (
           <div
-            className="relative overflow-hidden rounded-2xl px-5 py-9 text-center"
+            className="rounded-xl px-5 py-9 text-center"
             style={{
-              background:
-                "linear-gradient(135deg, color-mix(in oklab, var(--color-wraith) 8%, transparent), color-mix(in oklab, var(--color-slate-sunken) 55%, transparent))",
-              border: "1px dashed color-mix(in oklab, var(--color-parchment) 30%, transparent)",
+              background: "color-mix(in oklab, var(--color-parchment) 4%, transparent)",
+              border: "1px dashed color-mix(in oklab, var(--color-parchment) 25%, transparent)",
             }}
           >
-            <div
-              className="pointer-events-none absolute -right-10 -bottom-14 h-40 w-40 rounded-full blur-3xl"
-              style={{ background: "color-mix(in oklab, var(--color-wraith) 14%, transparent)" }}
-            />
             <span
-              className="relative mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
+              className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
               style={{
-                background: "color-mix(in oklab, var(--color-teal) 12%, transparent)",
-                border: "1px solid color-mix(in oklab, var(--color-teal) 30%, transparent)",
-                boxShadow: "0 0 24px -8px var(--color-teal)",
+                background: "color-mix(in oklab, var(--color-teal) 8%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--color-teal) 25%, transparent)",
               }}
             >
               <ClipboardCheck className="h-6 w-6 text-teal" />
             </span>
-            <p className="relative font-display text-base mb-1">No scores yet</p>
-            <p className="relative text-sm text-parchment/60 max-w-sm mx-auto">
+            <p className="font-display text-base mb-1">No scores yet</p>
+            <p className="text-sm text-parchment/60 max-w-sm mx-auto">
               Your teacher hasn't posted results yet. Grades, feedback and mastery for each topic
               will appear here once they do.
             </p>
@@ -637,9 +621,8 @@ function StudentHub() {
 
       {/* Module list */}
       <section>
-        <div className="flex items-center gap-2 mb-1 px-1">
-          <Atom className="h-4 w-4 text-gold" />
-          <h2 className="font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+        <div className="flex items-center mb-2 px-1">
+          <h2 className="font-display text-xs tracking-[0.15em] uppercase text-parchment/60">
             Learning Modules
           </h2>
           <span className="ml-auto text-[10px] text-parchment/45">
@@ -652,10 +635,9 @@ function StudentHub() {
       </section>
 
       {/* The Arcade — games & rewards, kept apart from the learning path */}
-      <section className="mt-12">
-        <div className="flex items-center gap-2 mb-3 px-1">
-          <Swords className="h-4 w-4 text-crimson" />
-          <h2 className="font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+      <section className="mt-14">
+        <div className="flex items-center mb-3 px-1">
+          <h2 className="font-display text-xs tracking-[0.15em] uppercase text-parchment/60">
             The Arcade
           </h2>
           <span className="ml-auto text-[10px] text-parchment/45">
@@ -670,8 +652,8 @@ function StudentHub() {
               className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-display text-xs tracking-[0.08em]"
               style={{
                 color: "var(--color-gold)",
-                background: "color-mix(in oklab, var(--color-gold) 12%, transparent)",
-                border: "1px solid color-mix(in oklab, var(--color-gold) 35%, transparent)",
+                background: "color-mix(in oklab, var(--color-gold) 8%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--color-gold) 28%, transparent)",
               }}
               title="Aurum — earned from Trials and the daily Starters"
             >
@@ -683,8 +665,8 @@ function StudentHub() {
               className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-display text-xs tracking-[0.08em]"
               style={{
                 color: "var(--color-crimson)",
-                background: "color-mix(in oklab, var(--color-crimson) 10%, transparent)",
-                border: "1px solid color-mix(in oklab, var(--color-crimson) 30%, transparent)",
+                background: "color-mix(in oklab, var(--color-crimson) 8%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--color-crimson) 25%, transparent)",
               }}
               title="Consecutive days of Starters for Ten"
             >

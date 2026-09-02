@@ -4,7 +4,7 @@ import { PageHeader } from "./PageHeader";
 
 /**
  * Header wrapper for student lab modules. Renders inside the StudentShell app
- * layout and shows a themed PageHeader banner with an accent icon and eyebrow.
+ * layout and shows a quiet PageHeader with an accent icon and eyebrow.
  */
 export function ModuleShell({
   title,

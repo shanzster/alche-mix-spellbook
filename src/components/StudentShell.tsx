@@ -135,36 +135,16 @@ export function StudentShell({ title, children }: { title?: string; children: Re
 
   return (
     <div className="bg-arcane min-h-screen text-spectral">
-      <div className="bg-arcane-stars pointer-events-none fixed inset-0 z-0 opacity-50" />
-
       {/* ── Desktop sidebar ── */}
       <aside
-        className="hidden md:flex fixed inset-y-0 left-0 z-40 w-60 flex-col px-4 py-6 backdrop-blur-xl border-r overflow-hidden"
+        className="hidden md:flex fixed inset-y-0 left-0 z-40 w-60 flex-col px-4 py-6 border-r overflow-hidden"
         style={{
-          background:
-            "linear-gradient(180deg, color-mix(in oklab, var(--color-slate-sunken) 92%, transparent), color-mix(in oklab, var(--color-mist) 78%, transparent))",
+          background: "var(--color-slate-sunken)",
           borderColor: "var(--color-border)",
-          boxShadow: "1px 0 40px -20px color-mix(in oklab, var(--color-wraith) 40%, transparent)",
         }}
       >
-        {/* decorative glow at the top of the rail */}
-        <div
-          className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full blur-3xl"
-          style={{
-            background: "color-mix(in oklab, var(--color-emerald-elixir) 18%, transparent)",
-          }}
-        />
-
         <Link to="/" className="relative flex items-center gap-2.5 px-2 mb-8">
-          <img
-            src="/images/logo-outline.png"
-            alt=""
-            className="h-8 w-8 object-contain"
-            style={{
-              filter:
-                "drop-shadow(0 0 8px color-mix(in oklab, var(--color-emerald-elixir) 60%, transparent))",
-            }}
-          />
+          <img src="/images/logo-outline.png" alt="" className="h-8 w-8 object-contain" />
           <span className="font-display text-lg tracking-[0.15em]">AlcheMix</span>
         </Link>
 
@@ -173,7 +153,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
             const active = !item.disabled && isActive(item.to);
             const Inner = (
               <span
-                className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-200"
+                className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] transition-colors"
                 style={{
                   color: item.disabled
                     ? "color-mix(in oklab, var(--color-parchment) 55%, transparent)"
@@ -181,27 +161,12 @@ export function StudentShell({ title, children }: { title?: string; children: Re
                       ? "var(--color-emerald-elixir)"
                       : "var(--color-parchment)",
                   background: active
-                    ? "linear-gradient(90deg, color-mix(in oklab, var(--color-emerald-elixir) 18%, transparent), transparent)"
+                    ? "color-mix(in oklab, var(--color-emerald-elixir) 8%, transparent)"
                     : "transparent",
-                  boxShadow: active
-                    ? "inset 3px 0 0 var(--color-emerald-elixir), 0 0 22px -12px var(--color-emerald-elixir)"
-                    : "none",
                 }}
               >
-                <span
-                  className="flex h-7 w-7 items-center justify-center rounded-md flex-shrink-0 transition-colors"
-                  style={
-                    active
-                      ? {
-                          background:
-                            "color-mix(in oklab, var(--color-emerald-elixir) 16%, transparent)",
-                        }
-                      : undefined
-                  }
-                >
-                  <item.icon className="h-4 w-4" />
-                </span>
-                <span className="font-display tracking-[0.06em]">{item.label}</span>
+                <item.icon className="h-4 w-4 flex-shrink-0" />
+                <span className="font-display tracking-[0.04em]">{item.label}</span>
                 {item.disabled && (
                   <span className="ml-auto text-[8px] tracking-[0.15em] uppercase text-gold">
                     AI
@@ -221,7 +186,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
               <Link
                 key={item.label}
                 to={item.to as any}
-                className={`block rounded-lg ${active ? "" : "hover:bg-teal/5 hover:translate-x-0.5 transition-transform"}`}
+                className={`block rounded-lg ${active ? "" : "hover:bg-teal/5"}`}
               >
                 {Inner}
               </Link>
@@ -351,25 +316,10 @@ export function StudentShell({ title, children }: { title?: string; children: Re
               {active && (
                 <span
                   className="absolute top-0 h-0.5 w-8 rounded-full"
-                  style={{
-                    background: "var(--color-emerald-elixir)",
-                    boxShadow: "0 0 10px 1px var(--color-emerald-elixir)",
-                  }}
+                  style={{ background: "var(--color-emerald-elixir)" }}
                 />
               )}
-              <span
-                className="transition-transform"
-                style={
-                  active
-                    ? {
-                        filter: "drop-shadow(0 0 6px var(--color-emerald-elixir))",
-                        transform: "translateY(-1px)",
-                      }
-                    : undefined
-                }
-              >
-                <item.icon className="h-5 w-5" />
-              </span>
+              <item.icon className="h-5 w-5" />
               <span className="text-[9px] tracking-[0.05em] font-display">
                 {item.label.split(" ")[0]}
               </span>
@@ -391,10 +341,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
             {moreActive && (
               <span
                 className="absolute top-0 h-0.5 w-8 rounded-full"
-                style={{
-                  background: "var(--color-emerald-elixir)",
-                  boxShadow: "0 0 10px 1px var(--color-emerald-elixir)",
-                }}
+                style={{ background: "var(--color-emerald-elixir)" }}
               />
             )}
             <MoreHorizontal className="h-5 w-5" />

@@ -49,11 +49,9 @@ export function AskAlchemist({ context }: { context?: string }) {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label={open ? "Close the Alchemist" : "Ask the Alchemist"}
-        className="fixed z-50 bottom-20 right-4 md:bottom-6 md:right-6 flex h-12 w-12 items-center justify-center rounded-full transition-transform hover:scale-105"
+        className="fixed z-50 bottom-20 right-4 md:bottom-6 md:right-6 flex h-12 w-12 items-center justify-center rounded-full transition-opacity hover:opacity-90"
         style={{
-          background:
-            "linear-gradient(135deg, color-mix(in oklab, var(--color-gold) 85%, transparent), color-mix(in oklab, var(--color-emerald-elixir) 70%, transparent))",
-          boxShadow: "0 0 24px -6px var(--color-gold)",
+          background: "var(--color-gold)",
           color: "#1a1408",
         }}
       >
