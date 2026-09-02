@@ -629,7 +629,7 @@ function StudentHub() {
             in the Guide's recommended order
           </span>
         </div>
-        <ul>
+        <ul className="xl:grid xl:grid-cols-2 xl:gap-x-10">
           {MODULES.map(renderModule)}
         </ul>
       </section>
@@ -675,7 +675,7 @@ function StudentHub() {
           )}
         </div>
       )}
-        <ul>
+        <ul className="xl:grid xl:grid-cols-2 xl:gap-x-10">
           {ARCADE.map(renderModule)}
         </ul>
       </section>

@@ -229,7 +229,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
 
       {/* ── Content ── */}
       <main className="relative z-10 md:pl-60">
-        <div className="mx-auto max-w-5xl px-5 pt-20 pb-28 md:pt-10 md:pb-16 md:px-8">
+        <div className="mx-auto max-w-7xl px-5 pt-20 pb-28 md:pt-8 md:pb-16 md:px-8 lg:px-10">
           {children}
         </div>
       </main>
