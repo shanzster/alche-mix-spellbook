@@ -548,73 +548,73 @@ function StudentHub() {
 
   return (
     <StudentShell title="Home">
-      {/* ── Hero — the apprentice's bench, one grand artifact ── */}
-      <section className="card-arcane glass relative mb-8 overflow-hidden rounded-2xl p-6 md:p-9">
-        {/* soft candlelight pooling in the corner */}
+      {/* ── Hero banner — the alchemist at the cauldron, full-bleed art ── */}
+      <section className="relative mb-8 overflow-hidden rounded-2xl">
+        <img
+          src="/images/alchemix-hero-banner.png"
+          alt=""
+          className="absolute inset-0 h-full w-full object-cover object-[65%_30%]"
+        />
+        {/* legibility scrims, tinted with the theme background so both modes work */}
         <div
-          className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full opacity-35 blur-3xl"
-          style={{ background: "color-mix(in oklab, var(--color-gold) 45%, transparent)" }}
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(90deg, color-mix(in oklab, var(--color-mist) 88%, transparent) 0%, color-mix(in oklab, var(--color-mist) 55%, transparent) 42%, color-mix(in oklab, var(--color-mist) 10%, transparent) 75%, transparent 100%)",
+          }}
         />
         <div
-          className="pointer-events-none absolute -bottom-28 -left-16 h-64 w-64 rounded-full opacity-30 blur-3xl"
-          style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent)" }}
+          className="absolute inset-0"
+          style={{
+            background:
+              "linear-gradient(0deg, color-mix(in oklab, var(--color-mist) 55%, transparent), transparent 45%)",
+          }}
         />
+        {/* the gilded arcane frame, floating above the art */}
+        <div className="card-arcane pointer-events-none absolute inset-0 z-20 rounded-2xl" />
 
-        <div className="relative flex flex-wrap items-center gap-8 md:gap-12">
-          <div className="min-w-0 flex-1">
-            <p className={LABEL}>Apprentice's Bench</p>
-            <h1 className="font-display mt-1.5 text-3xl leading-tight md:text-4xl">
-              Welcome back, {name}.
-            </h1>
-            <p className="mt-2.5 max-w-lg font-serif text-[15px] italic leading-relaxed text-parchment/75">
-              The Grimoire lies open — every page you turn explains a little more of the world.
-            </p>
+        <div className="relative z-10 max-w-2xl p-6 py-10 md:p-10 md:py-14">
+          <p className={LABEL}>Apprentice's Bench</p>
+          <h1 className="font-display mt-1.5 text-3xl leading-tight md:text-4xl">
+            Welcome back, {name}.
+          </h1>
+          <p className="mt-2.5 max-w-lg font-serif text-[15px] italic leading-relaxed text-parchment/90">
+            The Grimoire lies open — every page you turn explains a little more of the world.
+          </p>
 
-            {stats.length > 0 && (
-              <div className="mt-4 flex items-center gap-2 text-xs text-parchment/70">
-                {stats.map((s, i) => (
-                  <Fragment key={s.key}>
-                    {i > 0 && <span className="text-parchment/30">·</span>}
-                    {s.node}
-                  </Fragment>
-                ))}
-              </div>
-            )}
+          {stats.length > 0 && (
+            <div className="mt-4 flex items-center gap-2 text-xs text-parchment/90">
+              {stats.map((s, i) => (
+                <Fragment key={s.key}>
+                  {i > 0 && <span className="text-parchment/40">·</span>}
+                  {s.node}
+                </Fragment>
+              ))}
+            </div>
+          )}
 
-            {/* Continue — the hero's call to action */}
-            {nextStep ? (
-              <div className="mt-6 flex flex-wrap items-center gap-4">
-                <Link
-                  to={nextStep.to as any}
-                  className="btn-arcane btn-arcane-hover flex-shrink-0 text-xs"
-                >
-                  Continue your path
-                </Link>
-                <span className="flex min-w-0 items-center gap-2.5 text-sm text-parchment/75">
-                  <nextStep.icon className="h-4 w-4 flex-shrink-0 text-emerald-elixir" />
-                  <span className="truncate">
-                    <span className="font-semibold text-spectral">{nextStep.title}</span>
-                    <span className="text-parchment/50"> is next</span>
-                  </span>
+          {/* Continue — the hero's call to action */}
+          {nextStep ? (
+            <div className="mt-6 flex flex-wrap items-center gap-4">
+              <Link
+                to={nextStep.to as any}
+                className="btn-arcane btn-arcane-hover flex-shrink-0 text-xs"
+              >
+                Continue your path
+              </Link>
+              <span className="flex min-w-0 items-center gap-2.5 text-sm text-parchment/90">
+                <nextStep.icon className="h-4 w-4 flex-shrink-0 text-emerald-elixir" />
+                <span className="truncate">
+                  <span className="font-semibold text-spectral">{nextStep.title}</span>
+                  <span className="text-parchment/60"> is next</span>
                 </span>
-              </div>
-            ) : (
-              <p className="mt-6 font-serif text-sm italic text-parchment/75">
-                You've walked the whole Guide — keep the streak alight, or revisit any page below.
-              </p>
-            )}
-          </div>
-
-          {/* The grand crest */}
-          <div className="hidden sm:flex flex-shrink-0 items-center justify-center pr-2 md:pr-6">
-            <span className="emblem-arcane h-32 w-32 md:h-36 md:w-36">
-              <img
-                src="/images/logo-outline.png"
-                alt=""
-                className="relative h-16 w-16 object-contain md:h-20 md:w-20"
-              />
-            </span>
-          </div>
+              </span>
+            </div>
+          ) : (
+            <p className="mt-6 font-serif text-sm italic text-parchment/90">
+              You've walked the whole Guide — keep the streak alight, or revisit any page below.
+            </p>
+          )}
         </div>
       </section>
 
