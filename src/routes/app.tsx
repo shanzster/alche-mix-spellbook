@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Fragment, useState } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import {
   Atom,
   BookMarked,
@@ -382,6 +382,20 @@ const MASTERY_META: Record<Mastery, { label: string; color: string }> = {
 /** The one label recipe used on this page. */
 const LABEL = "text-[11px] uppercase tracking-[0.14em] text-parchment/50";
 
+/** Centred chapter rule — hairlines meeting a small gilded diamond, the
+ *  fantasy-artifact divider that frames each section like a card heading. */
+function SectionRule({ children }: { children: ReactNode }) {
+  return (
+    <div className="mt-10 mb-4 flex items-center gap-3">
+      <span className="h-px flex-1 bg-gradient-to-r from-transparent to-gold/30" />
+      <span className="text-[8px] leading-none text-gold/60">◆</span>
+      <h2 className={LABEL}>{children}</h2>
+      <span className="text-[8px] leading-none text-gold/60">◆</span>
+      <span className="h-px flex-1 bg-gradient-to-l from-transparent to-gold/30" />
+    </div>
+  );
+}
+
 function ClassRow({
   uid,
   profile,
@@ -493,23 +507,27 @@ function StudentHub() {
     const recommended = nextStep?.to === m.to;
     const mobileOnly = m.arOnly && platform.ready && !platform.arCapable;
     const card = (
-      <div className="glass h-full rounded-2xl p-4 transition-colors group-hover:border-emerald-elixir/40!">
-        <div className="flex items-start justify-between gap-2">
+      <div className="card-arcane glass relative flex h-full flex-col items-center rounded-2xl p-4 pt-5 text-center">
+        {recommended && (
+          <span
+            className="absolute right-3 top-3 h-1.5 w-1.5 rounded-full bg-emerald-elixir"
+            title="Up next on your Guide path"
+          />
+        )}
+        {!live && <span className={`absolute left-3 top-3 ${LABEL}`}>{STATUS_LABEL[m.status]}</span>}
+        <span className="emblem-arcane h-11 w-11 flex-shrink-0">
           <m.icon
-            className={`h-5 w-5 transition-colors ${
-              recommended ? "text-emerald-elixir" : "text-parchment group-hover:text-emerald-elixir"
+            className={`relative h-4.5 w-4.5 transition-colors ${
+              recommended ? "text-emerald-elixir" : "text-gold"
             }`}
           />
-          {recommended && (
-            <span
-              className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-elixir"
-              title="Up next on your Guide path"
-            />
-          )}
-          {!live && <span className={LABEL}>{STATUS_LABEL[m.status]}</span>}
+        </span>
+        <div className="mt-3 font-serif text-[15px] font-semibold tracking-wide text-spectral">
+          {m.title}
         </div>
-        <div className="mt-3 font-ui text-sm font-semibold text-spectral">{m.title}</div>
-        <p className="mt-1 text-xs text-parchment/70 line-clamp-2">{m.desc}</p>
+        <p className="mt-1 font-serif text-xs italic leading-snug text-parchment/70 line-clamp-2">
+          {m.desc}
+        </p>
         {mobileOnly && <p className="mt-2 text-xs text-parchment/50">On mobile</p>}
       </div>
     );
@@ -553,16 +571,9 @@ function StudentHub() {
 
       {/* Continue card — the one strong accent on the page. */}
       {nextStep ? (
-        <div className="glass mb-6 flex flex-wrap items-center gap-4 rounded-2xl p-5">
-          <span
-            className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl"
-            style={{
-              background: "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)",
-              border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 25%, transparent)",
-              color: "var(--color-emerald-elixir)",
-            }}
-          >
-            <nextStep.icon className="h-5 w-5" />
+        <div className="card-arcane glass mb-6 flex flex-wrap items-center gap-4 rounded-2xl p-5">
+          <span className="emblem-arcane h-11 w-11 flex-shrink-0 text-emerald-elixir">
+            <nextStep.icon className="relative h-5 w-5" />
           </span>
           <div className="min-w-0 flex-1">
             <p className={LABEL}>Continue your path</p>
@@ -579,7 +590,7 @@ function StudentHub() {
           </Link>
         </div>
       ) : (
-        <div className="glass mb-6 rounded-2xl p-5">
+        <div className="card-arcane glass mb-6 rounded-2xl p-5">
           <p className={LABEL}>Path complete</p>
           <h2 className="mt-0.5 font-ui text-base font-semibold text-spectral">
             You've walked the whole Guide, {name}.
@@ -611,7 +622,7 @@ function StudentHub() {
           if (rows.length === 0) return null;
           return (
             <Fragment key={group}>
-              <h2 className={`${LABEL} mt-8 mb-3`}>{group}</h2>
+              <SectionRule>{group}</SectionRule>
               {grid(rows)}
             </Fragment>
           );
@@ -619,14 +630,14 @@ function StudentHub() {
       </section>
 
       {/* The Arcade — games & rewards, kept apart from the learning path. */}
-      <section className="mt-12">
-        <h2 className={`${LABEL} mb-3`}>The Arcade — games & rewards</h2>
+      <section className="mt-6">
+        <SectionRule>The Arcade — games & rewards</SectionRule>
         {grid(ARCADE)}
       </section>
 
       {/* My Progress — populated by the teacher. */}
-      <section className="mt-12 mb-4">
-        <h2 className={`${LABEL} mb-3`}>My Progress</h2>
+      <section className="mt-6 mb-4">
+        <SectionRule>My Progress</SectionRule>
 
         {/* Badges earned in the app (e.g. from the AR Scanner's quick check). */}
         {badges.length > 0 && (

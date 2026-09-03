@@ -262,6 +262,56 @@
     radial-gradient(46rem 34rem at 45% 110%, color-mix(in oklab, var(--color-wraith) 20%, transparent), transparent 65%);
 }
 
+/* ── Arcane card frame ────────────────────────────────────────────────────
+   The fantasy-artifact card recipe (RPG character-card style): layered on the
+   glass base it adds an inner gilded hairline inset from the edge and four
+   tiny corner rivets — ornament with discipline. Pair as `card-arcane glass
+   rounded-2xl`; hover brightens the gilding. */
+@utility card-arcane {
+  position: relative;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0.4rem;
+    border: 1px solid color-mix(in oklab, var(--color-gold) 30%, transparent);
+    border-radius: 0.6rem;
+    pointer-events: none;
+    transition: border-color 0.2s ease;
+  }
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0.4rem;
+    pointer-events: none;
+    background:
+      radial-gradient(circle, color-mix(in oklab, var(--color-gold) 75%, transparent) 0 1.5px, transparent 2px) top left / 3px 3px no-repeat,
+      radial-gradient(circle, color-mix(in oklab, var(--color-gold) 75%, transparent) 0 1.5px, transparent 2px) top right / 3px 3px no-repeat,
+      radial-gradient(circle, color-mix(in oklab, var(--color-gold) 75%, transparent) 0 1.5px, transparent 2px) bottom left / 3px 3px no-repeat,
+      radial-gradient(circle, color-mix(in oklab, var(--color-gold) 75%, transparent) 0 1.5px, transparent 2px) bottom right / 3px 3px no-repeat;
+  }
+  &:hover::before {
+    border-color: color-mix(in oklab, var(--color-gold) 55%, transparent);
+  }
+}
+
+/* The crest emblem — a rotated-diamond badge holding an icon, worn top-centre
+   of an arcane card. Use on a square wrapper; the icon inside stays upright. */
+@utility emblem-arcane {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 12%;
+    transform: rotate(45deg);
+    border: 1px solid color-mix(in oklab, var(--color-gold) 45%, transparent);
+    background: color-mix(in oklab, var(--color-gold) 8%, transparent);
+    border-radius: 4px;
+  }
+}
+
 /* Slim, quiet scrollbar for the nav rail and other internal scrollers. */
 @utility scroll-slim {
   scrollbar-width: thin;
