@@ -312,6 +312,19 @@
   }
 }
 
+/* Floating drift — scattered artefacts (cards) bobbing slowly in the hero
+   scene. Set `--tilt` per element for its resting rotation. */
+@keyframes float-drift {
+  0%, 100% { transform: rotate(var(--tilt, 0deg)) translateY(0); }
+  50% { transform: rotate(var(--tilt, 0deg)) translateY(-14px); }
+}
+.float-drift {
+  animation: float-drift 8s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .float-drift { animation: none; }
+}
+
 /* Slim, quiet scrollbar for the nav rail and other internal scrollers. */
 @utility scroll-slim {
   scrollbar-width: thin;

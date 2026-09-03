@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, useState, type CSSProperties, type ReactNode } from "react";
 import {
   Atom,
   BookMarked,
@@ -548,44 +548,69 @@ function StudentHub() {
 
   return (
     <StudentShell title="Home">
-      {/* ── Hero — full-viewport landing: the alchemist at the cauldron ── */}
-      <section className="relative mb-10 flex min-h-[calc(100svh-8.5rem)] flex-col justify-center overflow-hidden rounded-2xl">
-        <img
-          src="/images/alchemix-hero-banner.png"
-          alt=""
-          className="absolute inset-0 h-full w-full object-cover object-[65%_30%]"
-        />
-        {/* legibility scrims, tinted with the theme background so both modes work */}
+      {/* ── Hero — the immersive scene: wordmark over the scrying orb,
+          the apprentice's own cards drifting around it (ESOTERRA-style). ── */}
+      <section className="relative mb-16 flex min-h-[calc(100svh-8.5rem)] flex-col items-center justify-center overflow-hidden text-center">
+        {/* deep violet scene glow */}
         <div
-          className="absolute inset-0"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[46rem] w-[46rem] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70 blur-3xl"
           style={{
             background:
-              "linear-gradient(90deg, color-mix(in oklab, var(--color-mist) 88%, transparent) 0%, color-mix(in oklab, var(--color-mist) 55%, transparent) 42%, color-mix(in oklab, var(--color-mist) 10%, transparent) 75%, transparent 100%)",
+              "radial-gradient(circle, color-mix(in oklab, var(--color-wraith) 38%, transparent), transparent 65%)",
           }}
         />
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "linear-gradient(0deg, color-mix(in oklab, var(--color-mist) 55%, transparent), transparent 45%)",
-          }}
-        />
-        {/* the gilded arcane frame, floating above the art */}
-        <div className="card-arcane pointer-events-none absolute inset-0 z-20 rounded-2xl" />
 
-        <div className="relative z-10 max-w-3xl p-6 md:p-12 lg:p-16">
-          <p className={LABEL}>Apprentice's Bench</p>
-          <h1 className="font-display mt-2 text-4xl leading-tight md:text-5xl lg:text-6xl">
-            Welcome back,
-            <br />
-            {name}.
+        {/* the scrying orb — the cauldron scene held in a sphere behind the text */}
+        <div
+          className="pointer-events-none absolute left-1/2 top-[46%] h-64 w-64 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full md:h-80 md:w-80"
+          style={{
+            boxShadow:
+              "0 0 90px -8px color-mix(in oklab, var(--color-wraith) 70%, transparent), inset 0 0 50px rgb(0 0 0 / 0.45)",
+          }}
+        >
+          <img
+            src="/images/alchemix-hero-banner.png"
+            alt=""
+            className="h-full w-full object-cover object-[47%_48%] opacity-90"
+          />
+        </div>
+
+        {/* drifting cards from the apprentice's own deck */}
+        {[
+          { src: "/image-trigger/image-trigger-alchemix.png", cls: "left-[7%] top-[14%] w-20 md:w-28", tilt: "-12deg", delay: "0s" },
+          { src: "/image-trigger/image-trigger-helium.png", cls: "right-[8%] top-[10%] w-16 md:w-24", tilt: "10deg", delay: "1.6s" },
+          { src: "/other_cards/3rd_card.png", cls: "left-[13%] bottom-[16%] w-16 md:w-24", tilt: "8deg", delay: "3.1s" },
+          { src: "/image-trigger/image-trigger-helium.png", cls: "hidden md:block right-[14%] bottom-[20%] w-20", tilt: "-8deg", delay: "0.9s" },
+          { src: "/image-trigger/image-trigger-alchemix.png", cls: "hidden lg:block right-[26%] top-[34%] w-14", tilt: "16deg", delay: "2.3s" },
+        ].map((c, i) => (
+          <img
+            key={i}
+            src={c.src}
+            alt=""
+            aria-hidden
+            className={`float-drift pointer-events-none absolute rounded-lg opacity-50 ${c.cls}`}
+            style={{
+              "--tilt": c.tilt,
+              animationDelay: c.delay,
+              boxShadow: "0 12px 40px -12px rgb(0 0 0 / 0.6)",
+            } as CSSProperties}
+          />
+        ))}
+
+        {/* the wordmark + welcome, floating over the orb */}
+        <div className="relative z-10 px-4">
+          <h1 className="font-serif text-5xl font-medium uppercase tracking-[0.26em] pl-[0.26em] text-spectral md:text-7xl">
+            AlcheMix
           </h1>
-          <p className="mt-4 max-w-lg font-serif text-base italic leading-relaxed text-parchment/90 md:text-lg">
-            The Grimoire lies open — every page you turn explains a little more of the world.
+          <p className={`${LABEL} mt-3`}>Apprentice's Bench</p>
+
+          <p className="mx-auto mt-28 max-w-md font-serif text-base italic leading-relaxed text-parchment/90 md:mt-40 md:text-lg">
+            Welcome back, {name}. The Grimoire lies open — every page you turn explains a
+            little more of the world.
           </p>
 
           {stats.length > 0 && (
-            <div className="mt-4 flex items-center gap-2 text-xs text-parchment/90">
+            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-parchment/90">
               {stats.map((s, i) => (
                 <Fragment key={s.key}>
                   {i > 0 && <span className="text-parchment/40">·</span>}
@@ -595,9 +620,8 @@ function StudentHub() {
             </div>
           )}
 
-          {/* Continue — the hero's call to action */}
           {nextStep ? (
-            <div className="mt-8 flex flex-wrap items-center gap-4">
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
               <Link
                 to={nextStep.to as any}
                 className="btn-arcane btn-arcane-hover flex-shrink-0 text-sm"
@@ -613,7 +637,7 @@ function StudentHub() {
               </span>
             </div>
           ) : (
-            <p className="mt-8 font-serif text-sm italic text-parchment/90">
+            <p className="mt-7 font-serif text-sm italic text-parchment/90">
               You've walked the whole Guide — keep the streak alight, or revisit any page below.
             </p>
           )}
@@ -622,7 +646,7 @@ function StudentHub() {
         {/* Scroll cue — the book continues below the fold */}
         <a
           href="#chapters"
-          className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 flex flex-col items-center gap-1 text-parchment/60 transition-colors hover:text-spectral"
+          className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1 text-parchment/60 transition-colors hover:text-spectral"
           aria-label="Scroll to the chapters"
         >
           <span className={LABEL}>The chapters await</span>
