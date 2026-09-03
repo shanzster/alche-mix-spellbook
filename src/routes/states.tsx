@@ -305,7 +305,7 @@ function TempSlider({ sub, T, onChange }: { sub: Substance; T: number; onChange:
         <span className="inline-flex items-center gap-1.5 text-[11px] tracking-[0.15em] uppercase" style={{ color: sub.accent }}>
           <Thermometer className="h-3.5 w-3.5" /> Temperature
         </span>
-        <span className="font-display text-lg" style={{ color: sub.accent }}>
+        <span className="font-ui font-medium text-lg" style={{ color: sub.accent }}>
           {T.toFixed(0)} <span className="text-xs text-parchment/60">K</span>
           <span className="text-xs text-parchment/60 ml-2">({(T - 273.15).toFixed(0)} °C)</span>
         </span>
@@ -385,7 +385,7 @@ function QuickCheck({ uid, best }: { uid: string | null; best?: { best: number; 
         <p className="text-[10px] tracking-[0.2em] uppercase text-gold">Quick check — seal your knowledge</p>
         {best && (
           <span className="text-xs text-parchment/70">
-            Best: <span className="text-gold font-display">{best.best}/{best.outOf}</span>{" "}
+            Best: <span className="text-gold font-ui font-medium">{best.best}/{best.outOf}</span>{" "}
             {"★".repeat(Math.max(0, Math.min(3, best.best)))}
           </span>
         )}
@@ -500,7 +500,7 @@ function States() {
               <PhaseIcon className="h-5 w-5" />
             </span>
             <div className="text-left">
-              <div className="font-display text-lg" style={{ color: meta.color }}>
+              <div className="font-ui font-medium text-lg" style={{ color: meta.color }}>
                 {sub.name} · {changing ?? meta.label}
               </div>
               <div className="text-xs text-parchment/70">
@@ -524,7 +524,7 @@ function States() {
 
           <div className="rounded-xl p-4 text-sm text-parchment leading-relaxed"
             style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px solid var(--color-border)" }}>
-            <span className="text-teal font-display">Observe:</span>{" "}
+            <span className="text-teal font-ui font-medium">Observe:</span>{" "}
             {sub.sublimes
               ? "Carbon dioxide skips the liquid phase entirely at 1 atm — at 195 K the lattice breaks straight into gas. That's sublimation."
               : phase === "solid"

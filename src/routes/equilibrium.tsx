@@ -296,7 +296,7 @@ function Counsel({ note }: { note: { msg: string; n: number } | null }) {
         <ScrollText className="h-4 w-4" />
       </span>
       <div className="min-w-0">
-        <div className="text-[10px] tracking-[0.2em] uppercase font-display mb-0.5 text-gold">Le Chatelier's counsel</div>
+        <div className="text-[10px] tracking-[0.2em] uppercase font-ui font-medium mb-0.5 text-gold">Le Chatelier's counsel</div>
         <div className="text-sm text-parchment leading-snug">{note.msg}</div>
       </div>
     </div>
@@ -360,7 +360,7 @@ function HaberTab() {
               <span className="inline-flex items-center gap-1.5 text-[11px] tracking-[0.15em] uppercase text-gold">
                 <Thermometer className="h-3.5 w-3.5" /> Temperature
               </span>
-              <span className="font-display text-lg text-gold">{Tc} <span className="text-xs text-parchment/60">°C</span></span>
+              <span className="font-ui font-medium text-lg text-gold">{Tc} <span className="text-xs text-parchment/60">°C</span></span>
             </div>
             <input type="range" min={200} max={600} step={5} value={Tc} onChange={(e) => setTc(parseInt(e.target.value, 10))}
               aria-label="Reactor temperature in degrees Celsius" className="w-full" style={{ accentColor: "var(--color-gold)" }} />
@@ -375,7 +375,7 @@ function HaberTab() {
               <span className="inline-flex items-center gap-1.5 text-[11px] tracking-[0.15em] uppercase" style={{ color: COLOR_NH3 }}>
                 <Gauge className="h-3.5 w-3.5" /> Pressure
               </span>
-              <span className="font-display text-lg" style={{ color: COLOR_NH3 }}>{P} <span className="text-xs text-parchment/60">atm</span></span>
+              <span className="font-ui font-medium text-lg" style={{ color: COLOR_NH3 }}>{P} <span className="text-xs text-parchment/60">atm</span></span>
             </div>
             <input type="range" min={10} max={600} step={5} value={P} onChange={(e) => setP(parseInt(e.target.value, 10))}
               aria-label="Reactor pressure in atmospheres" className="w-full" style={{ accentColor: COLOR_NH3 }} />
@@ -489,7 +489,7 @@ function QuickCheck({ uid, best }: { uid: string | null; best?: { best: number; 
         <p className="text-[10px] tracking-[0.2em] uppercase text-gold">Quick check — seal your knowledge</p>
         {best && (
           <span className="text-xs text-parchment/70">
-            Best: <span className="text-gold font-display">{best.best}/{best.outOf}</span>{" "}
+            Best: <span className="text-gold font-ui font-medium">{best.best}/{best.outOf}</span>{" "}
             {"★".repeat(Math.max(0, Math.min(3, best.best)))}
           </span>
         )}
@@ -643,7 +643,7 @@ function Equilibrium() {
                   <FlaskConical className="h-5 w-5" />
                 </span>
                 <div className="text-left">
-                  <div className="font-display text-lg" style={{ color: "var(--color-amber-scry)" }}>
+                  <div className="font-ui font-medium text-lg" style={{ color: "var(--color-amber-scry)" }}>
                     N₂O₄ <span className="text-parchment/60">⇌</span> 2 NO₂ · {shade(gauge.concM)}
                   </div>
                   <div className="text-xs text-parchment/70">
@@ -660,7 +660,7 @@ function Equilibrium() {
                   <span className="inline-flex items-center gap-1.5 text-[11px] tracking-[0.15em] uppercase" style={{ color: "var(--color-amber-scry)" }}>
                     <Thermometer className="h-3.5 w-3.5" /> Temperature
                   </span>
-                  <span className="font-display text-lg" style={{ color: "var(--color-amber-scry)" }}>
+                  <span className="font-ui font-medium text-lg" style={{ color: "var(--color-amber-scry)" }}>
                     {T} <span className="text-xs text-parchment/60">K</span>
                     <span className="text-xs text-parchment/60 ml-2">({(T - 273.15).toFixed(0)} °C)</span>
                   </span>
@@ -679,7 +679,7 @@ function Equilibrium() {
                   <span className="inline-flex items-center gap-1.5 text-[11px] tracking-[0.15em] uppercase text-parchment/80">
                     <Gauge className="h-3.5 w-3.5" /> Volume / pressure
                   </span>
-                  <span className="font-display text-lg text-parchment">
+                  <span className="font-ui font-medium text-lg text-parchment">
                     {(V * 100).toFixed(0)}<span className="text-xs text-parchment/60">% volume</span>
                   </span>
                 </div>

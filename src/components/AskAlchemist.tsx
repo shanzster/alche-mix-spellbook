@@ -66,7 +66,7 @@ export function AskAlchemist({ context }: { context?: string }) {
             style={{ borderBottom: "1px solid var(--color-border)" }}
           >
             <Sparkles className="h-4 w-4 text-gold" />
-            <p className="font-display text-sm tracking-[0.08em]">The Alchemist</p>
+            <p className="font-ui font-medium text-sm tracking-[0.08em]">The Alchemist</p>
             <p className="ml-auto text-[10px] uppercase tracking-[0.2em] text-parchment/50">
               mentor
             </p>

@@ -310,7 +310,7 @@ function ForceTempSlider({
         <span className="inline-flex items-center gap-1.5 text-[11px] tracking-[0.15em] uppercase" style={{ color: accent }}>
           <Thermometer className="h-3.5 w-3.5" /> Temperature
         </span>
-        <span className="font-display text-lg" style={{ color: accent }}>
+        <span className="font-ui font-medium text-lg" style={{ color: accent }}>
           {T.toFixed(0)} <span className="text-xs text-parchment/60">K</span>
           <span className="text-xs text-parchment/60 ml-2">({(T - 273.15).toFixed(0)} °C)</span>
         </span>
@@ -438,7 +438,7 @@ function BoilRace() {
           return (
             <div key={s.id} className="rounded-xl overflow-hidden" style={{ border: `1px solid color-mix(in oklab, ${s.accent} ${boiled ? 55 : 25}%, transparent)`, background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)" }}>
               <div className="flex items-center justify-between px-2.5 pt-2">
-                <span className="font-display text-sm" style={{ color: s.accent }}>{s.formula}</span>
+                <span className="font-ui font-medium text-sm" style={{ color: s.accent }}>{s.formula}</span>
                 <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] tracking-[0.14em] uppercase"
                   style={boiled
                     ? { color: "var(--color-crimson)", background: "color-mix(in oklab, var(--color-crimson) 14%, transparent)" }
@@ -463,7 +463,7 @@ function BoilRace() {
             const boiled = T >= s.bp;
             return (
               <li key={s.id} className="flex items-center gap-1.5 text-sm" style={{ color: boiled ? s.accent : "color-mix(in oklab, var(--color-parchment) 45%, transparent)" }}>
-                <span className="font-display">{i + 1}.</span> {s.formula}
+                <span className="font-ui font-medium">{i + 1}.</span> {s.formula}
                 {boiled
                   ? <span className="text-xs">— boiled at {s.bp} K</span>
                   : <span className="text-xs italic">— holding on</span>}
@@ -522,7 +522,7 @@ function CompareCard({ sub }: { sub: IMFSub }) {
         {sub.molarMass.toFixed(2)} g/mol
       </div>
       <div className="text-sm text-parchment">
-        Boils at <span className="font-display" style={{ color: sub.accent }}>{sub.bp} K</span>
+        Boils at <span className="font-ui font-medium" style={{ color: sub.accent }}>{sub.bp} K</span>
         <span className="text-parchment/60"> ({(sub.bp - 273.15).toFixed(0)} °C)</span>
       </div>
       <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "color-mix(in oklab, var(--color-parchment) 12%, transparent)" }}>
@@ -555,7 +555,7 @@ function ComparePanel() {
       </div>
       {why && (
         <div className="rounded-xl px-4 py-3 text-sm text-parchment leading-relaxed" style={{ border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)", background: "color-mix(in oklab, var(--color-gold) 7%, transparent)" }}>
-          <span className="text-gold font-display">Why: </span>{why}
+          <span className="text-gold font-ui font-medium">Why: </span>{why}
         </div>
       )}
     </div>
@@ -616,7 +616,7 @@ function QuickCheck({ uid, best }: { uid: string | null; best?: { best: number; 
         <p className="text-[10px] tracking-[0.2em] uppercase text-gold">Quick check — seal your knowledge</p>
         {best && (
           <span className="text-xs text-parchment/70">
-            Best: <span className="text-gold font-display">{best.best}/{best.outOf}</span>{" "}
+            Best: <span className="text-gold font-ui font-medium">{best.best}/{best.outOf}</span>{" "}
             {"★".repeat(Math.max(0, Math.min(3, best.best)))}
           </span>
         )}
@@ -717,7 +717,7 @@ function Forces() {
               {boiled ? <Wind className="h-5 w-5" /> : <Droplets className="h-5 w-5" />}
             </span>
             <div className="text-left">
-              <div className="font-display text-lg" style={{ color: sub.accent }}>
+              <div className="font-ui font-medium text-lg" style={{ color: sub.accent }}>
                 {sub.name} · {boiled ? "Gas — thermal motion won" : "Condensed — attractions winning"}
               </div>
               <div className="text-xs text-parchment/70">
@@ -741,7 +741,7 @@ function Forces() {
 
           <div className="rounded-xl p-4 text-sm text-parchment leading-relaxed"
             style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px solid var(--color-border)" }}>
-            <span className="text-wraith font-display">Observe:</span>{" "}
+            <span className="text-wraith font-ui font-medium">Observe:</span>{" "}
             {boiled
               ? "Above the boiling point the thermal kicks overpower the attractions — the molecules scatter and fill the box. Each molecule is still whole; only the grips between them broke."
               : sub.polar

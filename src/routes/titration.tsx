@@ -681,7 +681,7 @@ function Titration() {
         >
           <div className="flex items-center gap-2 mb-2">
             <Trophy className="h-4 w-4 text-gold" />
-            <span className="text-[10px] tracking-[0.2em] uppercase font-display text-gold">
+            <span className="text-[10px] tracking-[0.2em] uppercase font-ui font-medium text-gold">
               Assay of the Unknown
             </span>
             {best && (

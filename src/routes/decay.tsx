@@ -178,7 +178,7 @@ function DecayViewer() {
               setId(i.id);
               reset();
             }}
-            className="rounded-xl px-3.5 py-2 text-sm font-display transition-all hover:-translate-y-0.5"
+            className="rounded-xl px-3.5 py-2 text-sm font-ui font-medium transition-all hover:-translate-y-0.5"
             style={
               i.id === id
                 ? {
@@ -250,7 +250,7 @@ function DecayViewer() {
               color={DAUGHTER}
             />
             <span className="text-parchment/50">+</span>
-            <span className="font-display text-lg" style={{ color: "var(--color-gold)" }}>
+            <span className="font-ui font-medium text-lg" style={{ color: "var(--color-gold)" }}>
               {iso.mode}
             </span>
           </div>
@@ -360,7 +360,7 @@ function NucleusChip({
   return (
     <div className="flex flex-col items-center">
       <span
-        className="flex h-12 w-12 items-center justify-center rounded-full font-display text-sm"
+        className="flex h-12 w-12 items-center justify-center rounded-full font-ui font-medium text-sm"
         style={{
           background: `color-mix(in oklab, ${color} 18%, transparent)`,
           color,
@@ -388,7 +388,7 @@ function Fact({ label, value, accent }: { label: string; value: string; accent: 
       <div className="text-[9px] tracking-[0.2em] uppercase mb-1" style={{ color: accent }}>
         {label}
       </div>
-      <div className="font-display text-sm leading-tight">{value}</div>
+      <div className="font-ui font-medium text-sm leading-tight">{value}</div>
     </div>
   );
 }

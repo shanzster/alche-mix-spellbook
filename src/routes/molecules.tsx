@@ -45,7 +45,7 @@ function MoleculeViewer() {
             <button
               key={m.id}
               onClick={() => setId(m.id)}
-              className="rounded-xl px-3.5 py-2 text-sm font-display transition-all duration-150 hover:-translate-y-0.5"
+              className="rounded-xl px-3.5 py-2 text-sm font-ui font-medium transition-all duration-150 hover:-translate-y-0.5"
               style={
                 active
                   ? {
@@ -171,7 +171,7 @@ function Fact({
         {icon}
         {label}
       </div>
-      <div className="font-display text-lg">{value}</div>
+      <div className="font-ui font-medium text-lg">{value}</div>
     </div>
   );
 }

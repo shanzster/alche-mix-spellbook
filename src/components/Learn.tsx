@@ -24,7 +24,7 @@ export function ConceptCard({ title, children }: { title: string; children: Reac
     <div className="rounded-xl px-4 py-3" style={quietCard("var(--color-wraith)")}>
       <div className="flex items-center gap-2 mb-1 text-wraith">
         <ScrollText className="h-3.5 w-3.5 flex-shrink-0" />
-        <span className="text-[10px] tracking-[0.2em] uppercase font-display">Alchemist's Note</span>
+        <span className="text-[10px] tracking-[0.2em] uppercase font-ui font-medium">Alchemist's Note</span>
         <span className="text-[10px] tracking-[0.15em] uppercase text-parchment/50">· {title}</span>
       </div>
       <div className="text-sm text-parchment leading-relaxed">{children}</div>
@@ -38,7 +38,7 @@ export function DidYouKnow({ children }: { children: ReactNode }) {
     <div className="rounded-xl px-4 py-3" style={quietCard("var(--color-gold)")}>
       <div className="flex items-center gap-2 mb-1 text-gold">
         <Sparkles className="h-3.5 w-3.5 flex-shrink-0" />
-        <span className="text-[10px] tracking-[0.2em] uppercase font-display">In the Mortal World</span>
+        <span className="text-[10px] tracking-[0.2em] uppercase font-ui font-medium">In the Mortal World</span>
       </div>
       <div className="text-sm text-parchment leading-relaxed">{children}</div>
     </div>
@@ -60,7 +60,7 @@ export function ChallengeBanner({ prompt, solved, hint }: { prompt: ReactNode; s
         {solved ? <Check className="h-4 w-4" /> : <Swords className="h-4 w-4" />}
       </span>
       <div className="min-w-0">
-        <div className="text-[10px] tracking-[0.2em] uppercase font-display mb-0.5" style={{ color }}>
+        <div className="text-[10px] tracking-[0.2em] uppercase font-ui font-medium mb-0.5" style={{ color }}>
           {solved ? "Trial passed" : "Trial"}
         </div>
         <div className="text-sm text-spectral leading-snug">{prompt}</div>

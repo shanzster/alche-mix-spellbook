@@ -259,7 +259,7 @@ function ActivitySeries({ cell, connected }: { cell: Cell | null; connected: boo
           return (
             <div key={m.id} className="flex items-center gap-2 rounded-lg px-2 py-1"
               style={{ border: `1px solid ${role ? `color-mix(in oklab, ${ring} 55%, transparent)` : "transparent"}`, background: role ? `color-mix(in oklab, ${ring} 8%, transparent)` : "transparent" }}>
-              <span className="w-7 text-sm font-display text-parchment">{m.symbol}</span>
+              <span className="w-7 text-sm font-ui font-medium text-parchment">{m.symbol}</span>
               <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "color-mix(in oklab, var(--color-parchment) 10%, transparent)" }}>
                 <div className="h-full rounded-full" style={{ width: `${8 + push * 92}%`, background: `color-mix(in oklab, var(--color-gold) ${30 + push * 60}%, var(--color-teal))` }} />
               </div>
@@ -384,7 +384,7 @@ function ForgeTrial({ uid, best }: { uid: string | null; best?: { best: number; 
         )}
         {best && (
           <p className="text-xs text-parchment/70">
-            Best: <span className="text-gold font-display">{best.best}/{best.outOf}</span> {"★".repeat(Math.max(0, Math.min(3, best.stars)))}
+            Best: <span className="text-gold font-ui font-medium">{best.best}/{best.outOf}</span> {"★".repeat(Math.max(0, Math.min(3, best.stars)))}
           </p>
         )}
         <button onClick={start} className="rounded-full px-6 py-2 text-xs tracking-[0.15em] uppercase transition"
@@ -442,12 +442,12 @@ function ForgeTrial({ uid, best }: { uid: string | null; best?: { best: number; 
         <p className="text-[10px] tracking-[0.25em] uppercase text-gold flex items-center gap-2">
           <Swords className="h-3.5 w-3.5" /> License of the Forge · round {idx + 1}/5
         </p>
-        <span className="text-xs text-parchment/70">Score: <span className="text-gold font-display">{score}</span>/10</span>
+        <span className="text-xs text-parchment/70">Score: <span className="text-gold font-ui font-medium">{score}</span>/10</span>
       </div>
 
       <p className="text-sm text-parchment">
-        The Forge presents: <span className="font-display text-gold">{r.a.name} ({r.a.symbol}, {fmtE(r.a.E)} V)</span>
-        {" "}paired with <span className="font-display text-gold">{r.b.name} ({r.b.symbol}, {fmtE(r.b.E)} V)</span>.
+        The Forge presents: <span className="font-ui font-medium text-gold">{r.a.name} ({r.a.symbol}, {fmtE(r.a.E)} V)</span>
+        {" "}paired with <span className="font-ui font-medium text-gold">{r.b.name} ({r.b.symbol}, {fmtE(r.b.E)} V)</span>.
       </p>
 
       {/* (a) which is the anode? */}
@@ -496,7 +496,7 @@ function ForgeTrial({ uid, best }: { uid: string | null; best?: { best: number; 
           {voltDone && (
             <div className="mt-3 space-y-2">
               <p className="text-xs" style={{ color: voltRight ? "var(--color-emerald-elixir)" : "var(--color-crimson)" }}>
-                E°cell = E°cathode − E°anode = {fmtE(cell.cathode.E)} − ({fmtE(cell.anode.E)}) = <span className="font-display">{correctV.toFixed(2)} V</span>
+                E°cell = E°cathode − E°anode = {fmtE(cell.cathode.E)} − ({fmtE(cell.anode.E)}) = <span className="font-ui font-medium">{correctV.toFixed(2)} V</span>
               </p>
               <p className="text-xs text-parchment/70 font-mono">{overallEquation(cell.anode, cell.cathode)}</p>
               <button onClick={next} className="rounded-full px-5 py-1.5 text-xs tracking-[0.15em] uppercase transition"
@@ -569,7 +569,7 @@ function Electro() {
           {cell && connected && (cell.same ? (
             <div className="rounded-xl p-4 text-sm text-parchment leading-relaxed"
               style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px solid color-mix(in oklab, var(--color-crimson) 35%, transparent)" }}>
-              <span className="text-crimson font-display">0.00 V — no push at all.</span>{" "}
+              <span className="text-crimson font-ui font-medium">0.00 V — no push at all.</span>{" "}
               Two identical {cell.anode.name.toLowerCase()} electrodes want electrons <em>equally</em>, so neither can
               shove electrons at the other. A voltaic cell needs two <em>different</em> metals — a difference in
               reduction potential is the whole engine.
@@ -589,7 +589,7 @@ function Electro() {
               </p>
               <p className="text-xs text-parchment/70">
                 E°cell = E°cathode − E°anode = {fmtE(cell.cathode.E)} − ({fmtE(cell.anode.E)}) ={" "}
-                <span className="text-gold font-display">{cell.voltage.toFixed(2)} V</span>
+                <span className="text-gold font-ui font-medium">{cell.voltage.toFixed(2)} V</span>
               </p>
             </div>
           ))}

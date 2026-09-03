@@ -296,7 +296,7 @@ function DuelBoard({
           }}
         >
           <Swords className="mx-auto mb-3 h-8 w-8 opacity-40" style={{ color: ACCENT }} />
-          <p className="font-display text-spectral">No duels on your bench yet.</p>
+          <p className="font-ui font-medium text-spectral">No duels on your bench yet.</p>
           <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-parchment/70">
             Send the first challenge below. Each of you plays one move whenever you next visit —
             no need to be online together.
@@ -315,7 +315,7 @@ function DuelBoard({
                     e.stopPropagation();
                     void acceptChallenge(d.id);
                   }}
-                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-display transition hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-ui font-medium transition hover:-translate-y-0.5"
                   style={{
                     color: EMERALD,
                     background: `color-mix(in oklab, ${EMERALD} 14%, transparent)`,
@@ -329,7 +329,7 @@ function DuelBoard({
                     e.stopPropagation();
                     void declineOrDelete(d.id);
                   }}
-                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-display transition hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-ui font-medium transition hover:-translate-y-0.5"
                   style={{
                     color: ACCENT,
                     background: `color-mix(in oklab, ${ACCENT} 12%, transparent)`,
@@ -369,7 +369,7 @@ function DuelBoard({
                     e.stopPropagation();
                     void declineOrDelete(d.id);
                   }}
-                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-display transition hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-xs font-ui font-medium transition hover:-translate-y-0.5"
                   style={{
                     color: "var(--color-parchment)",
                     background: "color-mix(in oklab, var(--color-mist) 35%, transparent)",
@@ -410,7 +410,7 @@ function SectionHeading({
   label: string;
 }) {
   return (
-    <h2 className="mb-3 flex items-center gap-2 px-1 font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+    <h2 className="mb-3 flex items-center gap-2 px-1 font-ui font-medium text-sm tracking-[0.2em] uppercase text-parchment/70">
       <Icon className="h-4 w-4" style={{ color }} /> {label}
     </h2>
   );
@@ -474,7 +474,7 @@ function DuelRow({
 
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-center gap-1.5">
-          <span className="truncate font-display text-sm text-spectral">vs {opp.name}</span>
+          <span className="truncate font-ui font-medium text-sm text-spectral">vs {opp.name}</span>
           <span
             className="rounded-full px-2 py-0.5 text-[8px] tracking-[0.18em] uppercase"
             style={{
@@ -566,7 +566,7 @@ function ChallengeBench({
           }}
         >
           <Users className="mx-auto mb-3 h-8 w-8 opacity-40" style={{ color: EMERALD }} />
-          <p className="font-display text-spectral">No fellow apprentices on the roster yet.</p>
+          <p className="font-ui font-medium text-spectral">No fellow apprentices on the roster yet.</p>
           <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-parchment/70">
             You are the first of your class to reach the circle. Once classmates join and earn
             their first records, their names will appear here to be challenged.
@@ -668,7 +668,7 @@ function ChallengeBench({
             <button
               onClick={() => void send()}
               disabled={!opponent || sending || (draft.length !== 0 && draft.length !== 4)}
-              className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 font-display text-sm tracking-wide transition enabled:hover:-translate-y-0.5 enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 font-ui font-medium text-sm tracking-wide transition enabled:hover:-translate-y-0.5 enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
               style={{
                 color: "var(--color-slate-sunken)",
                 background: `linear-gradient(135deg, ${EMERALD}, color-mix(in oklab, ${EMERALD} 70%, ${GOLD}))`,
@@ -731,7 +731,7 @@ function PlayView({
         }}
       >
         <Sparkles className="mx-auto mb-4 h-10 w-10 opacity-40" style={{ color: ACCENT }} />
-        <p className="font-display text-lg text-spectral">This duel has dissolved.</p>
+        <p className="font-ui font-medium text-lg text-spectral">This duel has dissolved.</p>
         <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-parchment/75">
           The challenge was withdrawn or declined — its circle is no longer drawn.
         </p>
@@ -817,11 +817,11 @@ function DuelTable({
       {/* ── Table header: back, opponent, round ── */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <BackButton onBack={onBack} />
-        <span className="font-display text-sm text-spectral">
+        <span className="font-ui font-medium text-sm text-spectral">
           vs <span style={{ color: GOLD }}>{opp.name}</span>
         </span>
         <span
-          className="ml-auto rounded-xl px-3 py-1.5 text-center font-display text-sm"
+          className="ml-auto rounded-xl px-3 py-1.5 text-center font-ui font-medium text-sm"
           style={{
             color: GOLD,
             background: "color-mix(in oklab, var(--color-slate-sunken) 65%, transparent)",
@@ -858,7 +858,7 @@ function DuelTable({
               ? `${opp.name} concedes after ${st.round} rounds.`
               : `${opp.name} outlasted you after ${st.round} rounds — study the scroll below. Every defeat teaches a reaction.`}
           </p>
-          <p className="mt-2 inline-flex items-center gap-1.5 font-display text-sm" style={{ color: GOLD }}>
+          <p className="mt-2 inline-flex items-center gap-1.5 font-ui font-medium text-sm" style={{ color: GOLD }}>
             <Coins className="h-4 w-4" />
             {won
               ? `${PVP_AURUM} aurum added to your purse.`
@@ -900,17 +900,17 @@ function DuelTable({
           {/* ── Actions / waiting state ── */}
           <div className="mt-5">
             {duel.status === "done" ? (
-              <p className="text-center font-display text-sm text-parchment/70">
+              <p className="text-center font-ui font-medium text-sm text-parchment/70">
                 The duel is decided — the scroll keeps its record.
               </p>
             ) : duel.status === "pending" ? (
-              <p className="text-center font-display text-sm text-parchment/60">
+              <p className="text-center font-ui font-medium text-sm text-parchment/60">
                 {mySide === 0
                   ? `Awaiting ${opp.name}'s acceptance — the circle is drawn but not yet sealed.`
                   : "Accept the challenge above to seal the circle."}
               </p>
             ) : !myTurn ? (
-              <p className="inline-flex w-full items-center justify-center gap-2 text-center font-display text-sm text-parchment/60">
+              <p className="inline-flex w-full items-center justify-center gap-2 text-center font-ui font-medium text-sm text-parchment/60">
                 <Hourglass className="h-4 w-4" style={{ color: AMBER }} />
                 Waiting for {opp.name} — check back later. Duels resolve whenever each alchemist
                 next visits their bench.
@@ -1036,7 +1036,7 @@ function DuelTable({
             border: "1px solid var(--color-border)",
           }}
         >
-          <h3 className="mb-2 flex items-center gap-2 font-display text-xs tracking-[0.2em] uppercase text-parchment/60">
+          <h3 className="mb-2 flex items-center gap-2 font-ui font-medium text-xs tracking-[0.2em] uppercase text-parchment/60">
             <ScrollText className="h-3.5 w-3.5" style={{ color: GOLD }} /> The duel scroll
           </h3>
           <div ref={logBoxRef} className="min-h-[160px] flex-1 space-y-1.5 overflow-y-auto pr-1">
@@ -1096,13 +1096,13 @@ function PendingBanner({
       {mySide === 1 ? (
         <>
           <p className="min-w-0 flex-1 text-sm leading-relaxed text-parchment/80">
-            <span className="font-display text-spectral">{oppName}</span> has challenged you to
+            <span className="font-ui font-medium text-spectral">{oppName}</span> has challenged you to
             the circle. Accept to seal the duel — or decline and let the aether reclaim it.
           </p>
           <span className="flex flex-shrink-0 items-center gap-2">
             <button
               onClick={() => void acceptChallenge(duel.id)}
-              className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-display transition hover:-translate-y-0.5"
+              className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-ui font-medium transition hover:-translate-y-0.5"
               style={{
                 color: EMERALD,
                 background: `color-mix(in oklab, ${EMERALD} 14%, transparent)`,
@@ -1116,7 +1116,7 @@ function PendingBanner({
                 void declineOrDelete(duel.id);
                 onBack();
               }}
-              className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-display transition hover:-translate-y-0.5"
+              className="inline-flex items-center gap-1 rounded-lg px-3 py-2 text-xs font-ui font-medium transition hover:-translate-y-0.5"
               style={{
                 color: ACCENT,
                 background: `color-mix(in oklab, ${ACCENT} 12%, transparent)`,
@@ -1131,7 +1131,7 @@ function PendingBanner({
         <>
           <p className="min-w-0 flex-1 text-sm leading-relaxed text-parchment/80">
             Your challenge is winging its way to{" "}
-            <span className="font-display text-spectral">{oppName}</span>. The duel begins once
+            <span className="font-ui font-medium text-spectral">{oppName}</span>. The duel begins once
             they accept — check back later.
           </p>
           <button
@@ -1139,7 +1139,7 @@ function PendingBanner({
               void declineOrDelete(duel.id);
               onBack();
             }}
-            className="inline-flex flex-shrink-0 items-center gap-1 rounded-lg px-3 py-2 text-xs font-display transition hover:-translate-y-0.5"
+            className="inline-flex flex-shrink-0 items-center gap-1 rounded-lg px-3 py-2 text-xs font-ui font-medium transition hover:-translate-y-0.5"
             style={{
               color: "var(--color-parchment)",
               background: "color-mix(in oklab, var(--color-mist) 35%, transparent)",
@@ -1158,7 +1158,7 @@ function BackButton({ onBack, className }: { onBack: () => void; className?: str
   return (
     <button
       onClick={onBack}
-      className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 font-display text-xs tracking-wide transition hover:-translate-y-0.5 ${className ?? ""}`}
+      className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 font-ui font-medium text-xs tracking-wide transition hover:-translate-y-0.5 ${className ?? ""}`}
       style={{
         color: "var(--color-parchment)",
         background: "color-mix(in oklab, var(--color-mist) 35%, transparent)",
@@ -1234,7 +1234,7 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 font-display text-xs tracking-wide transition enabled:hover:-translate-y-0.5 enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+      className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 font-ui font-medium text-xs tracking-wide transition enabled:hover:-translate-y-0.5 enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
       style={{
         color,
         background: `color-mix(in oklab, ${color} 13%, transparent)`,
@@ -1334,7 +1334,7 @@ function CardFace({
           {card.hp}/{card.maxHp}
         </span>
       </div>
-      <p className={`mt-1 leading-tight text-spectral ${big ? "font-display text-sm" : "text-[9px]"}`}>
+      <p className={`mt-1 leading-tight text-spectral ${big ? "font-ui font-medium text-sm" : "text-[9px]"}`}>
         {card.name}
       </p>
 
@@ -1420,14 +1420,14 @@ function NoClassState() {
       }}
     >
       <Users className="mx-auto mb-4 h-10 w-10 opacity-40" style={{ color: ACCENT }} />
-      <p className="font-display text-lg text-spectral">The circle needs a class around it.</p>
+      <p className="font-ui font-medium text-lg text-spectral">The circle needs a class around it.</p>
       <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-parchment/75">
         Class Duels are fought between classmates. Ask your teacher for a class code, then enter
         it in the join banner on your Home page — your rivals will appear here.
       </p>
       <Link
         to="/app"
-        className="mt-5 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 font-display text-sm tracking-wide transition hover:-translate-y-0.5 hover:brightness-110"
+        className="mt-5 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 font-ui font-medium text-sm tracking-wide transition hover:-translate-y-0.5 hover:brightness-110"
         style={{
           color: GOLD,
           background: `color-mix(in oklab, ${GOLD} 14%, transparent)`,

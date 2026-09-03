@@ -37,7 +37,7 @@ function EmptyCard({ icon: Icon, title, desc, cta }: {
     <div className="rounded-2xl px-5 py-10 text-center"
       style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px dashed color-mix(in oklab, var(--color-parchment) 30%, transparent)" }}>
       <Icon className="h-8 w-8 text-parchment/50 mx-auto mb-3" />
-      <p className="font-display text-base mb-1">{title}</p>
+      <p className="font-ui font-medium text-base mb-1">{title}</p>
       <p className="text-sm text-parchment/60 max-w-md mx-auto">{desc}</p>
       {cta && <div className="mt-4">{cta}</div>}
     </div>
@@ -149,7 +149,7 @@ function TakeQuiz({ quiz, uid, onExit }: { quiz: QuizDef; uid: string | null; on
             {missed ? (
               <p className="text-parchment/80 leading-relaxed">
                 <Lightbulb className="inline h-4 w-4 mr-1.5 -mt-0.5" style={{ color: GOLD }} />
-                The answer was <span className="font-display" style={{ color: TEAL }}>{q.choices[q.answer]}</span>.
+                The answer was <span className="font-ui font-medium" style={{ color: TEAL }}>{q.choices[q.answer]}</span>.
                 {q.hint ? <> Your teacher's hint: <em>{q.hint}</em></> : null}
               </p>
             ) : (
@@ -176,9 +176,9 @@ function QuizCard({ quiz, profile, onStart }: { quiz: QuizDef; profile: StudentP
   return (
     <div className="rounded-2xl p-5 flex flex-col" style={cardStyle}>
       <div className="flex items-start justify-between gap-3 mb-1">
-        <h3 className="font-display text-base leading-snug">{quiz.title}</h3>
+        <h3 className="font-ui font-medium text-base leading-snug">{quiz.title}</h3>
         {result ? (
-          <span className="rounded-full px-2.5 py-1 text-[11px] font-display flex-shrink-0"
+          <span className="rounded-full px-2.5 py-1 text-[11px] font-ui font-medium flex-shrink-0"
             style={{ color: tone, background: `color-mix(in oklab, ${tone} 12%, transparent)`, border: `1px solid color-mix(in oklab, ${tone} 32%, transparent)` }}>
             {result.score}/{result.outOf}
           </span>
@@ -216,8 +216,8 @@ function MissionCard({ mission, profile }: { mission: MissionDef; profile: Stude
   return (
     <div className="rounded-2xl p-5" style={cardStyle}>
       <div className="flex items-start justify-between gap-3">
-        <h3 className="font-display text-base leading-snug">{mission.title}</h3>
-        <span className="text-xs font-display flex-shrink-0" style={{ color: tone }}>
+        <h3 className="font-ui font-medium text-base leading-snug">{mission.title}</h3>
+        <span className="text-xs font-ui font-medium flex-shrink-0" style={{ color: tone }}>
           {complete ? "Complete!" : `${doneCount}/${rows.length}`}
         </span>
       </div>
@@ -243,7 +243,7 @@ function MissionCard({ mission, profile }: { mission: MissionDef; profile: Stude
                 ? <CheckCircle2 className="h-4 w-4 flex-shrink-0" style={{ color: TEAL }} />
                 : <Circle className="h-4 w-4 flex-shrink-0 text-parchment/35" />}
               <span className="text-sm flex-1 min-w-0 truncate" style={r.done ? { textDecoration: "line-through", textDecorationColor: "color-mix(in oklab, var(--color-parchment) 40%, transparent)" } : undefined}>
-                <span className="font-display text-parchment/40 mr-1.5">{i + 1}.</span>{r.label}
+                <span className="font-ui font-medium text-parchment/40 mr-1.5">{i + 1}.</span>{r.label}
               </span>
               {!r.done && <span className="text-[10px] tracking-[0.12em] uppercase text-teal flex-shrink-0">Go →</span>}
             </Link>
@@ -291,7 +291,7 @@ function AssignmentsPage() {
             <div className="space-y-10">
               {/* Quizzes */}
               <section>
-                <h2 className="font-display text-lg mb-1 inline-flex items-center gap-2">
+                <h2 className="font-ui font-medium text-lg mb-1 inline-flex items-center gap-2">
                   <Layers className="h-4 w-4" style={{ color: GOLD }} /> Quizzes from your teacher
                 </h2>
                 <p className="text-xs text-parchment/55 mb-4">One question at a time, answers revealed as you go. You can retake a quiz — the latest score is kept.</p>
@@ -309,7 +309,7 @@ function AssignmentsPage() {
 
               {/* Missions */}
               <section>
-                <h2 className="font-display text-lg mb-1 inline-flex items-center gap-2">
+                <h2 className="font-ui font-medium text-lg mb-1 inline-flex items-center gap-2">
                   <ListChecks className="h-4 w-4" style={{ color: WRAITH }} /> Missions
                 </h2>
                 <p className="text-xs text-parchment/55 mb-4">Ordered checklists of modules to work through. Practising a module ticks it off automatically.</p>

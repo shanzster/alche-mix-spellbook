@@ -93,7 +93,7 @@ function Grimoire() {
       {/* Count */}
       <div className="mb-5 flex items-center justify-between px-1">
         <p className="text-sm text-parchment/70">Cards collected</p>
-        <p className="font-display text-gold">
+        <p className="font-ui font-medium text-gold">
           {ownedCount} <span className="text-parchment/50">/ {AR_ELEMENTS.length}</span>
         </p>
       </div>
@@ -120,7 +120,7 @@ function Grimoire() {
               <span className="mt-1 text-[10px] text-parchment/60">
                 {el.number} · {el.mass}
               </span>
-              <span className="mt-2 font-display text-sm text-spectral">{el.name}</span>
+              <span className="mt-2 font-ui font-medium text-sm text-spectral">{el.name}</span>
               <span className="mt-0.5 text-[10px] text-parchment/60">{el.category}</span>
               <span
                 className="mt-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[9px] tracking-[0.12em] uppercase"
@@ -143,7 +143,7 @@ function Grimoire() {
               }}
             >
               <Lock className="h-6 w-6 text-parchment/40" />
-              <span className="mt-3 font-display text-sm text-parchment/50">Unclaimed</span>
+              <span className="mt-3 font-ui font-medium text-sm text-parchment/50">Unclaimed</span>
               <span className="mt-1 text-center text-[10px] leading-snug text-parchment/40">
                 Scan its card in the AR Scanner
               </span>
@@ -157,7 +157,7 @@ function Grimoire() {
         <section className="mt-10">
           <div className="mb-4 flex items-center gap-2 px-1">
             <FlaskConical className="h-4 w-4 text-wraith" />
-            <h3 className="font-display text-wraith">Forged Elements</h3>
+            <h3 className="font-ui font-medium text-wraith">Forged Elements</h3>
             <span className="text-xs text-parchment/50">· mixed in the AR Scanner</span>
           </div>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
@@ -199,7 +199,7 @@ function Grimoire() {
             {ownedCount === 0
               ? "Your book is empty — summon your first card in the "
               : "Claim the missing cards in the "}
-            <span className="font-display text-spectral">AR Scanner</span>
+            <span className="font-ui font-medium text-spectral">AR Scanner</span>
           </span>
           <ChevronRight className="h-4 w-4 text-parchment/40 transition group-hover:translate-x-0.5 group-hover:text-emerald-elixir" />
         </Link>
@@ -245,7 +245,7 @@ function Grimoire() {
                     {open.symbol}
                   </span>
                   <div className="text-right">
-                    <div className="font-display text-lg text-spectral">{open.name}</div>
+                    <div className="font-ui font-medium text-lg text-spectral">{open.name}</div>
                     <div className="text-xs text-parchment/60">
                       No. {open.number} · {open.mass}
                     </div>

@@ -459,7 +459,7 @@ function ReactionAnimator() {
                     setId(r.id);
                     restart();
                   }}
-                  className="rounded-xl px-3.5 py-2 font-display text-sm transition-all hover:-translate-y-0.5"
+                  className="rounded-xl px-3.5 py-2 font-ui font-medium text-sm transition-all hover:-translate-y-0.5"
                   style={
                     r.id === id
                       ? {
@@ -488,7 +488,7 @@ function ReactionAnimator() {
       >
         <div className="mb-1 flex items-center gap-2">
           <Lightbulb className="h-4 w-4 text-gold" />
-          <span className="font-display text-sm text-spectral">{reaction.summary}</span>
+          <span className="font-ui font-medium text-sm text-spectral">{reaction.summary}</span>
         </div>
         <p className="pl-6 text-sm leading-relaxed text-parchment/75">{reaction.why}</p>
       </div>
@@ -509,7 +509,7 @@ function ReactionAnimator() {
           Products
         </span>
         <div className="pointer-events-none absolute left-1/2 top-3 -translate-x-1/2 text-center">
-          <div className="font-display text-base text-white sm:text-lg">{reaction.equation}</div>
+          <div className="font-ui font-medium text-base text-white sm:text-lg">{reaction.equation}</div>
         </div>
 
         <canvas ref={canvasRef} className="block w-full" style={{ height: 360 }} />
@@ -517,7 +517,7 @@ function ReactionAnimator() {
         {/* Narration bar — explains the current step as it happens. */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-4 pb-3 pt-8">
           <div className="flex items-baseline gap-2">
-            <span className="font-display text-sm" style={{ color: "var(--color-gold)" }}>
+            <span className="font-ui font-medium text-sm" style={{ color: "var(--color-gold)" }}>
               {stepTitle}
             </span>
           </div>
@@ -584,7 +584,7 @@ function ReactionAnimator() {
       >
         <div className="mb-1 flex items-center gap-2 text-teal">
           <Scale className="h-4 w-4" />
-          <span className="font-display text-[11px] uppercase tracking-[0.2em]">
+          <span className="font-ui font-medium text-[11px] uppercase tracking-[0.2em]">
             Count the atoms — none are created or destroyed
           </span>
         </div>

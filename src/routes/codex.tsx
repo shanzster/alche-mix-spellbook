@@ -281,7 +281,7 @@ function CompoundCodex() {
           <div className="flex items-start gap-3">
             <ScrollText className="mt-0.5 h-5 w-5 flex-shrink-0" style={{ color: ACCENT }} />
             <div>
-              <p className="font-display text-spectral mb-1">
+              <p className="font-ui font-medium text-spectral mb-1">
                 Welcome to your life's work, alchemist.
               </p>
               <p className="text-sm leading-relaxed text-parchment/80">
@@ -293,7 +293,7 @@ function CompoundCodex() {
               </p>
               <button
                 onClick={dismissIntro}
-                className="mt-3 rounded-lg px-3.5 py-1.5 text-xs font-display tracking-wide transition hover:brightness-110"
+                className="mt-3 rounded-lg px-3.5 py-1.5 text-xs font-ui font-medium tracking-wide transition hover:brightness-110"
                 style={{
                   color: ACCENT,
                   background: `color-mix(in oklab, ${ACCENT} 15%, transparent)`,
@@ -309,7 +309,7 @@ function CompoundCodex() {
 
       {/* ════════ The Mixing Bench ════════ */}
       <section className="mb-10">
-        <h2 className="mb-3 flex items-center gap-2 px-1 font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+        <h2 className="mb-3 flex items-center gap-2 px-1 font-ui font-medium text-sm tracking-[0.2em] uppercase text-parchment/70">
           <FlaskConical className="h-4 w-4" style={{ color: ACCENT }} /> The Mixing Bench
         </h2>
 
@@ -371,7 +371,7 @@ function CompoundCodex() {
             <button
               onClick={forge}
               disabled={!a || !b}
-              className="inline-flex items-center gap-2 rounded-xl px-6 py-3.5 font-display text-base tracking-wide transition-all duration-150 enabled:hover:-translate-y-0.5 enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-xl px-6 py-3.5 font-ui font-medium text-base tracking-wide transition-all duration-150 enabled:hover:-translate-y-0.5 enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
               style={{
                 color: "var(--color-slate-sunken)",
                 background: `linear-gradient(135deg, ${GOLD}, color-mix(in oklab, ${GOLD} 70%, ${ACCENT}))`,
@@ -416,7 +416,7 @@ function CompoundCodex() {
                 borderLeft: "3px solid color-mix(in oklab, var(--color-amber-scry) 60%, transparent)",
               }}
             >
-              <p className="mb-1 flex items-center gap-2 font-display text-sm text-amber-scry">
+              <p className="mb-1 flex items-center gap-2 font-ui font-medium text-sm text-amber-scry">
                 <ScrollText className="h-4 w-4" /> The Alchemist's Counsel
               </p>
               <p className="text-sm leading-relaxed text-parchment/85">
@@ -435,7 +435,7 @@ function CompoundCodex() {
           <button
             onClick={consultGrimoire}
             disabled={hintSpent || discoveredCount >= CODEX.length}
-            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 font-display text-sm transition enabled:hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 font-ui font-medium text-sm transition enabled:hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-45"
             style={{
               color: ACCENT,
               background: `color-mix(in oklab, ${ACCENT} 12%, transparent)`,
@@ -461,7 +461,7 @@ function CompoundCodex() {
             }}
           >
             The Grimoire whispers: <span className="text-spectral">a hidden {hint.family.toLowerCase().replace(/s$/, "")}</span>{" "}
-            calls for <span className="font-display" style={{ color: reagentColor(hint.ingredients[0]) }}>
+            calls for <span className="font-ui font-medium" style={{ color: reagentColor(hint.ingredients[0]) }}>
               {hint.ingredients[0].name}
             </span>
             . What would balance it? Bring the second reagent yourself.
@@ -471,9 +471,9 @@ function CompoundCodex() {
 
       {/* ════════ The Codex ════════ */}
       <section>
-        <h2 className="mb-4 flex items-center gap-2 px-1 font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+        <h2 className="mb-4 flex items-center gap-2 px-1 font-ui font-medium text-sm tracking-[0.2em] uppercase text-parchment/70">
           <BookOpen className="h-4 w-4" style={{ color: GOLD }} /> The Codex
-          <span className="ml-auto font-display text-xs normal-case tracking-normal text-parchment/60">
+          <span className="ml-auto font-ui font-medium text-xs normal-case tracking-normal text-parchment/60">
             {discoveredCount} / {CODEX.length} discovered
           </span>
         </h2>
@@ -484,7 +484,7 @@ function CompoundCodex() {
           return (
             <div key={family} className="mb-8">
               <div className="mb-2 flex items-center gap-3 px-1">
-                <h3 className="font-display text-sm text-spectral">{family}</h3>
+                <h3 className="font-ui font-medium text-sm text-spectral">{family}</h3>
                 <div
                   className="h-1.5 flex-1 overflow-hidden rounded-full"
                   style={{
@@ -581,7 +581,7 @@ function RevealCard({ result, known }: { result: MixResult; known: boolean }) {
             f={result.formula!}
             className="font-sans text-4xl font-semibold text-spectral"
           />
-          <p className="mt-1.5 font-display text-lg text-spectral">{result.name}</p>
+          <p className="mt-1.5 font-ui font-medium text-lg text-spectral">{result.name}</p>
           {known && result.commonName && (
             <p className="text-sm text-parchment/70">{result.commonName}</p>
           )}
@@ -626,7 +626,7 @@ function RevealCard({ result, known }: { result: MixResult; known: boolean }) {
 
       {known && result.uses && (
         <p className="mt-3 text-sm leading-relaxed text-parchment/85">
-          <span className="font-display text-parchment">Uses:</span> {result.uses}
+          <span className="font-ui font-medium text-parchment">Uses:</span> {result.uses}
         </p>
       )}
       {result.note && (
@@ -660,7 +660,7 @@ function DiscoveredTile({ entry }: { entry: CodexEntry }) {
         <Formula f={entry.formula} className="font-sans text-xl font-semibold text-spectral" />
         <hz.Icon className="h-4 w-4 flex-shrink-0" style={{ color: hz.color }} aria-label={hz.label} />
       </div>
-      <p className="mt-1 font-display text-sm leading-snug text-spectral">{entry.name}</p>
+      <p className="mt-1 font-ui font-medium text-sm leading-snug text-spectral">{entry.name}</p>
       <p className="text-[11px] leading-snug text-parchment/65">{entry.commonName}</p>
       <p className="mt-2 flex-1 text-[11px] leading-snug text-parchment/55">{entry.uses}</p>
       <div className="mt-2.5 flex items-center gap-1.5">

@@ -166,7 +166,7 @@ function Quiz() {
             <div className="mx-auto mt-5 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-xl px-4 py-2.5 text-sm"
               style={{ background: "color-mix(in oklab, var(--color-gold) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)" }}>
               <span className="text-[10px] uppercase tracking-[0.2em] text-parchment/60">Best run</span>
-              <span className="font-display text-gold">{profile.trials.quiz.best}/{profile.trials.quiz.outOf}</span>
+              <span className="font-ui font-medium text-gold">{profile.trials.quiz.best}/{profile.trials.quiz.outOf}</span>
               <StarRow n={profile.trials.quiz.stars} />
               <span className="text-xs text-parchment/50">{profile.trials.quiz.plays} play{profile.trials.quiz.plays === 1 ? "" : "s"}</span>
             </div>
@@ -199,7 +199,7 @@ function Quiz() {
                       border: `1px solid color-mix(in oklab, ${color} ${reveal && (isAnswer || isPicked) ? 55 : 25}%, transparent)`,
                       color: reveal && (isAnswer || isPicked) ? color : "var(--color-spectral)",
                     }}>
-                    <span className="font-display">{opt}</span>
+                    <span className="font-ui font-medium">{opt}</span>
                     {reveal && isAnswer && <Check className="h-4 w-4" />}
                     {reveal && isPicked && !isAnswer && <X className="h-4 w-4" />}
                   </button>
@@ -210,7 +210,7 @@ function Quiz() {
               <>
                 <div className="mt-5 rounded-r-lg pl-4 pr-3 py-3 text-sm text-parchment"
                   style={{ borderLeft: `3px solid color-mix(in oklab, ${picked === q.answer ? "var(--color-emerald-elixir)" : "var(--color-gold)"} 60%, transparent)`, background: `color-mix(in oklab, ${picked === q.answer ? "var(--color-emerald-elixir)" : "var(--color-gold)"} 7%, transparent)` }}>
-                  <span className="font-display" style={{ color: picked === q.answer ? "var(--color-emerald-elixir)" : "var(--color-gold)" }}>
+                  <span className="font-ui font-medium" style={{ color: picked === q.answer ? "var(--color-emerald-elixir)" : "var(--color-gold)" }}>
                     {picked === q.answer ? "Correct — " : `The answer is ${q.answer}. `}
                   </span>
                   {q.explain}

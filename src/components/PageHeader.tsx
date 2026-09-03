@@ -38,7 +38,7 @@ export function PageHeader({
         <div>
           {eyebrow && (
             <p
-              className="text-[10px] tracking-[0.18em] uppercase mb-1 font-display opacity-70"
+              className="font-ui text-[11px] font-medium tracking-[0.14em] uppercase mb-1 opacity-70"
               style={{ color: accent }}
             >
               {eyebrow}

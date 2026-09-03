@@ -339,7 +339,7 @@ function StarterQuestion({
 
   return (
     <div className="rounded-2xl p-5" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-      <p className="font-display text-lg mb-4">{concept.question.prompt}</p>
+      <p className="font-ui font-medium text-lg mb-4">{concept.question.prompt}</p>
       <div className="space-y-2.5">
         {concept.question.choices.map((choice, i) => {
           const correct = i === concept.question.answer;
@@ -353,7 +353,7 @@ function StarterQuestion({
                 border: `1px solid ${tone ? `color-mix(in oklab, ${tone} 45%, transparent)` : "var(--color-border)"}`,
                 color: "var(--color-spectral)",
               }}>
-              <span className="flex h-6 w-6 items-center justify-center rounded-md text-xs font-display flex-shrink-0"
+              <span className="flex h-6 w-6 items-center justify-center rounded-md text-xs font-ui font-medium flex-shrink-0"
                 style={{ background: tone ? `color-mix(in oklab, ${tone} 22%, transparent)` : "color-mix(in oklab, var(--color-parchment) 15%, transparent)", color: tone ?? "var(--color-parchment)" }}>
                 {showState ? (correct ? <Check className="h-3.5 w-3.5" /> : i === picked ? <X className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)) : String.fromCharCode(65 + i)}
               </span>

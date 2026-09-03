@@ -223,7 +223,7 @@ function IntroScreen({
   return (
     <div>
       {/* ── Choose your rival ── */}
-      <h2 className="mb-3 flex items-center gap-2 px-1 font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+      <h2 className="mb-3 flex items-center gap-2 px-1 font-ui font-medium text-sm tracking-[0.2em] uppercase text-parchment/70">
         <Swords className="h-4 w-4" style={{ color: ACCENT }} /> Choose your rival
       </h2>
       <div className="mb-8 grid gap-3 sm:grid-cols-3">
@@ -240,7 +240,7 @@ function IntroScreen({
                 boxShadow: `0 10px 30px -20px ${d.color}`,
               }}
             >
-              <span className="font-display text-lg" style={{ color: d.color }}>
+              <span className="font-ui font-medium text-lg" style={{ color: d.color }}>
                 {d.title}
               </span>
               <span className="mt-1 flex-1 text-xs leading-relaxed text-parchment/75">
@@ -261,7 +261,7 @@ function IntroScreen({
       </div>
 
       {/* ── Draft your hand ── */}
-      <h2 className="mb-1 flex items-center gap-2 px-1 font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+      <h2 className="mb-1 flex items-center gap-2 px-1 font-ui font-medium text-sm tracking-[0.2em] uppercase text-parchment/70">
         <FlaskConical className="h-4 w-4" style={{ color: GOLD }} /> Draft your hand
       </h2>
       <p className="mb-3 px-1 text-xs text-parchment/60">
@@ -309,7 +309,7 @@ function IntroScreen({
       </p>
 
       {/* ── How the stats come from real chemistry ── */}
-      <h2 className="mb-1 flex items-center gap-2 px-1 font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+      <h2 className="mb-1 flex items-center gap-2 px-1 font-ui font-medium text-sm tracking-[0.2em] uppercase text-parchment/70">
         <BookOpen className="h-4 w-4" style={{ color: "var(--color-wraith)" }} /> Where the battle
         stats come from
       </h2>
@@ -367,7 +367,7 @@ function IntroScreen({
                     )}
                   </td>
                   <td className="px-3 py-2.5 leading-snug">
-                    <span className="font-display" style={{ color: GOLD }}>
+                    <span className="font-ui font-medium" style={{ color: GOLD }}>
                       {ab.name}
                     </span>{" "}
                     <span className="text-parchment/60">— {ab.chemistry}</span>
@@ -493,11 +493,11 @@ function BattleScreen({
         {/* ── Actions ── */}
         <div className="mt-5">
           {duel.winner !== null ? (
-            <p className="text-center font-display text-sm text-parchment/70">
+            <p className="text-center font-ui font-medium text-sm text-parchment/70">
               The duel is decided…
             </p>
           ) : !playerTurn ? (
-            <p className="text-center font-display text-sm text-parchment/60">
+            <p className="text-center font-ui font-medium text-sm text-parchment/60">
               The rival ponders the mixture…
             </p>
           ) : (
@@ -622,7 +622,7 @@ function BattleScreen({
           border: "1px solid var(--color-border)",
         }}
       >
-        <h3 className="mb-2 flex items-center gap-2 font-display text-xs tracking-[0.2em] uppercase text-parchment/60">
+        <h3 className="mb-2 flex items-center gap-2 font-ui font-medium text-xs tracking-[0.2em] uppercase text-parchment/60">
           <ScrollText className="h-3.5 w-3.5" style={{ color: GOLD }} /> The duel scroll
         </h3>
         <div ref={logBoxRef} className="min-h-[160px] flex-1 space-y-1.5 overflow-y-auto pr-1">
@@ -684,7 +684,7 @@ function ActionButton({
     <button
       onClick={onClick}
       disabled={disabled}
-      className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 font-display text-xs tracking-wide transition enabled:hover:-translate-y-0.5 enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+      className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2.5 font-ui font-medium text-xs tracking-wide transition enabled:hover:-translate-y-0.5 enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
       style={{
         color,
         background: `color-mix(in oklab, ${color} 13%, transparent)`,
@@ -785,7 +785,7 @@ function CardFace({
           {card.hp}/{card.maxHp}
         </span>
       </div>
-      <p className={`mt-1 leading-tight text-spectral ${big ? "font-display text-sm" : "text-[9px]"}`}>
+      <p className={`mt-1 leading-tight text-spectral ${big ? "font-ui font-medium text-sm" : "text-[9px]"}`}>
         {card.name}
       </p>
 
@@ -913,7 +913,7 @@ function EndScreen({
             } of your reagents still stand.`
           : `${diff.title} outlasted you after ${duel.round} rounds — study your rival's surviving reagents and duel again. Every defeat teaches a reaction.`}
       </p>
-      <p className="mt-3 inline-flex items-center gap-1.5 font-display text-sm" style={{ color: GOLD }}>
+      <p className="mt-3 inline-flex items-center gap-1.5 font-ui font-medium text-sm" style={{ color: GOLD }}>
         <Coins className="h-4 w-4" />
         {won ? `${diff.aurum} aurum added to your purse.` : "No aurum this time — the purse awaits your victory."}
       </p>
@@ -921,7 +921,7 @@ function EndScreen({
       <div className="mt-5 flex flex-wrap justify-center gap-2">
         <button
           onClick={onRematch}
-          className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 font-display text-sm transition hover:-translate-y-0.5 hover:brightness-110"
+          className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 font-ui font-medium text-sm transition hover:-translate-y-0.5 hover:brightness-110"
           style={{
             color: "var(--color-slate-sunken)",
             background: `linear-gradient(135deg, ${GOLD}, color-mix(in oklab, ${GOLD} 70%, ${ACCENT}))`,
@@ -931,7 +931,7 @@ function EndScreen({
         </button>
         <button
           onClick={onChangeDifficulty}
-          className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 font-display text-sm transition hover:-translate-y-0.5"
+          className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2.5 font-ui font-medium text-sm transition hover:-translate-y-0.5"
           style={{
             color: "var(--color-emerald-elixir)",
             background: "color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent)",

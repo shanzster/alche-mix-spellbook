@@ -40,10 +40,10 @@ function GuidePage() {
       <section className="mb-10">
         <div className="mb-3 flex items-center gap-2 px-1">
           <Compass className="h-4 w-4 text-emerald-elixir" />
-          <h3 className="font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+          <h3 className="font-ui font-medium text-sm tracking-[0.2em] uppercase text-parchment/70">
             The Guide
           </h3>
-          <span className="ml-auto font-display text-xs text-parchment/60">
+          <span className="ml-auto font-ui font-medium text-xs text-parchment/60">
             {status.doneCount}/{status.total} steps
           </span>
         </div>
@@ -94,7 +94,7 @@ function GuidePage() {
                   }}
                 >
                   <span
-                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg font-display text-xs"
+                    className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg font-ui font-medium text-xs"
                     style={
                       done
                         ? {
@@ -123,7 +123,7 @@ function GuidePage() {
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="font-display text-sm text-spectral">{step.title}</span>
+                      <span className="font-ui font-medium text-sm text-spectral">{step.title}</span>
                       {step.mobileSide && (
                         <Smartphone
                           className="h-3 w-3 text-parchment/50"

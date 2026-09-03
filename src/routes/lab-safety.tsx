@@ -664,7 +664,7 @@ function SafetyTrials() {
           <div>
             <button
               onClick={start}
-              className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-display tracking-wide transition hover:brightness-110"
+              className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-ui font-medium tracking-wide transition hover:brightness-110"
               style={{
                 background: ACCENT,
                 color: "#fff",
@@ -721,7 +721,7 @@ function SafetyTrials() {
               >
                 <scenario.icon className="h-5 w-5" />
               </span>
-              <h3 className="font-display text-lg leading-tight">{scenario.title}</h3>
+              <h3 className="font-ui font-medium text-lg leading-tight">{scenario.title}</h3>
             </div>
             <p className="text-sm text-parchment/75 leading-relaxed mb-5">{scenario.situation}</p>
 
@@ -753,7 +753,7 @@ function SafetyTrials() {
                   }}
                 >
                   <div
-                    className="flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase font-display mb-1"
+                    className="flex items-center gap-1.5 text-[10px] tracking-[0.2em] uppercase font-ui font-medium mb-1"
                     style={{ color: picked.correct ? GREEN : ACCENT }}
                   >
                     {picked.correct ? (
@@ -784,7 +784,7 @@ function SafetyTrials() {
                   }}
                 >
                   <div
-                    className="text-[10px] tracking-[0.2em] uppercase font-display mb-1"
+                    className="text-[10px] tracking-[0.2em] uppercase font-ui font-medium mb-1"
                     style={{ color: GOLD }}
                   >
                     The rule
@@ -794,7 +794,7 @@ function SafetyTrials() {
 
                 <button
                   onClick={next}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-display tracking-wide transition hover:brightness-110 sm:w-auto"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full px-5 py-3 text-sm font-ui font-medium tracking-wide transition hover:brightness-110 sm:w-auto"
                   style={{ background: ACCENT, color: "#fff" }}
                 >
                   {idx + 1 < run.length ? "Next scenario" : "See your result"}
@@ -837,7 +837,7 @@ function SafetyTrials() {
           )}
           <button
             onClick={start}
-            className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-display tracking-wide transition hover:brightness-110"
+            className="inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-ui font-medium tracking-wide transition hover:brightness-110"
             style={{ background: ACCENT, color: "#fff", boxShadow: `0 8px 30px -10px ${ACCENT}` }}
           >
             <RotateCcw className="h-4 w-4" /> Run the trials again
@@ -917,7 +917,7 @@ function LabSafety() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-display tracking-[0.1em] uppercase transition"
+              className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-ui font-medium tracking-[0.1em] uppercase transition"
               style={
                 active
                   ? {
@@ -947,7 +947,7 @@ function LabSafety() {
         <>
           {/* GHS pictograms */}
           <section className="mb-12">
-            <h2 className="font-display text-sm tracking-[0.2em] uppercase text-parchment/70 mb-4">
+            <h2 className="font-ui font-medium text-sm tracking-[0.2em] uppercase text-parchment/70 mb-4">
               GHS Hazard Symbols
             </h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -962,7 +962,7 @@ function LabSafety() {
                 >
                   <Diamond icon={g.icon} />
                   <div className="min-w-0">
-                    <div className="font-display text-base mb-1">{g.name}</div>
+                    <div className="font-ui font-medium text-base mb-1">{g.name}</div>
                     {test ? (
                       <div className="text-xs text-parchment/40 italic">
                         What does this warn about?
@@ -981,7 +981,7 @@ function LabSafety() {
 
           {/* Apparatus */}
           <section>
-            <h2 className="font-display text-sm tracking-[0.2em] uppercase text-parchment/70 mb-4">
+            <h2 className="font-ui font-medium text-sm tracking-[0.2em] uppercase text-parchment/70 mb-4">
               Common Apparatus
             </h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -1004,7 +1004,7 @@ function LabSafety() {
                   >
                     <a.icon className="h-5 w-5" />
                   </span>
-                  <div className="font-display text-sm mb-1">{a.name}</div>
+                  <div className="font-ui font-medium text-sm mb-1">{a.name}</div>
                   {!test && <p className="text-[11px] text-parchment/60 leading-snug">{a.use}</p>}
                   {test && <p className="text-[11px] text-parchment/40 italic">What's it for?</p>}
                 </div>

@@ -252,7 +252,7 @@ function MockCard({
       >
         Au
       </span>
-      <span className={`font-display text-parchment/85 ${compact ? "text-xs" : "text-sm"}`}>
+      <span className={`font-ui font-medium text-parchment/85 ${compact ? "text-xs" : "text-sm"}`}>
         Aurum
       </span>
       <span className="mt-0.5 text-[9px] uppercase tracking-[0.15em] text-parchment/45">
@@ -260,7 +260,7 @@ function MockCard({
       </span>
       {(title || charm) && (
         <span
-          className={`mt-2 inline-flex items-center gap-1 font-display ${
+          className={`mt-2 inline-flex items-center gap-1 font-ui font-medium ${
             compact ? "text-[10px]" : "text-xs"
           }`}
           style={{ color: GOLD }}
@@ -277,7 +277,7 @@ function MockCard({
 function Price({ cost, dim = false }: { cost: number; dim?: boolean }) {
   return (
     <span
-      className={`inline-flex items-center gap-1 font-display text-sm ${dim ? "opacity-45" : ""}`}
+      className={`inline-flex items-center gap-1 font-ui font-medium text-sm ${dim ? "opacity-45" : ""}`}
       style={{ color: GOLD }}
     >
       <Coins className="h-3.5 w-3.5" /> {cost}
@@ -360,7 +360,7 @@ function Emporium() {
       {loading ? (
         <div className="flex items-center justify-center gap-2 py-24 text-parchment/60">
           <Loader2 className="h-5 w-5 animate-spin" style={{ color: GOLD }} />
-          <span className="font-display text-sm">The shopkeeper is counting your coins…</span>
+          <span className="font-ui font-medium text-sm">The shopkeeper is counting your coins…</span>
         </div>
       ) : (
         <>
@@ -373,7 +373,7 @@ function Emporium() {
                 borderLeft: `3px solid color-mix(in oklab, ${ACCENT} 60%, transparent)`,
               }}
             >
-              <p className="mb-1 flex items-center gap-2 font-display text-sm" style={{ color: ACCENT }}>
+              <p className="mb-1 flex items-center gap-2 font-ui font-medium text-sm" style={{ color: ACCENT }}>
                 <ScrollText className="h-4 w-4" /> An empty purse is a full to-do list
               </p>
               <p className="text-sm leading-relaxed text-parchment/85">
@@ -399,7 +399,7 @@ function Emporium() {
 
           {/* ════════ Your equipped look ════════ */}
           <section className="mb-10">
-            <h2 className="mb-3 flex items-center gap-2 px-1 font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+            <h2 className="mb-3 flex items-center gap-2 px-1 font-ui font-medium text-sm tracking-[0.2em] uppercase text-parchment/70">
               <Sparkles className="h-4 w-4" style={{ color: GOLD }} /> Your Equipped Look
             </h2>
             <div
@@ -415,7 +415,7 @@ function Emporium() {
                 charmId={equipped.charm}
               />
               <div className="flex-1 text-center sm:text-left">
-                <p className="font-display text-spectral">
+                <p className="font-ui font-medium text-spectral">
                   {ownedCount === 0
                     ? "The plain look of an honest apprentice."
                     : "This is how the realm sees your cards."}
@@ -441,7 +441,7 @@ function Emporium() {
                         <dt className="text-[9px] tracking-[0.2em] uppercase text-parchment/50">
                           {slot}
                         </dt>
-                        <dd className="mt-0.5 truncate font-display text-xs text-spectral">
+                        <dd className="mt-0.5 truncate font-ui font-medium text-xs text-spectral">
                           {it ? `${it.emoji ? `${it.emoji} ` : ""}${it.name}` : "—"}
                         </dd>
                       </div>
@@ -458,7 +458,7 @@ function Emporium() {
             const items = CATALOG.filter((i) => i.slot === slot);
             return (
               <section key={slot} className="mb-10">
-                <h2 className="mb-1 flex items-center gap-2 px-1 font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+                <h2 className="mb-1 flex items-center gap-2 px-1 font-ui font-medium text-sm tracking-[0.2em] uppercase text-parchment/70">
                   <meta.Icon className="h-4 w-4" style={{ color: ACCENT }} /> {meta.heading}
                 </h2>
                 <p className="mb-3 px-1 text-xs text-parchment/50">{meta.sub}</p>
@@ -489,14 +489,14 @@ function Emporium() {
               border: "1px solid var(--color-border)",
             }}
           >
-            <h2 className="mb-3 flex items-center gap-2 font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+            <h2 className="mb-3 flex items-center gap-2 font-ui font-medium text-sm tracking-[0.2em] uppercase text-parchment/70">
               <Coins className="h-4 w-4" style={{ color: GOLD }} /> How to Earn Aurum
             </h2>
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <li className="flex items-start gap-2.5 text-sm leading-relaxed text-parchment/80">
                 <Star className="mt-0.5 h-4 w-4 flex-shrink-0" style={{ color: GOLD }} />
                 <span>
-                  <span className="font-display text-spectral">Trial stars.</span> Every module
+                  <span className="font-ui font-medium text-spectral">Trial stars.</span> Every module
                   Trial pays 5 aurum per star, with a 5-aurum bonus for a perfect run.
                 </span>
               </li>
@@ -506,7 +506,7 @@ function Emporium() {
                   style={{ color: "var(--color-emerald-elixir)" }}
                 />
                 <span>
-                  <span className="font-display text-spectral">Daily Starters.</span> Your morning
+                  <span className="font-ui font-medium text-spectral">Daily Starters.</span> Your morning
                   ten pays aurum for every correct answer — and keeps your streak burning.
                 </span>
               </li>
@@ -516,7 +516,7 @@ function Emporium() {
                   style={{ color: "var(--color-crimson)" }}
                 />
                 <span>
-                  <span className="font-display text-spectral">Duel victories.</span> Best the
+                  <span className="font-ui font-medium text-spectral">Duel victories.</span> Best the
                   Alchemist for 10 / 20 / 40 aurum on easy, medium and hard.
                 </span>
               </li>
@@ -575,7 +575,7 @@ function ItemCard({
             <p className="text-[9px] tracking-[0.25em] uppercase text-parchment/45">
               inscribed beneath your name
             </p>
-            <p className="mt-1.5 font-display text-lg" style={{ color: GOLD }}>
+            <p className="mt-1.5 font-ui font-medium text-lg" style={{ color: GOLD }}>
               {item.name}
             </p>
             <p className="mt-1 text-xs text-parchment/55">— Apprentice, {item.name}</p>
@@ -585,7 +585,7 @@ function ItemCard({
             <span className="text-5xl" aria-hidden>
               {item.emoji}
             </span>
-            <p className="mt-2 inline-flex items-center gap-1 font-display text-xs" style={{ color: GOLD }}>
+            <p className="mt-2 inline-flex items-center gap-1 font-ui font-medium text-xs" style={{ color: GOLD }}>
               <span aria-hidden>{item.emoji}</span> Grand Alchemist
             </p>
             <p className="text-[9px] tracking-[0.2em] uppercase text-parchment/45">
@@ -596,7 +596,7 @@ function ItemCard({
       </div>
 
       <div className="flex items-start justify-between gap-2">
-        <p className="font-display text-sm text-spectral">{item.name}</p>
+        <p className="font-ui font-medium text-sm text-spectral">{item.name}</p>
         {!owned && <Price cost={item.cost} dim={!affordable} />}
       </div>
       <p className="mt-1 flex-1 text-xs leading-relaxed text-parchment/60">{item.blurb}</p>
@@ -605,7 +605,7 @@ function ItemCard({
       <div className="mt-3">
         {isEquipped ? (
           <span
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-display text-xs"
+            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 font-ui font-medium text-xs"
             style={{
               color: GOLD,
               background: `color-mix(in oklab, ${GOLD} 14%, transparent)`,
@@ -618,7 +618,7 @@ function ItemCard({
           <button
             onClick={onEquip}
             disabled={anyBusy}
-            className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 font-display text-xs tracking-wide transition enabled:hover:-translate-y-0.5 enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 font-ui font-medium text-xs tracking-wide transition enabled:hover:-translate-y-0.5 enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             style={{
               color: "var(--color-emerald-elixir)",
               background: "color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent)",
@@ -633,7 +633,7 @@ function ItemCard({
           <button
             onClick={onBuy}
             disabled={anyBusy}
-            className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 font-display text-xs tracking-wide transition enabled:hover:-translate-y-0.5 enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-xl px-4 py-2 font-ui font-medium text-xs tracking-wide transition enabled:hover:-translate-y-0.5 enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             style={{
               color: "var(--color-slate-sunken)",
               background: `linear-gradient(135deg, ${GOLD}, color-mix(in oklab, ${GOLD} 70%, ${ACCENT}))`,

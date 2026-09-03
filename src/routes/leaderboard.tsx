@@ -212,7 +212,7 @@ function HallOfRecords() {
           >
             <div className="flex flex-wrap items-center gap-2">
               <Users className="h-4 w-4 flex-shrink-0" style={{ color: board.accent }} />
-              <span className="font-display text-spectral">
+              <span className="font-ui font-medium text-spectral">
                 {profile?.className ?? "Your class"}
               </span>
               <span className="text-xs text-parchment/55">
@@ -225,7 +225,7 @@ function HallOfRecords() {
                 style={{ color: board.accent }}
               />
               <span>
-                <span className="font-display text-spectral">{board.label}:</span> {board.how}
+                <span className="font-ui font-medium text-spectral">{board.label}:</span> {board.how}
               </span>
             </p>
           </div>
@@ -239,7 +239,7 @@ function HallOfRecords() {
                   key={b.id}
                   onClick={() => setBoardId(b.id)}
                   aria-pressed={active}
-                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-display tracking-wide transition-all duration-150 hover:-translate-y-0.5"
+                  className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-ui font-medium tracking-wide transition-all duration-150 hover:-translate-y-0.5"
                   style={
                     active
                       ? {
@@ -272,7 +272,7 @@ function HallOfRecords() {
               }}
             >
               <board.Icon className="mx-auto mb-3 h-8 w-8 opacity-40" style={{ color: board.accent }} />
-              <p className="font-display text-spectral">This ledger awaits its first entry.</p>
+              <p className="font-ui font-medium text-spectral">This ledger awaits its first entry.</p>
               <p className="mx-auto mt-1.5 max-w-md text-sm leading-relaxed text-parchment/70">
                 No apprentice in {profile?.className ?? "your class"} has a recorded{" "}
                 {board.label.toLowerCase()} tally yet. {board.how}
@@ -294,7 +294,7 @@ function HallOfRecords() {
           {/* ── Yet to be recorded ── */}
           {unranked.length > 0 && (
             <div className="mt-8">
-              <h2 className="mb-3 flex items-center gap-2 px-1 font-display text-xs tracking-[0.2em] uppercase text-parchment/55">
+              <h2 className="mb-3 flex items-center gap-2 px-1 font-ui font-medium text-xs tracking-[0.2em] uppercase text-parchment/55">
                 <Hourglass className="h-3.5 w-3.5" /> Yet to be recorded
               </h2>
               <div className="flex flex-wrap gap-2">
@@ -391,14 +391,14 @@ function RankRow({ row, board, isYou }: { row: RankedRow; board: Board; isYou: b
         {medal ? (
           <MedalIcon className="h-4 w-4" />
         ) : (
-          <span className="font-display text-sm">{row.rank}</span>
+          <span className="font-ui font-medium text-sm">{row.rank}</span>
         )}
       </span>
 
       {/* Name */}
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-1.5">
-          <span className="truncate font-display text-sm text-spectral">
+          <span className="truncate font-ui font-medium text-sm text-spectral">
             {row.entry.displayName}
           </span>
           {isYou && (
@@ -448,14 +448,14 @@ function NoClassState() {
       }}
     >
       <Users className="mx-auto mb-4 h-10 w-10 opacity-40" style={{ color: GOLD }} />
-      <p className="font-display text-lg text-spectral">The Hall stands empty for you — for now.</p>
+      <p className="font-ui font-medium text-lg text-spectral">The Hall stands empty for you — for now.</p>
       <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-parchment/75">
         Join a class to compete with fellow apprentices. Ask your teacher for a class code, then
         enter it in the join banner on your Home page.
       </p>
       <Link
         to="/app"
-        className="mt-5 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 font-display text-sm tracking-wide transition hover:-translate-y-0.5 hover:brightness-110"
+        className="mt-5 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 font-ui font-medium text-sm tracking-wide transition hover:-translate-y-0.5 hover:brightness-110"
         style={{
           color: GOLD,
           background: `color-mix(in oklab, ${GOLD} 14%, transparent)`,

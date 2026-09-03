@@ -177,7 +177,7 @@ function TableOfContents({ onClose }: { onClose: () => void }) {
       <div className="glass-strong relative z-10 w-full max-w-4xl rounded-2xl p-5 md:p-7">
         <div className="mb-5 flex items-center gap-2.5">
           <BookOpen className="h-4.5 w-4.5 text-gold" />
-          <h2 className="font-display text-base tracking-[0.1em]">Table of Contents</h2>
+          <h2 className="font-ui font-medium text-base tracking-[0.1em]">Table of Contents</h2>
           <button
             onClick={onClose}
             aria-label="Close contents"
@@ -210,7 +210,7 @@ function TableOfContents({ onClose }: { onClose: () => void }) {
                         }}
                       >
                         <item.icon className="h-3.5 w-3.5 flex-shrink-0" />
-                        <span className="font-display tracking-[0.03em]">{item.label}</span>
+                        <span className="font-ui font-medium tracking-[0.03em]">{item.label}</span>
                       </Link>
                     </li>
                   );
@@ -285,7 +285,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
               {NAV[pageIndex].chapter}
             </span>
             <span className="text-parchment/30">·</span>
-            <span className="font-display text-[13px] tracking-[0.05em] text-parchment">
+            <span className="font-ui font-medium text-[13px] tracking-[0.05em] text-parchment">
               {NAV[pageIndex].label}
             </span>
           </span>
@@ -298,7 +298,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
             style={{ border: "1px solid var(--color-border)" }}
           >
             <BookOpen className="h-3.5 w-3.5" />
-            <span className="font-display tracking-[0.06em]">Contents</span>
+            <span className="font-ui font-medium tracking-[0.06em]">Contents</span>
             <kbd className="text-[9px] text-parchment/45">⌘K</kbd>
           </button>
           <ThemeToggle className="!h-8 !w-8" />
@@ -317,7 +317,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
       <header className="glass-strong md:hidden fixed top-2 inset-x-2 z-40 flex items-center justify-between h-14 px-4 rounded-2xl">
         <Link to="/" className="flex items-center gap-2">
           <img src="/images/logo-outline.png" alt="" className="h-7 w-7 object-contain" />
-          <span className="font-display text-sm tracking-[0.12em] truncate max-w-[46vw]">
+          <span className="font-ui font-medium text-sm tracking-[0.12em] truncate max-w-[46vw]">
             {title ?? "AlcheMix"}
           </span>
         </Link>
@@ -357,7 +357,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
             title="Open the Table of Contents"
           >
             <BookOpen className="h-3.5 w-3.5 text-gold" />
-            <span className="font-display text-[11px] tracking-[0.08em] whitespace-nowrap">
+            <span className="font-ui font-medium text-[11px] tracking-[0.08em] whitespace-nowrap">
               {NAV[pageIndex].label}
             </span>
             <span className="text-[10px] text-parchment/45 whitespace-nowrap">
@@ -415,7 +415,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
                   }}
                 >
                   <item.icon className="h-4 w-4 flex-shrink-0" />
-                  <span className="font-display tracking-[0.06em]">{item.label}</span>
+                  <span className="font-ui font-medium tracking-[0.06em]">{item.label}</span>
                   {item.disabled && (
                     <span className="ml-auto text-[8px] tracking-[0.15em] uppercase text-gold">
                       AI
@@ -456,7 +456,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
                 />
               )}
               <item.icon className="h-5 w-5" />
-              <span className="text-[9px] tracking-[0.05em] font-display">
+              <span className="text-[9px] tracking-[0.05em] font-ui font-medium">
                 {item.label.split(" ")[0]}
               </span>
             </Link>
@@ -481,7 +481,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
               />
             )}
             <MoreHorizontal className="h-5 w-5" />
-            <span className="text-[9px] tracking-[0.05em] font-display">More</span>
+            <span className="text-[9px] tracking-[0.05em] font-ui font-medium">More</span>
           </button>
         )}
       </nav>

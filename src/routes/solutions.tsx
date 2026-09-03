@@ -275,7 +275,7 @@ function BeakerStage({
 
       {saturated && (
         <span
-          className="absolute left-2 bottom-10 rounded-full px-2.5 py-1 text-[10px] tracking-[0.18em] uppercase font-display animate-breathing"
+          className="absolute left-2 bottom-10 rounded-full px-2.5 py-1 text-[10px] tracking-[0.18em] uppercase font-ui font-medium animate-breathing"
           style={{
             background: "color-mix(in oklab, var(--color-gold) 18%, transparent)",
             border: "1px solid color-mix(in oklab, var(--color-gold) 50%, transparent)",
@@ -640,7 +640,7 @@ function Solutions() {
               </div>
             </div>
             <div
-              className="rounded-lg px-3 py-2 text-center font-display text-sm"
+              className="rounded-lg px-3 py-2 text-center font-ui font-medium text-sm"
               style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)" }}
             >
               {volumeML > 0 ? (
@@ -673,7 +673,7 @@ function Solutions() {
         >
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <Trophy className="h-4 w-4 text-gold" />
-            <span className="text-[10px] tracking-[0.2em] uppercase font-display text-gold">Potion Commission</span>
+            <span className="text-[10px] tracking-[0.2em] uppercase font-ui font-medium text-gold">Potion Commission</span>
             {!finished && rounds.length > 0 && (
               <span className="text-xs text-parchment/60">
                 · round {Math.min(roundIdx + 1, 4)} of {rounds.length} · {score} sealed
@@ -681,7 +681,7 @@ function Solutions() {
             )}
             {best && (
               <span className="ml-auto text-xs text-parchment/60 inline-flex items-center gap-1.5">
-                Best: <span className="text-gold font-display">{best.best}/{best.outOf}</span> <Stars n={best.stars} /> ({best.plays}{" "}
+                Best: <span className="text-gold font-ui font-medium">{best.best}/{best.outOf}</span> <Stars n={best.stars} /> ({best.plays}{" "}
                 attempt{best.plays === 1 ? "" : "s"})
               </span>
             )}
@@ -709,7 +709,7 @@ function Solutions() {
           ) : commission ? (
             <div>
               <p className="text-sm text-parchment leading-relaxed mb-3">
-                A client requests <span className="text-gold font-display">{commission.target.toFixed(2)} M</span> of{" "}
+                A client requests <span className="text-gold font-ui font-medium">{commission.target.toFixed(2)} M</span> of{" "}
                 <span style={{ color: SOLUTES[commission.solute].colourless ? "var(--color-spectral)" : SOLUTES[commission.solute].dot }}>
                   {SOLUTES[commission.solute].formula}
                 </span>{" "}

@@ -195,7 +195,7 @@ function ScavengerHunt() {
         <section className="mt-12">
           <div className="flex items-center gap-2 mb-3 px-1">
             <Clock className="h-4 w-4 text-teal" />
-            <h2 className="font-display text-sm tracking-[0.2em] uppercase text-parchment/70">
+            <h2 className="font-ui font-medium text-sm tracking-[0.2em] uppercase text-parchment/70">
               Your Finds
             </h2>
           </div>
@@ -231,9 +231,9 @@ function PickStep({ onPick }: { onPick: (el: ScavengerElement) => void }) {
               <span className="font-display text-2xl leading-none" style={{ color: el.color }}>
                 {el.symbol}
               </span>
-              <span className="text-[10px] text-parchment/50 font-display">{el.number}</span>
+              <span className="text-[10px] text-parchment/50 font-ui font-medium">{el.number}</span>
             </div>
-            <div className="font-display text-sm mb-1">{el.name}</div>
+            <div className="font-ui font-medium text-sm mb-1">{el.name}</div>
             <div className="text-[11px] text-parchment/60 leading-snug">{el.hint}</div>
           </button>
         ))}
@@ -435,7 +435,7 @@ function CaptureStep({
             <div className="text-[10px] tracking-[0.2em] uppercase text-parchment/50">
               Your mission
             </div>
-            <div className="font-display text-lg">
+            <div className="font-ui font-medium text-lg">
               Find <span style={{ color: element.color }}>{element.name}</span> at home
             </div>
           </div>
@@ -688,7 +688,7 @@ function EvidenceCard({ e }: { e: EvidenceEntry }) {
         </span>
       </div>
       <div className="px-2.5 py-1.5 flex items-center justify-between">
-        <span className="font-display text-sm" style={{ color: tone }}>
+        <span className="font-ui font-medium text-sm" style={{ color: tone }}>
           {e.element}
         </span>
         <span className="text-[10px] text-parchment/50 truncate">{e.elementName}</span>

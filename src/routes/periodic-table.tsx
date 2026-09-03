@@ -595,7 +595,7 @@ function PeriodicTable() {
               <div className="rounded-xl p-4" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
                 <div className="mb-3 flex items-center gap-2 text-teal">
                   <FlaskConical className="h-3.5 w-3.5" />
-                  <span className="font-display text-[10px] uppercase tracking-[0.2em]">What it's used for</span>
+                  <span className="font-ui font-medium text-[10px] uppercase tracking-[0.2em]">What it's used for</span>
                 </div>
                 <ul className="grid gap-2 sm:grid-cols-2">
                   {rich.uses.map((u) => (
@@ -632,7 +632,7 @@ function PeriodicTable() {
             <div className="rounded-xl p-4" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
               <div className="mb-3 flex items-center gap-2" style={{ color }}>
                 <ScrollText className="h-3.5 w-3.5" />
-                <span className="font-display text-[10px] uppercase tracking-[0.2em]">Lore</span>
+                <span className="font-ui font-medium text-[10px] uppercase tracking-[0.2em]">Lore</span>
               </div>
               <div className="space-y-3">
                 <div>

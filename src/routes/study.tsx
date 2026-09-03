@@ -84,7 +84,7 @@ function PathTab({ uid, pathProgress }: { uid: string | null; pathProgress: Para
         <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: "color-mix(in oklab, var(--color-parchment) 18%, transparent)" }}>
           <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, background: `linear-gradient(90deg, var(--color-emerald-elixir), ${ACCENT})` }} />
         </div>
-        <span className="text-xs text-parchment/60 font-display flex-shrink-0">{pct}% complete</span>
+        <span className="text-xs text-parchment/60 font-ui font-medium flex-shrink-0">{pct}% complete</span>
       </div>
 
       <ol className="space-y-3">
@@ -103,12 +103,12 @@ function PathTab({ uid, pathProgress }: { uid: string | null; pathProgress: Para
                   border: `1px solid color-mix(in oklab, ${done ? t.color : "var(--color-parchment)"} ${unlocked ? 30 : 15}%, transparent)`,
                   opacity: unlocked ? 1 : 0.55,
                 }}>
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl font-display text-lg flex-shrink-0"
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl font-ui font-medium text-lg flex-shrink-0"
                   style={{ background: `color-mix(in oklab, ${t.color} 16%, transparent)`, color: t.color, border: `1px solid color-mix(in oklab, ${t.color} 35%, transparent)` }}>
                   {done ? <Check className="h-5 w-5" /> : unlocked ? i + 1 : <Lock className="h-4 w-4" />}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="font-display text-base">{t.title}</div>
+                  <div className="font-ui font-medium text-base">{t.title}</div>
                   <div className="text-xs text-parchment/60 truncate">{t.blurb}</div>
                 </div>
                 <StageBadge stage={stage} color={t.color} unlocked={unlocked} />
@@ -249,7 +249,7 @@ function ReviewTab({ uid, reviews }: { uid: string | null; reviews: Parameters<t
     return (
       <div className="rounded-2xl px-5 py-12 text-center" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px dashed color-mix(in oklab, var(--color-parchment) 30%, transparent)" }}>
         <Flame className="h-9 w-9 mx-auto mb-3" style={{ color: "var(--color-gold)" }} />
-        <p className="font-display text-lg mb-1">Nothing due right now</p>
+        <p className="font-ui font-medium text-lg mb-1">Nothing due right now</p>
         <p className="text-sm text-parchment/60 max-w-sm mx-auto">
           {scheduled === 0
             ? "Work through a topic on the Learning Path — the concepts you practise will start showing up here for review."
@@ -313,7 +313,7 @@ function QuestionCard({
 
   return (
     <div className="rounded-2xl p-5" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-      <p className="font-display text-lg mb-4">{concept.question.prompt}</p>
+      <p className="font-ui font-medium text-lg mb-4">{concept.question.prompt}</p>
       <div className="space-y-2.5">
         {concept.question.choices.map((choice, i) => {
           const correct = i === concept.question.answer;
@@ -327,7 +327,7 @@ function QuestionCard({
                 border: `1px solid ${tone ? `color-mix(in oklab, ${tone} 45%, transparent)` : "var(--color-border)"}`,
                 color: "var(--color-spectral)",
               }}>
-              <span className="flex h-6 w-6 items-center justify-center rounded-md text-xs font-display flex-shrink-0"
+              <span className="flex h-6 w-6 items-center justify-center rounded-md text-xs font-ui font-medium flex-shrink-0"
                 style={{ background: tone ? `color-mix(in oklab, ${tone} 22%, transparent)` : "color-mix(in oklab, var(--color-parchment) 15%, transparent)", color: tone ?? "var(--color-parchment)" }}>
                 {showState ? (correct ? <Check className="h-3.5 w-3.5" /> : i === picked ? <X className="h-3.5 w-3.5" /> : String.fromCharCode(65 + i)) : String.fromCharCode(65 + i)}
               </span>

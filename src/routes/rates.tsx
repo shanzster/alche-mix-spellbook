@@ -372,7 +372,7 @@ function CtlSlider({ label, icon: Icon, value, onChange, min, max, step, unit, c
         <span className="inline-flex items-center gap-1.5 text-[11px] tracking-[0.15em] uppercase" style={{ color }}>
           <Icon className="h-3.5 w-3.5" /> {label}
         </span>
-        <span className="font-display text-lg" style={{ color }}>{value.toFixed(0)} <span className="text-xs text-parchment/60">{unit}</span></span>
+        <span className="font-ui font-medium text-lg" style={{ color }}>{value.toFixed(0)} <span className="text-xs text-parchment/60">{unit}</span></span>
       </div>
       <input type="range" min={min} max={max} step={step} value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
@@ -440,7 +440,7 @@ function QuickCheck({ uid, best }: { uid: string | null; best?: { best: number; 
         <p className="text-[10px] tracking-[0.2em] uppercase text-gold">Quick check — seal your knowledge</p>
         {best && (
           <span className="text-xs text-parchment/70">
-            Best: <span className="text-gold font-display">{best.best}/{best.outOf}</span>{" "}
+            Best: <span className="text-gold font-ui font-medium">{best.best}/{best.outOf}</span>{" "}
             {"★".repeat(Math.max(0, Math.min(3, best.best)))}
           </span>
         )}
@@ -565,7 +565,7 @@ function Rates() {
                 <Activity className="h-3.5 w-3.5" /> Rate
               </span>
               <div className="flex items-center gap-3 min-w-0">
-                <span className="font-display text-lg text-gold whitespace-nowrap">{rate.toFixed(1)} <span className="text-xs text-parchment/60">rxn/s</span></span>
+                <span className="font-ui font-medium text-lg text-gold whitespace-nowrap">{rate.toFixed(1)} <span className="text-xs text-parchment/60">rxn/s</span></span>
                 <div className="flex-1 min-w-0"><Sparkline data={history} /></div>
               </div>
               <span className="text-[11px] tracking-[0.15em] uppercase text-parchment/70">Converted</span>

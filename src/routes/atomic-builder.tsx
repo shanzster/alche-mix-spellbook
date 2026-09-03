@@ -219,7 +219,7 @@ function BestRunPanel({ best }: { best?: TrialResult }) {
     <div className="mx-auto mt-5 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-xl px-4 py-2.5 text-sm"
       style={{ background: "color-mix(in oklab, var(--color-gold) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)" }}>
       <span className="text-[10px] uppercase tracking-[0.2em] text-parchment/60">Best run</span>
-      <span className="font-display text-gold">{best.best}/{best.outOf}</span>
+      <span className="font-ui font-medium text-gold">{best.best}/{best.outOf}</span>
       <StarRow n={best.stars} />
       {best.timeSec !== undefined && <span className="text-parchment/70">{best.timeSec}s</span>}
       <span className="text-xs text-parchment/50">{best.plays} play{best.plays === 1 ? "" : "s"}</span>
@@ -352,7 +352,7 @@ function AtomTrial({ uid, best }: { uid: string | null; best?: TrialResult }) {
           Level {ch.level} · {ch.tag}
         </span>
         <div className="flex items-center gap-4 text-xs uppercase tracking-[0.2em] text-parchment/60">
-          {timed && <span className="inline-flex items-center gap-1.5 font-display text-sm normal-case tracking-normal text-teal"><Timer className="h-4 w-4" /> {seconds}s</span>}
+          {timed && <span className="inline-flex items-center gap-1.5 font-ui font-medium text-sm normal-case tracking-normal text-teal"><Timer className="h-4 w-4" /> {seconds}s</span>}
           <span>Challenge {idx + 1} / {TRIAL_TOTAL}</span>
           <span className="text-gold">Score {score}</span>
         </div>
@@ -492,7 +492,7 @@ function AtomicBuilder() {
             <span className="flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: `color-mix(in oklab, ${solved ? "var(--color-emerald-elixir)" : "var(--color-gold)"} 18%, transparent)`, color: solved ? "var(--color-emerald-elixir)" : "var(--color-gold)" }}>
               {solved ? <Check className="h-4 w-4" /> : <Target className="h-4 w-4" />}
             </span>
-            <span className="font-display text-sm" style={{ color: solved ? "var(--color-emerald-elixir)" : "var(--color-gold)" }}>
+            <span className="font-ui font-medium text-sm" style={{ color: solved ? "var(--color-emerald-elixir)" : "var(--color-gold)" }}>
               {solved ? "Mission complete!" : `Mission · ${mission.tag}`}
             </span>
           </div>
@@ -552,7 +552,7 @@ function AtomicBuilder() {
           <div className="mt-4 rounded-2xl p-5" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px solid var(--color-border)" }}>
             <div className="mb-2 flex items-center gap-2 text-teal">
               <Sparkles className="h-3.5 w-3.5" />
-              <span className="font-display text-[11px] uppercase tracking-[0.2em]">What you've built</span>
+              <span className="font-ui font-medium text-[11px] uppercase tracking-[0.2em]">What you've built</span>
             </div>
             <ul className="space-y-1.5">
               {story.map((s, i) => (
@@ -638,7 +638,7 @@ function Readout({ label, value, color }: { label: string; value: string; color:
     <div className="rounded-xl p-3.5"
       style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
       <div className="mb-1 text-[10px] uppercase tracking-[0.2em] text-parchment/55">{label}</div>
-      <div className="font-display text-sm" style={{ color }}>{value}</div>
+      <div className="font-ui font-medium text-sm" style={{ color }}>{value}</div>
     </div>
   );
 }

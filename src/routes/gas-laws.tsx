@@ -122,7 +122,7 @@ function Slider({
         <span className="inline-flex items-center gap-1.5 text-[11px] tracking-[0.15em] uppercase" style={{ color }}>
           <Icon className="h-3.5 w-3.5" /> {label} {disabled && <span className="text-parchment/50">(computed)</span>}
         </span>
-        <span className="font-display text-lg" style={{ color }}>{value.toFixed(step < 1 ? 1 : 0)} <span className="text-xs text-parchment/60">{unit}</span></span>
+        <span className="font-ui font-medium text-lg" style={{ color }}>{value.toFixed(step < 1 ? 1 : 0)} <span className="text-xs text-parchment/60">{unit}</span></span>
       </div>
       <input type="range" min={min} max={max} step={step} value={value} disabled={disabled}
         onChange={(e) => onChange(parseFloat(e.target.value))}
@@ -261,9 +261,9 @@ function TrialOfTheAlchemist({
         </span>
         {phase === "run" && (
           <span className="text-xs text-parchment/70">
-            Problem <span className="text-gold font-display">{index + 1}</span> / {TRIAL_LEN}
+            Problem <span className="text-gold font-ui font-medium">{index + 1}</span> / {TRIAL_LEN}
             <span className="mx-2 opacity-40">·</span>
-            Score <span className="text-emerald-elixir font-display">{score}</span>
+            Score <span className="text-emerald-elixir font-ui font-medium">{score}</span>
           </span>
         )}
       </div>
@@ -279,7 +279,7 @@ function TrialOfTheAlchemist({
             <div className="flex items-center gap-3 rounded-xl px-4 py-3" style={panel()}>
               <TrialStars stars={best.stars} />
               <span className="text-sm text-parchment/80">
-                Your best: <span className="text-gold font-display">{best.best}</span>/{best.outOf}
+                Your best: <span className="text-gold font-ui font-medium">{best.best}</span>/{best.outOf}
                 <span className="mx-2 opacity-40">·</span>
                 {best.plays} {best.plays === 1 ? "attempt" : "attempts"}
               </span>
@@ -337,7 +337,7 @@ function TrialOfTheAlchemist({
                       onChange={(e) => setAnswer(e.target.value)}
                       onKeyDown={(e) => { if (e.key === "Enter") void submit(); }}
                       placeholder="Your answer"
-                      className="w-32 bg-transparent text-parchment font-display text-lg outline-none placeholder:text-parchment/40 placeholder:font-sans placeholder:text-sm"
+                      className="w-32 bg-transparent text-parchment font-ui font-medium text-lg outline-none placeholder:text-parchment/40 placeholder:font-sans placeholder:text-sm"
                     />
                     {problem.unit && <span className="text-xs text-parchment/60">{problem.unit}</span>}
                   </div>
@@ -527,7 +527,7 @@ function GasLaws() {
           style={{ background: "radial-gradient(ellipse at 50% 40%, color-mix(in oklab, var(--color-violet-deep) 22%, transparent), color-mix(in oklab, var(--color-slate-sunken) 82%, transparent))", border: "1px solid var(--color-border)" }}>
           <ParticleBox tvn={tvn} />
           <div className="px-5 py-4 border-t text-center" style={{ borderColor: "var(--color-border)" }}>
-            <div className="font-display text-lg">
+            <div className="font-ui font-medium text-lg">
               <span className="text-gold">P</span>·<span className="text-teal">V</span> = <span className="text-parchment">n</span>·R·<span className="text-wraith">T</span>
             </div>
             <div className="text-xs text-parchment/70 mt-1">
@@ -545,7 +545,7 @@ function GasLaws() {
 
           <div className="rounded-xl p-4 text-sm text-parchment leading-relaxed"
             style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px solid var(--color-border)" }}>
-            <span className="text-teal font-display">Observe:</span>{" "}
+            <span className="text-teal font-ui font-medium">Observe:</span>{" "}
             {solve === "P" && "Shrinking the volume or heating the gas raises the pressure."}
             {solve === "V" && "Heating the gas or dropping the pressure expands the volume."}
             {solve === "T" && "Higher pressure or larger volume means the gas must be hotter."}

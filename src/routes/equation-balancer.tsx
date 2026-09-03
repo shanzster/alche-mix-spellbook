@@ -125,7 +125,7 @@ function Coeff({ value, onChange, formula }: { value: number; onChange: (v: numb
           <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
-      <span className="font-display text-lg"><Formula text={formula} /></span>
+      <span className="font-ui font-medium text-lg"><Formula text={formula} /></span>
     </div>
   );
 }
@@ -187,7 +187,7 @@ function EquationCard({ eq, onSolved }: { eq: Equation; onSolved: () => void }) 
               border: `1px solid color-mix(in oklab, ${t.ok ? "var(--color-emerald-elixir)" : "var(--color-crimson)"} 35%, transparent)`,
               color: t.ok ? "var(--color-emerald-elixir)" : "var(--color-crimson)",
             }}>
-            <span className="font-display">{t.element}</span>
+            <span className="font-ui font-medium">{t.element}</span>
             <span>{t.left} : {t.right}</span>
             {t.ok ? <Check className="h-3 w-3" /> : null}
           </div>
@@ -195,7 +195,7 @@ function EquationCard({ eq, onSolved }: { eq: Equation; onSolved: () => void }) 
       </div>
 
       <div className="flex items-center justify-center gap-4">
-        <div className="text-sm tracking-[0.15em] uppercase font-display"
+        <div className="text-sm tracking-[0.15em] uppercase font-ui font-medium"
           style={{ color: balanced ? "var(--color-emerald-elixir)" : "var(--color-parchment)" }}>
           {balanced ? "✦ Balanced ✦" : "Not balanced yet"}
         </div>
@@ -236,7 +236,7 @@ function BestTimePanel({ best }: { best?: TrialResult }) {
     <div className="mx-auto mt-5 inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 rounded-xl px-4 py-2.5 text-sm"
       style={{ background: "color-mix(in oklab, var(--color-gold) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)" }}>
       <span className="text-[10px] uppercase tracking-[0.2em] text-parchment/60">Fastest clear</span>
-      <span className="font-display text-gold">{best.timeSec}s</span>
+      <span className="font-ui font-medium text-gold">{best.timeSec}s</span>
       <StarRow n={best.stars} />
       <span className="text-xs text-parchment/50">{best.plays} run{best.plays === 1 ? "" : "s"}</span>
     </div>
@@ -385,7 +385,7 @@ function EquationBalancer() {
                   background: `color-mix(in oklab, ${difficulty === d.key ? "var(--color-emerald-elixir)" : "var(--color-slate-sunken)"} ${difficulty === d.key ? 14 : 62}%, transparent)`,
                   border: `1px solid color-mix(in oklab, ${difficulty === d.key ? "var(--color-emerald-elixir)" : "var(--color-parchment)"} ${difficulty === d.key ? 45 : 20}%, transparent)`,
                 }}>
-                <div className="font-display text-sm" style={{ color: difficulty === d.key ? "var(--color-emerald-elixir)" : "var(--color-spectral)" }}>{d.label}</div>
+                <div className="font-ui font-medium text-sm" style={{ color: difficulty === d.key ? "var(--color-emerald-elixir)" : "var(--color-spectral)" }}>{d.label}</div>
                 <div className="text-[10px] uppercase tracking-[0.12em] text-parchment/55">{d.blurb}</div>
               </button>
             ))}

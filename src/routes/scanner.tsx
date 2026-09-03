@@ -165,7 +165,7 @@ function WebsiteHandoff() {
         >
           <BookMarked className="h-4.5 w-4.5 text-gold flex-shrink-0" />
           <span className="flex-1 text-sm text-parchment">
-            Follow the <span className="font-display text-spectral">Grimoire Guide</span> — your
+            Follow the <span className="font-ui font-medium text-spectral">Grimoire Guide</span> — your
             learning path
           </span>
           <ChevronRight className="h-4 w-4 text-parchment/40 transition group-hover:translate-x-0.5 group-hover:text-emerald-elixir" />
@@ -177,7 +177,7 @@ function WebsiteHandoff() {
           <Grid3x3 className="h-4.5 w-4.5 text-emerald-elixir flex-shrink-0" />
           <span className="flex-1 text-sm text-parchment">
             Study elements in depth in the{" "}
-            <span className="font-display text-spectral">Periodic Table</span>
+            <span className="font-ui font-medium text-spectral">Periodic Table</span>
           </span>
           <ChevronRight className="h-4 w-4 text-parchment/40 transition group-hover:translate-x-0.5 group-hover:text-emerald-elixir" />
         </Link>
@@ -221,7 +221,7 @@ function GlimpsePanel({ elementKey }: { elementKey: string }) {
           <Award className="h-5 w-5 text-gold" />
         </span>
         <div>
-          <p className="font-display text-lg text-spectral">
+          <p className="font-ui font-medium text-lg text-spectral">
             Card claimed — {el.name} ({el.symbol})
           </p>
           <p className="text-sm text-parchment/60">
@@ -270,7 +270,7 @@ function GlimpsePanel({ elementKey }: { elementKey: string }) {
           <Atom className="h-4.5 w-4.5 text-gold flex-shrink-0" />
           <span className="flex-1 text-sm text-parchment">
             Or forge an atom yourself in the{" "}
-            <span className="font-display text-spectral">Atomic Builder</span>
+            <span className="font-ui font-medium text-spectral">Atomic Builder</span>
           </span>
           <ChevronRight className="h-4 w-4 text-parchment/40 transition group-hover:translate-x-0.5 group-hover:text-emerald-elixir" />
         </Link>

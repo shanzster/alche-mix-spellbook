@@ -352,7 +352,7 @@ function ClassBanner({
       >
         <Users className="h-4 w-4 text-teal flex-shrink-0" />
         <span className="text-sm text-parchment">
-          Enrolled in <span className="font-display text-spectral">{profile.className}</span>
+          Enrolled in <span className="font-ui font-medium text-spectral">{profile.className}</span>
         </span>
       </div>
     );
@@ -429,7 +429,7 @@ function StudentHub() {
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-display text-base">{m.title}</span>
+                    <span className="font-ui font-medium text-base">{m.title}</span>
                     {recommended && (
                       <span
                         className="rounded-full px-2 py-0.5 text-[9px] tracking-[0.12em] uppercase flex-shrink-0"
@@ -497,7 +497,7 @@ function StudentHub() {
         >
           <ScanLine className="mt-0.5 h-4 w-4 flex-shrink-0 text-gold" />
           <span className="text-sm text-parchment">
-            You're on the <span className="font-display text-spectral">mobile companion</span> — the
+            You're on the <span className="font-ui font-medium text-spectral">mobile companion</span> — the
             AR Scanner and Scavenger Hunt live here. For the full in-depth study, open AlcheMix on a
             computer.
           </span>
@@ -510,7 +510,7 @@ function StudentHub() {
       {/* My Progress — populated by the teacher */}
       <section className="mb-12">
         <div className="flex items-center mb-3 px-1">
-          <h2 className="font-display text-xs tracking-[0.15em] uppercase text-parchment/60">
+          <h2 className="font-ui font-medium text-xs tracking-[0.15em] uppercase text-parchment/60">
             My Progress
           </h2>
         </div>
@@ -522,7 +522,7 @@ function StudentHub() {
               <span
                 key={b}
                 title={BADGE_META[b].desc}
-                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-display text-xs tracking-[0.08em]"
+                className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-ui font-medium text-xs tracking-[0.08em]"
                 style={{
                   color: "var(--color-gold)",
                   background: "color-mix(in oklab, var(--color-gold) 8%, transparent)",
@@ -546,7 +546,7 @@ function StudentHub() {
             >
               <ClipboardCheck className="h-6 w-6 text-teal" />
             </span>
-            <p className="font-display text-base mb-1">No scores yet</p>
+            <p className="font-ui font-medium text-base mb-1">No scores yet</p>
             <p className="text-sm text-parchment/60 max-w-sm mx-auto">
               Your teacher hasn't posted results yet. Grades, feedback and mastery for each topic
               will appear here once they do.
@@ -563,7 +563,7 @@ function StudentHub() {
                   style={{ borderColor: "var(--color-border)" }}
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="font-display text-sm capitalize">{topic}</div>
+                    <div className="font-ui font-medium text-sm capitalize">{topic}</div>
                     {g.feedback && (
                       <div className="text-xs text-parchment/60 truncate">{g.feedback}</div>
                     )}
@@ -576,7 +576,7 @@ function StudentHub() {
                       {MASTERY_META[mastery[topic]].label}
                     </span>
                   )}
-                  <span className="font-display text-teal text-sm flex-shrink-0">
+                  <span className="font-ui font-medium text-teal text-sm flex-shrink-0">
                     {g.score}/{g.outOf} <span className="text-parchment/50">({pct}%)</span>
                   </span>
                 </div>
@@ -591,7 +591,7 @@ function StudentHub() {
                   className="flex items-center gap-4 py-3 px-1 border-t"
                   style={{ borderColor: "var(--color-border)" }}
                 >
-                  <div className="font-display text-sm capitalize flex-1">{topic}</div>
+                  <div className="font-ui font-medium text-sm capitalize flex-1">{topic}</div>
                   <span
                     className="text-[10px] tracking-[0.12em] uppercase"
                     style={{ color: MASTERY_META[m].color }}
@@ -607,7 +607,7 @@ function StudentHub() {
       {/* Module list */}
       <section>
         <div className="flex items-center mb-2 px-1">
-          <h2 className="font-display text-xs tracking-[0.15em] uppercase text-parchment/60">
+          <h2 className="font-ui font-medium text-xs tracking-[0.15em] uppercase text-parchment/60">
             Learning Modules
           </h2>
           <span className="ml-auto text-[10px] text-parchment/45">
@@ -622,7 +622,7 @@ function StudentHub() {
       {/* The Arcade — games & rewards, kept apart from the learning path */}
       <section className="mt-14">
         <div className="flex items-center mb-3 px-1">
-          <h2 className="font-display text-xs tracking-[0.15em] uppercase text-parchment/60">
+          <h2 className="font-ui font-medium text-xs tracking-[0.15em] uppercase text-parchment/60">
             The Arcade
           </h2>
           <span className="ml-auto text-[10px] text-parchment/45">
@@ -634,7 +634,7 @@ function StudentHub() {
         <div className="mb-6 flex flex-wrap gap-2">
           {(profile?.aurum ?? 0) > 0 && (
             <span
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-display text-xs tracking-[0.08em]"
+              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-ui font-medium text-xs tracking-[0.08em]"
               style={{
                 color: "var(--color-gold)",
                 background: "color-mix(in oklab, var(--color-gold) 8%, transparent)",
@@ -647,7 +647,7 @@ function StudentHub() {
           )}
           {(profile?.starterStreak?.count ?? 0) > 0 && (
             <span
-              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-display text-xs tracking-[0.08em]"
+              className="inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 font-ui font-medium text-xs tracking-[0.08em]"
               style={{
                 color: "var(--color-crimson)",
                 background: "color-mix(in oklab, var(--color-crimson) 8%, transparent)",

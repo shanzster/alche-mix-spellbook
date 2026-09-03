@@ -496,7 +496,7 @@ function Thermo() {
                 <button onClick={() => stepMoles(-0.02)} disabled={n <= 0.02} className="btn-ghost-arcane text-xs disabled:opacity-40" aria-label="Less salt">
                   <Minus className="h-3.5 w-3.5" />
                 </button>
-                <span className="font-display text-sm px-1 tabular-nums" style={{ color: ACCENT }}>
+                <span className="font-ui font-medium text-sm px-1 tabular-nums" style={{ color: ACCENT }}>
                   {n.toFixed(2)} mol
                 </span>
                 <button onClick={() => stepMoles(0.02)} disabled={n >= 0.2} className="btn-ghost-arcane text-xs disabled:opacity-40" aria-label="More salt">
@@ -512,7 +512,7 @@ function Thermo() {
 
         {trial && (
           <div className="text-sm text-parchment leading-relaxed">
-            A hooded courier delivers <span className="text-gold font-display">{mystery.n.toFixed(2)} mol</span> of an unlabelled salt. Add it, read the thermometer, and unmask it below.
+            A hooded courier delivers <span className="text-gold font-ui font-medium">{mystery.n.toFixed(2)} mol</span> of an unlabelled salt. Add it, read the thermometer, and unmask it below.
           </div>
         )}
 
@@ -597,16 +597,16 @@ function Thermo() {
               <div className="text-[10px] tracking-[0.2em] uppercase text-parchment/50">The ledger of heat</div>
               <p className="text-parchment">
                 <span style={{ color: ACCENT }}>q released by the mix</span> = n·ΔH = {moles.toFixed(2)} mol × ({salt.dH > 0 ? "+" : ""}
-                {salt.dH} kJ/mol) = <span className="font-display" style={{ color: ACCENT }}>{(moles * salt.dH).toFixed(2)} kJ</span>
+                {salt.dH} kJ/mol) = <span className="font-ui font-medium" style={{ color: ACCENT }}>{(moles * salt.dH).toFixed(2)} kJ</span>
               </p>
               <p className="text-parchment">
                 <span style={{ color: ACCENT }}>Water's gain</span> = m·c·ΔT → ΔT = {(-moles * salt.dH).toFixed(2)} kJ ÷ (100 g × 4.18 J/g·K) ={" "}
-                <span className="font-display" style={{ color: ACCENT }}>
+                <span className="font-ui font-medium" style={{ color: ACCENT }}>
                   {dT >= 0 ? "+" : ""}
                   {dT.toFixed(1)} °C
                 </span>
                 {" → final "}
-                <span className="font-display" style={{ color: ACCENT }}>{(T0 + dT).toFixed(1)} °C</span>
+                <span className="font-ui font-medium" style={{ color: ACCENT }}>{(T0 + dT).toFixed(1)} °C</span>
               </p>
               <p className="text-xs text-parchment/60">
                 So far the water has {qNowKJ >= 0 ? "gained" : "lost"} {Math.abs(qNowKJ).toFixed(2)} kJ. {salt.note}
@@ -627,7 +627,7 @@ function Thermo() {
         >
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <Trophy className="h-4 w-4 text-gold" />
-            <span className="text-[10px] tracking-[0.2em] uppercase font-display text-gold">Assay of the Mystery Salt</span>
+            <span className="text-[10px] tracking-[0.2em] uppercase font-ui font-medium text-gold">Assay of the Mystery Salt</span>
             {best && (
               <span className="ml-auto text-xs text-parchment/60 inline-flex items-center gap-1.5">
                 Best: <Stars n={best.stars} /> ({best.plays} attempt{best.plays === 1 ? "" : "s"})
@@ -644,8 +644,8 @@ function Thermo() {
           {(phase === "done" || verdict !== null) && (
             <>
               <p className="text-sm text-parchment leading-relaxed mb-3">
-                The water settled at <span className="text-gold font-display">{(T0 + trueDT).toFixed(1)} °C</span> from a 21.0 °C baseline, with{" "}
-                <span className="text-gold font-display">n = {mystery.n.toFixed(2)} mol</span> added. Work the chain below — signs and units are where assays go wrong.
+                The water settled at <span className="text-gold font-ui font-medium">{(T0 + trueDT).toFixed(1)} °C</span> from a 21.0 °C baseline, with{" "}
+                <span className="text-gold font-ui font-medium">n = {mystery.n.toFixed(2)} mol</span> added. Work the chain below — signs and units are where assays go wrong.
               </p>
 
               {verdict === null ? (

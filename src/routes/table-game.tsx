@@ -342,7 +342,7 @@ function TableGame() {
             {!resolved && missedEl && (
               <div className="rounded-r-lg pl-4 pr-3 py-3 text-sm text-parchment"
                 style={{ borderLeft: "3px solid color-mix(in oklab, var(--color-crimson) 60%, transparent)", background: "color-mix(in oklab, var(--color-crimson) 7%, transparent)" }}>
-                <span className="font-display" style={{ color: "var(--color-crimson)" }}>Miss — </span>
+                <span className="font-ui font-medium" style={{ color: "var(--color-crimson)" }}>Miss — </span>
                 that cell was {missedEl.name} ({missedEl.symbol}). One try left.
               </div>
             )}
@@ -353,7 +353,7 @@ function TableGame() {
                   background: `color-mix(in oklab, ${resolved.points > 0 ? "var(--color-emerald-elixir)" : "var(--color-gold)"} 7%, transparent)`,
                 }}>
                 <span>
-                  <span className="font-display" style={{ color: resolved.points > 0 ? "var(--color-emerald-elixir)" : "var(--color-gold)" }}>
+                  <span className="font-ui font-medium" style={{ color: resolved.points > 0 ? "var(--color-emerald-elixir)" : "var(--color-gold)" }}>
                     {resolved.points === 2 ? "Direct hit! +2 points. " : resolved.points === 1 ? "Second-try strike — +1 point. " : "Out of tries. "}
                   </span>
                   {resolved.points > 0
