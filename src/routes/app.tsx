@@ -548,8 +548,8 @@ function StudentHub() {
 
   return (
     <StudentShell title="Home">
-      {/* ── Hero banner — the alchemist at the cauldron, full-bleed art ── */}
-      <section className="relative mb-8 overflow-hidden rounded-2xl">
+      {/* ── Hero — full-viewport landing: the alchemist at the cauldron ── */}
+      <section className="relative mb-10 flex min-h-[calc(100svh-8.5rem)] flex-col justify-center overflow-hidden rounded-2xl">
         <img
           src="/images/alchemix-hero-banner.png"
           alt=""
@@ -573,12 +573,14 @@ function StudentHub() {
         {/* the gilded arcane frame, floating above the art */}
         <div className="card-arcane pointer-events-none absolute inset-0 z-20 rounded-2xl" />
 
-        <div className="relative z-10 max-w-2xl p-6 py-10 md:p-10 md:py-14">
+        <div className="relative z-10 max-w-3xl p-6 md:p-12 lg:p-16">
           <p className={LABEL}>Apprentice's Bench</p>
-          <h1 className="font-display mt-1.5 text-3xl leading-tight md:text-4xl">
-            Welcome back, {name}.
+          <h1 className="font-display mt-2 text-4xl leading-tight md:text-5xl lg:text-6xl">
+            Welcome back,
+            <br />
+            {name}.
           </h1>
-          <p className="mt-2.5 max-w-lg font-serif text-[15px] italic leading-relaxed text-parchment/90">
+          <p className="mt-4 max-w-lg font-serif text-base italic leading-relaxed text-parchment/90 md:text-lg">
             The Grimoire lies open — every page you turn explains a little more of the world.
           </p>
 
@@ -595,10 +597,10 @@ function StudentHub() {
 
           {/* Continue — the hero's call to action */}
           {nextStep ? (
-            <div className="mt-6 flex flex-wrap items-center gap-4">
+            <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link
                 to={nextStep.to as any}
-                className="btn-arcane btn-arcane-hover flex-shrink-0 text-xs"
+                className="btn-arcane btn-arcane-hover flex-shrink-0 text-sm"
               >
                 Continue your path
               </Link>
@@ -611,11 +613,23 @@ function StudentHub() {
               </span>
             </div>
           ) : (
-            <p className="mt-6 font-serif text-sm italic text-parchment/90">
+            <p className="mt-8 font-serif text-sm italic text-parchment/90">
               You've walked the whole Guide — keep the streak alight, or revisit any page below.
             </p>
           )}
         </div>
+
+        {/* Scroll cue — the book continues below the fold */}
+        <a
+          href="#chapters"
+          className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 flex flex-col items-center gap-1 text-parchment/60 transition-colors hover:text-spectral"
+          aria-label="Scroll to the chapters"
+        >
+          <span className={LABEL}>The chapters await</span>
+          <svg className="h-4 w-4 animate-bounce" viewBox="0 0 16 16" fill="none">
+            <path d="M3 6l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          </svg>
+        </a>
       </section>
 
       {/* Mobile companion notice — capture tools live here; deep study is on the website. */}
@@ -633,7 +647,7 @@ function StudentHub() {
       <ClassRow uid={uid} profile={profile} />
 
       {/* Learning modules — monochrome card grid under chapter labels. */}
-      <section>
+      <section id="chapters" className="scroll-mt-24">
         {MODULE_GROUPS.map((group) => {
           const rows = MODULES.filter((m) => m.group === group);
           if (rows.length === 0) return null;
