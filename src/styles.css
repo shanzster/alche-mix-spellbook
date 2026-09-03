@@ -58,13 +58,16 @@
   --color-violet-deep: var(--violet-deep);
 
   --font-display: "Cyberjunkies", serif;
-  --font-sans: "EB Garamond", serif;
-  /* Interface font — nav, buttons, labels, data. The display font is reserved
-     for the brand and big page titles; Garamond for prose. This split is what
-     keeps the app from reading as a game asset. */
-  --font-ui:
+  /* Body/interface font — the clean system sans used everywhere by default.
+     The display font stays reserved for the brand and big page titles. */
+  --font-sans:
     ui-sans-serif, -apple-system, "SF Pro Text", "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
+  /* `font-ui` is kept as an alias of the body sans so existing markup works. */
+  --font-ui: var(--font-sans);
+  /* Subtitle font — EB Garamond, demoted from body to an accent voice for
+     subtitles and flavour text. */
+  --font-serif: "EB Garamond", serif;
 }
 
 /*

@@ -46,7 +46,9 @@ export function PageHeader({
           )}
           <h1 className="font-display text-2xl md:text-3xl leading-tight">{title}</h1>
           {subtitle && (
-            <p className="text-parchment/80 text-sm mt-1.5 max-w-xl leading-relaxed">{subtitle}</p>
+            <p className="font-serif text-parchment/80 text-[15px] mt-1.5 max-w-xl leading-relaxed">
+              {subtitle}
+            </p>
           )}
         </div>
       </div>

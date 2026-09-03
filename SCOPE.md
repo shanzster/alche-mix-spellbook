@@ -52,6 +52,12 @@ Gemini (`GEMINI_API_KEY`, server-only via `createServerFn`) · Nitro/Cloudflare.
 7. **Both themes, mobile-friendly, token-based styling.** Every surface must
    work in dark and light mode using the existing CSS tokens; wide content
    scrolls horizontally in its own container.
+8. **The font system (owner-set, 2026-09-03).** Three voices, never mixed up:
+   `--font-display` (Cyberjunkies) ONLY for the brand mark, page titles (h1)
+   and big hero text (element symbols, scores, formulas); `--font-sans`
+   (system sans, aliased as `--font-ui`) is the body and interface font for
+   everything else; `--font-serif` (EB Garamond) only for subtitles and
+   flavour text. Never put the display font on small labels.
 
 ## Shipped surface (current)
 
