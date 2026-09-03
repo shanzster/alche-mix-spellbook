@@ -7,7 +7,6 @@ import {
   Gauge,
   ClipboardList,
   Grid3x3,
-  GraduationCap,
   Users,
   ScanSearch,
   Brain,
@@ -34,7 +33,6 @@ import {
   Compass,
 } from "lucide-react";
 import { StudentShell } from "../components/StudentShell";
-import { PageHeader } from "../components/PageHeader";
 import { RequireRole } from "../components/RequireRole";
 import { useUserProfile, type Mastery } from "../lib/profile";
 import { joinClass } from "../lib/teacher";
@@ -550,56 +548,75 @@ function StudentHub() {
 
   return (
     <StudentShell title="Home">
-      <PageHeader
-        eyebrow="Apprentice's Bench"
-        title={`Welcome back, ${name}.`}
-        subtitle="Practise a module, then check back here for the scores and feedback your teacher posts."
-        icon={GraduationCap}
-        right={
-          stats.length > 0 ? (
-            <div className="flex items-center gap-2 text-xs text-parchment/70">
-              {stats.map((s, i) => (
-                <Fragment key={s.key}>
-                  {i > 0 && <span className="text-parchment/30">·</span>}
-                  {s.node}
-                </Fragment>
-              ))}
-            </div>
-          ) : undefined
-        }
-      />
+      {/* ── Hero — the apprentice's bench, one grand artifact ── */}
+      <section className="card-arcane glass relative mb-8 overflow-hidden rounded-2xl p-6 md:p-9">
+        {/* soft candlelight pooling in the corner */}
+        <div
+          className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full opacity-35 blur-3xl"
+          style={{ background: "color-mix(in oklab, var(--color-gold) 45%, transparent)" }}
+        />
+        <div
+          className="pointer-events-none absolute -bottom-28 -left-16 h-64 w-64 rounded-full opacity-30 blur-3xl"
+          style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent)" }}
+        />
 
-      {/* Continue card — the one strong accent on the page. */}
-      {nextStep ? (
-        <div className="card-arcane glass mb-6 flex flex-wrap items-center gap-4 rounded-2xl p-5">
-          <span className="emblem-arcane h-11 w-11 flex-shrink-0 text-emerald-elixir">
-            <nextStep.icon className="relative h-5 w-5" />
-          </span>
+        <div className="relative flex flex-wrap items-center gap-8 md:gap-12">
           <div className="min-w-0 flex-1">
-            <p className={LABEL}>Continue your path</p>
-            <h2 className="mt-0.5 font-ui text-base font-semibold text-spectral">
-              {nextStep.title}
-            </h2>
-            <p className="mt-0.5 font-serif text-sm text-parchment/70">{nextStep.why}</p>
+            <p className={LABEL}>Apprentice's Bench</p>
+            <h1 className="font-display mt-1.5 text-3xl leading-tight md:text-4xl">
+              Welcome back, {name}.
+            </h1>
+            <p className="mt-2.5 max-w-lg font-serif text-[15px] italic leading-relaxed text-parchment/75">
+              The Grimoire lies open — every page you turn explains a little more of the world.
+            </p>
+
+            {stats.length > 0 && (
+              <div className="mt-4 flex items-center gap-2 text-xs text-parchment/70">
+                {stats.map((s, i) => (
+                  <Fragment key={s.key}>
+                    {i > 0 && <span className="text-parchment/30">·</span>}
+                    {s.node}
+                  </Fragment>
+                ))}
+              </div>
+            )}
+
+            {/* Continue — the hero's call to action */}
+            {nextStep ? (
+              <div className="mt-6 flex flex-wrap items-center gap-4">
+                <Link
+                  to={nextStep.to as any}
+                  className="btn-arcane btn-arcane-hover flex-shrink-0 text-xs"
+                >
+                  Continue your path
+                </Link>
+                <span className="flex min-w-0 items-center gap-2.5 text-sm text-parchment/75">
+                  <nextStep.icon className="h-4 w-4 flex-shrink-0 text-emerald-elixir" />
+                  <span className="truncate">
+                    <span className="font-semibold text-spectral">{nextStep.title}</span>
+                    <span className="text-parchment/50"> is next</span>
+                  </span>
+                </span>
+              </div>
+            ) : (
+              <p className="mt-6 font-serif text-sm italic text-parchment/75">
+                You've walked the whole Guide — keep the streak alight, or revisit any page below.
+              </p>
+            )}
           </div>
-          <Link
-            to={nextStep.to as any}
-            className="btn-arcane btn-arcane-hover flex-shrink-0 text-xs"
-          >
-            Open
-          </Link>
+
+          {/* The grand crest */}
+          <div className="hidden sm:flex flex-shrink-0 items-center justify-center pr-2 md:pr-6">
+            <span className="emblem-arcane h-32 w-32 md:h-36 md:w-36">
+              <img
+                src="/images/logo-outline.png"
+                alt=""
+                className="relative h-16 w-16 object-contain md:h-20 md:w-20"
+              />
+            </span>
+          </div>
         </div>
-      ) : (
-        <div className="card-arcane glass mb-6 rounded-2xl p-5">
-          <p className={LABEL}>Path complete</p>
-          <h2 className="mt-0.5 font-ui text-base font-semibold text-spectral">
-            You've walked the whole Guide, {name}.
-          </h2>
-          <p className="mt-0.5 font-serif text-sm text-parchment/70">
-            Every step is done — keep your streak alight, or revisit any module below.
-          </p>
-        </div>
-      )}
+      </section>
 
       {/* Mobile companion notice — capture tools live here; deep study is on the website. */}
       {platform.ready && platform.arCapable && (
