@@ -176,8 +176,8 @@ function TableOfContents({ onClose }: { onClose: () => void }) {
       />
       <div className="glass-strong relative z-10 w-full max-w-4xl rounded-2xl p-5 md:p-7">
         <div className="mb-5 flex items-center gap-2.5">
-          <BookOpen className="h-4.5 w-4.5 text-gold" />
-          <h2 className="font-ui font-medium text-base tracking-[0.1em]">Table of Contents</h2>
+          <BookOpen className="h-4 w-4 text-parchment/60" />
+          <h2 className="text-base font-semibold">Table of Contents</h2>
           <button
             onClick={onClose}
             aria-label="Close contents"
@@ -190,7 +190,7 @@ function TableOfContents({ onClose }: { onClose: () => void }) {
         <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
           {CHAPTERS.map((chapter) => (
             <div key={chapter}>
-              <p className="mb-1.5 px-1 text-[10px] uppercase tracking-[0.2em] text-parchment/45">
+              <p className="mb-1.5 px-1 text-[11px] uppercase tracking-[0.14em] text-parchment/50">
                 {chapter}
               </p>
               <ul className="space-y-0.5">
@@ -210,7 +210,7 @@ function TableOfContents({ onClose }: { onClose: () => void }) {
                         }}
                       >
                         <item.icon className="h-3.5 w-3.5 flex-shrink-0" />
-                        <span className="font-ui font-medium tracking-[0.03em]">{item.label}</span>
+                        <span>{item.label}</span>
                       </Link>
                     </li>
                   );
@@ -279,15 +279,9 @@ export function StudentShell({ title, children }: { title?: string; children: Re
         </Link>
 
         {pageIndex !== -1 && (
-          <span className="flex items-center gap-2 text-parchment/60">
+          <span className="flex items-center gap-2 min-w-0">
             <span className="text-parchment/30">/</span>
-            <span className="text-[10px] uppercase tracking-[0.18em]">
-              {NAV[pageIndex].chapter}
-            </span>
-            <span className="text-parchment/30">·</span>
-            <span className="font-ui font-medium text-[13px] tracking-[0.05em] text-parchment">
-              {NAV[pageIndex].label}
-            </span>
+            <span className="truncate text-sm text-parchment/70">{NAV[pageIndex].label}</span>
           </span>
         )}
 
@@ -298,7 +292,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
             style={{ border: "1px solid var(--color-border)" }}
           >
             <BookOpen className="h-3.5 w-3.5" />
-            <span className="font-ui font-medium tracking-[0.06em]">Contents</span>
+            <span className="text-xs font-medium">Contents</span>
             <kbd className="text-[9px] text-parchment/45">⌘K</kbd>
           </button>
           <ThemeToggle className="!h-8 !w-8" />
@@ -353,15 +347,13 @@ export function StudentShell({ title, children }: { title?: string; children: Re
           )}
           <button
             onClick={() => setTocOpen(true)}
-            className="flex items-center gap-2 rounded-full px-2 py-1 text-parchment/80 transition-colors hover:bg-teal/10"
+            className="flex items-center gap-2 rounded-full px-2.5 py-1 text-parchment/80 transition-colors hover:bg-teal/10"
             title="Open the Table of Contents"
           >
-            <BookOpen className="h-3.5 w-3.5 text-gold" />
-            <span className="font-ui font-medium text-[11px] tracking-[0.08em] whitespace-nowrap">
-              {NAV[pageIndex].label}
-            </span>
-            <span className="text-[10px] text-parchment/45 whitespace-nowrap">
-              {pageIndex + 1} / {NAV.length}
+            <BookOpen className="h-3.5 w-3.5 text-parchment/60" />
+            <span className="text-xs whitespace-nowrap">{NAV[pageIndex].label}</span>
+            <span className="text-xs text-parchment/45 whitespace-nowrap">
+              {pageIndex + 1}/{NAV.length}
             </span>
           </button>
           {nextPage ? (
@@ -395,7 +387,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
             onClick={() => setMoreOpen(false)}
           />
           <div className="glass-strong scroll-slim fixed bottom-[5rem] inset-x-3 z-50 max-h-[65vh] overflow-y-auto rounded-2xl p-2">
-            <p className="px-3 py-2 text-[10px] tracking-[0.25em] uppercase text-parchment/50">
+            <p className="px-3 py-2 text-[11px] uppercase tracking-[0.14em] text-parchment/50">
               More modules
             </p>
             {moreItems.map((item) => {
@@ -415,7 +407,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
                   }}
                 >
                   <item.icon className="h-4 w-4 flex-shrink-0" />
-                  <span className="font-ui font-medium tracking-[0.06em]">{item.label}</span>
+                  <span>{item.label}</span>
                   {item.disabled && (
                     <span className="ml-auto text-[8px] tracking-[0.15em] uppercase text-gold">
                       AI
@@ -456,7 +448,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
                 />
               )}
               <item.icon className="h-5 w-5" />
-              <span className="text-[9px] tracking-[0.05em] font-ui font-medium">
+              <span className="text-[10px] font-medium">
                 {item.label.split(" ")[0]}
               </span>
             </Link>
@@ -481,7 +473,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
               />
             )}
             <MoreHorizontal className="h-5 w-5" />
-            <span className="text-[9px] tracking-[0.05em] font-ui font-medium">More</span>
+            <span className="text-[10px] font-medium">More</span>
           </button>
         )}
       </nav>
