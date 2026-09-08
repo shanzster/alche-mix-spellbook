@@ -36,11 +36,12 @@ import {
   ChevronRight,
   X,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { signOut } from "../lib/auth";
 import { aiPing } from "../lib/ai";
 import { AskAlchemist } from "./AskAlchemist";
 import { ThemeToggle } from "./ThemeToggle";
+import { Walkthrough } from "./Walkthrough";
 
 // Log the AI self-test verdict to the browser console once per page load.
 // (The server caches the underlying Gemini call for 10 min — no quota burn.)
@@ -124,6 +125,18 @@ const NAV: NavItem[] = [
 
 const CHAPTERS = [CH_BENCH, CH_1, CH_2, CH_3, CH_4, CH_5, CH_ARCADE, CH_FIELD];
 
+/** Rail icon + short name for each chapter of the book. */
+const CHAPTER_META: Record<string, { icon: ComponentType<{ className?: string }>; short: string }> = {
+  [CH_BENCH]: { icon: Home, short: "The Bench" },
+  [CH_1]: { icon: Atom, short: "Foundations" },
+  [CH_2]: { icon: Brain, short: "The Study" },
+  [CH_3]: { icon: Shapes, short: "Molecules & Reactions" },
+  [CH_4]: { icon: Beaker, short: "Advanced Labs" },
+  [CH_5]: { icon: ClipboardList, short: "Prove Your Craft" },
+  [CH_ARCADE]: { icon: Swords, short: "The Arcade" },
+  [CH_FIELD]: { icon: ScanLine, short: "Field Work" },
+};
+
 function useActive() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   return (to: string) =>
@@ -135,21 +148,6 @@ function pageIndexOf(pathname: string): number {
   return NAV.findIndex((n) =>
     n.to === "/app" ? pathname === "/app" : pathname === n.to || pathname.startsWith(n.to + "/"),
   );
-}
-
-/**
- * Direction-aware page-turn: compares this route's position in the book with
- * the previous one and returns the animation class for the entering page.
- */
-function usePageTurn(pathname: string): string {
-  const prevIndexRef = useRef<number>(pageIndexOf(pathname));
-  const index = pageIndexOf(pathname);
-  const prev = prevIndexRef.current;
-  useEffect(() => {
-    prevIndexRef.current = index;
-  }, [index]);
-  if (index === -1 || prev === -1 || index === prev) return "page-turn-fwd";
-  return index >= prev ? "page-turn-fwd" : "page-turn-back";
 }
 
 /**
@@ -230,9 +228,249 @@ function TableOfContents({ onClose }: { onClose: () => void }) {
 }
 
 /**
+ * The chapter rail — a slim floating column of rune icons, one per chapter
+ * of the book. Hovering (with intent) or clicking a chapter opens its pages
+ * as a flyout of alchemical orbs beside the rail. The layout stays a
+ * scannable column; only the pixels are magical.
+ */
+function CategoryRail({
+  onOpenToc,
+  onSignOut,
+}: {
+  onOpenToc: () => void;
+  onSignOut: () => void;
+}) {
+  const isActive = useActive();
+  const [open, setOpen] = useState<string | null>(null);
+  const [panelTop, setPanelTop] = useState(0);
+  const btnRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const panelRef = useRef<HTMLDivElement>(null);
+  const railRef = useRef<HTMLElement>(null);
+  const openTimer = useRef<number | undefined>(undefined);
+  const closeTimer = useRef<number | undefined>(undefined);
+
+  const cancelTimers = () => {
+    window.clearTimeout(openTimer.current);
+    window.clearTimeout(closeTimer.current);
+  };
+  // Hover-intent: a small delay before the first open (so skimming the rail
+  // doesn't flicker panels), instant switching once a panel is already out.
+  const scheduleOpen = (chapter: string) => {
+    cancelTimers();
+    openTimer.current = window.setTimeout(() => setOpen(chapter), open ? 0 : 130);
+  };
+  // Grace period before closing, so the pointer can travel rail → panel.
+  const scheduleClose = () => {
+    cancelTimers();
+    closeTimer.current = window.setTimeout(() => setOpen(null), 240);
+  };
+  useEffect(() => cancelTimers, []);
+
+  // Centre the flyout on its chapter rune, clamped inside the viewport.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const btn = btnRefs.current[open];
+    const panel = panelRef.current;
+    if (!btn || !panel) return;
+    const r = btn.getBoundingClientRect();
+    const ideal = r.top + r.height / 2 - panel.offsetHeight / 2;
+    setPanelTop(Math.max(12, Math.min(ideal, window.innerHeight - panel.offsetHeight - 12)));
+  }, [open]);
+
+  // Esc closes; so does clicking anywhere outside the rail + panel.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(null);
+    };
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (!railRef.current?.contains(t) && !panelRef.current?.contains(t)) setOpen(null);
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onDown);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onDown);
+    };
+  }, [open]);
+
+  const pages = open ? NAV.filter((n) => n.chapter === open) : [];
+
+  return (
+    <>
+      <nav
+        ref={railRef}
+        aria-label="Chapters"
+        className="glass-strong scroll-slim hidden md:flex fixed left-3 top-1/2 z-40 max-h-[calc(100vh-7rem)] -translate-y-1/2 flex-col items-center gap-1 overflow-y-auto rounded-2xl p-1.5"
+        onMouseLeave={scheduleClose}
+      >
+        {/* Crest — home to The Bench */}
+        <Link
+          to="/app"
+          aria-label="AlcheMix — home"
+          className="group relative flex h-11 w-10 flex-shrink-0 items-center justify-center"
+        >
+          <img
+            src="/images/logo-outline.png"
+            alt=""
+            className="h-7 w-7 object-contain transition-transform duration-200 group-hover:scale-110"
+          />
+          {!open && (
+            <span className="glass-strong pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-x-1 -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium text-spectral opacity-0 transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100">
+              AlcheMix · Home
+            </span>
+          )}
+        </Link>
+
+        <div className="my-1 h-px w-6 flex-shrink-0" style={{ background: "var(--color-border)" }} />
+
+        {CHAPTERS.map((chapter) => {
+          const meta = CHAPTER_META[chapter];
+          const chapterActive = NAV.some((n) => n.chapter === chapter && isActive(n.to));
+          const isOpen = open === chapter;
+          return (
+            <button
+              key={chapter}
+              ref={(el) => {
+                btnRefs.current[chapter] = el;
+              }}
+              onMouseEnter={() => scheduleOpen(chapter)}
+              onClick={() => {
+                cancelTimers();
+                setOpen(isOpen ? null : chapter);
+              }}
+              aria-label={chapter}
+              aria-haspopup="menu"
+              aria-expanded={isOpen}
+              className="group relative flex h-10 w-10 items-center justify-center rounded-xl transition-colors hover:bg-teal/10"
+              style={{
+                color:
+                  chapterActive || isOpen
+                    ? "var(--color-emerald-elixir)"
+                    : "var(--color-parchment)",
+                background: isOpen
+                  ? "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)"
+                  : undefined,
+              }}
+            >
+              {/* Current-chapter marker on the rail's spine */}
+              {chapterActive && (
+                <span
+                  className="absolute left-0 h-5 w-0.5 rounded-full"
+                  style={{
+                    background:
+                      "linear-gradient(180deg, var(--color-emerald-elixir), var(--color-wraith))",
+                  }}
+                />
+              )}
+              <meta.icon className="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
+              {/* Name chip — slides in on hover while no flyout is out */}
+              {!open && (
+                <span className="glass-strong pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-x-1 -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium text-spectral opacity-0 transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100">
+                  {chapter}
+                </span>
+              )}
+            </button>
+          );
+        })}
+
+        <div className="my-1 h-px w-6 flex-shrink-0" style={{ background: "var(--color-border)" }} />
+
+        {/* Foot of the rail — the whole map, for power readers */}
+        <button
+          onClick={() => {
+            setOpen(null);
+            onOpenToc();
+          }}
+          aria-label="Open the Table of Contents"
+          className="group relative flex h-10 w-10 items-center justify-center rounded-xl text-parchment/70 transition-colors hover:bg-teal/10 hover:text-emerald-elixir"
+        >
+          <BookOpen className="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
+          {!open && (
+            <span className="glass-strong pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-x-1 -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium text-spectral opacity-0 transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100">
+              Contents · ⌘K
+            </span>
+          )}
+        </button>
+
+        {/* Day / night */}
+        <div className="group relative flex-shrink-0">
+          <ThemeToggle className="!h-10 !w-10 !rounded-xl !border-0 !bg-transparent" />
+          {!open && (
+            <span className="glass-strong pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-x-1 -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium text-spectral opacity-0 transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100">
+              Theme
+            </span>
+          )}
+        </div>
+
+        {/* Leave the workshop */}
+        <button
+          onClick={onSignOut}
+          aria-label="Sign out"
+          className="group relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-parchment/60 transition-colors hover:bg-crimson/10 hover:text-crimson"
+        >
+          <LogOut className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
+          {!open && (
+            <span className="glass-strong pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-x-1 -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium text-spectral opacity-0 transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100">
+              Sign out
+            </span>
+          )}
+        </button>
+      </nav>
+
+      {/* ── Chapter flyout — the pages as a column of orbs ── */}
+      {open && (
+        <div
+          ref={panelRef}
+          role="menu"
+          aria-label={open}
+          className="glass-strong flyout-in fixed left-[4.4rem] z-40 hidden w-60 rounded-2xl p-2 md:block"
+          style={{ top: panelTop }}
+          onMouseEnter={cancelTimers}
+          onMouseLeave={scheduleClose}
+        >
+          <p className="px-2.5 pb-1.5 pt-1 text-[10px] uppercase tracking-[0.16em] text-parchment/55">
+            {open}
+          </p>
+          {/* Key on the chapter so switching re-runs the materialise stagger */}
+          <ul key={open} className="space-y-0.5">
+            {pages.map((item, i) => {
+              const active = isActive(item.to);
+              return (
+                <li key={item.to} className="orb-in" style={{ animationDelay: `${i * 24}ms` }}>
+                  <Link
+                    to={item.to as any}
+                    role="menuitem"
+                    onClick={() => setOpen(null)}
+                    className="group flex items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-teal/8"
+                    style={{
+                      color: active ? "var(--color-emerald-elixir)" : "var(--color-spectral)",
+                      background: active
+                        ? "color-mix(in oklab, var(--color-emerald-elixir) 8%, transparent)"
+                        : undefined,
+                    }}
+                  >
+                    <span className={`orb-rune h-9 w-9 ${active ? "orb-rune-active" : ""}`}>
+                      <item.icon className="h-4 w-4" />
+                    </span>
+                    <span className="text-[13px] font-medium">{item.label}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+}
+
+/**
  * App shell for the student area — the app as a book.
- * Desktop: floating glass top bar (cover → home, Contents overlay) + a
- * bottom pager that flips pages in order. Mobile: top bar + bottom tab nav.
+ * Desktop: the floating chapter rail (crest, chapter orbs, contents, theme,
+ * sign-out) + a bottom pager that flips pages in order — no top bar.
+ * Mobile: top bar + bottom tab nav with the chapter sheet.
  */
 export function StudentShell({ title, children }: { title?: string; children: ReactNode }) {
   const navigate = useNavigate();
@@ -240,7 +478,6 @@ export function StudentShell({ title, children }: { title?: string; children: Re
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
-  const turnClass = usePageTurn(pathname);
   const pageIndex = pageIndexOf(pathname);
   const prevPage = pageIndex > 0 ? NAV[pageIndex - 1] : null;
   const nextPage = pageIndex >= 0 && pageIndex < NAV.length - 1 ? NAV[pageIndex + 1] : null;
@@ -271,41 +508,8 @@ export function StudentShell({ title, children }: { title?: string; children: Re
       {/* Ambient colour under the glass */}
       <div className="bg-aurora pointer-events-none fixed inset-0 z-0" />
 
-      {/* ── Desktop top bar — the book's cover strip ── */}
-      <header className="glass-strong hidden md:flex fixed top-3 inset-x-3 z-40 h-14 items-center gap-4 rounded-2xl px-4">
-        <Link to="/app" className="flex items-center gap-2.5">
-          <img src="/images/logo-outline.png" alt="" className="h-8 w-8 object-contain" />
-          <span className="font-display text-base tracking-[0.15em]">AlcheMix</span>
-        </Link>
-
-        {pageIndex !== -1 && (
-          <span className="flex items-center gap-2 min-w-0">
-            <span className="text-parchment/30">/</span>
-            <span className="truncate text-sm text-parchment/70">{NAV[pageIndex].label}</span>
-          </span>
-        )}
-
-        <div className="ml-auto flex items-center gap-2">
-          <button
-            onClick={() => setTocOpen(true)}
-            className="flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[12px] text-parchment transition-colors hover:bg-teal/10 hover:text-emerald-elixir"
-            style={{ border: "1px solid var(--color-border)" }}
-          >
-            <BookOpen className="h-3.5 w-3.5" />
-            <span className="text-xs font-medium">Contents</span>
-            <kbd className="text-[9px] text-parchment/45">⌘K</kbd>
-          </button>
-          <ThemeToggle className="!h-8 !w-8" />
-          <button
-            onClick={handleSignOut}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-parchment/60 transition-colors hover:bg-crimson/10 hover:text-crimson"
-            aria-label="Sign out"
-            title="Sign out"
-          >
-            <LogOut className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </header>
+      {/* ── Desktop chrome — the chapter rail carries everything ── */}
+      <CategoryRail onOpenToc={() => setTocOpen(true)} onSignOut={handleSignOut} />
 
       {/* ── Mobile top bar — floating glass ── */}
       <header className="glass-strong md:hidden fixed top-2 inset-x-2 z-40 flex items-center justify-between h-14 px-4 rounded-2xl">
@@ -318,12 +522,9 @@ export function StudentShell({ title, children }: { title?: string; children: Re
         <ThemeToggle className="!h-8 !w-8" />
       </header>
 
-      {/* ── Content — each route enters like a turning page ── */}
+      {/* ── Content ── */}
       <main className="relative z-10">
-        <div
-          key={pathname}
-          className={`w-full px-5 pt-20 pb-28 md:px-8 md:pt-24 md:pb-24 ${turnClass}`}
-        >
+        <div className="w-full px-5 pt-20 pb-28 md:pl-24 md:pr-8 md:pt-10 md:pb-24">
           {children}
         </div>
       </main>
@@ -376,53 +577,73 @@ export function StudentShell({ title, children }: { title?: string; children: Re
       {/* ── Table of Contents overlay ── */}
       {tocOpen && <TableOfContents onClose={() => setTocOpen(false)} />}
 
+      {/* ── First-login walkthrough — offer modal + page-to-page tour card ── */}
+      <Walkthrough />
+
       {/* ── Ask the Alchemist — the mentor, on every student page ── */}
       <AskAlchemist context={title} />
 
-      {/* ── Mobile "More" sheet ── */}
-      {moreOpen && moreItems.length > 0 && (
+      {/* ── Mobile chapter sheet — the whole book, chapters of orbs ── */}
+      {moreOpen && (
         <div className="md:hidden">
           <div
             className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
             onClick={() => setMoreOpen(false)}
           />
-          <div className="glass-strong scroll-slim fixed bottom-[5rem] inset-x-3 z-50 max-h-[65vh] overflow-y-auto rounded-2xl p-2">
-            <p className="px-3 py-2 text-[11px] uppercase tracking-[0.14em] text-parchment/50">
-              More modules
-            </p>
-            {moreItems.map((item) => {
-              const active = !item.disabled && isActive(item.to);
-              const inner = (
-                <span
-                  className="flex items-center gap-3 rounded-lg px-3 py-3 text-sm"
-                  style={{
-                    color: item.disabled
-                      ? "color-mix(in oklab, var(--color-parchment) 55%, transparent)"
-                      : active
-                        ? "var(--color-emerald-elixir)"
-                        : "var(--color-parchment)",
-                    background: active
-                      ? "color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent)"
-                      : "transparent",
-                  }}
-                >
-                  <item.icon className="h-4 w-4 flex-shrink-0" />
-                  <span>{item.label}</span>
-                  {item.disabled && (
-                    <span className="ml-auto text-[8px] tracking-[0.15em] uppercase text-gold">
-                      AI
-                    </span>
-                  )}
-                </span>
-              );
-              return item.disabled ? (
-                <div key={item.label} className="opacity-70" title="Needs AI setup">
-                  {inner}
+          <div className="glass-strong scroll-slim sheet-up fixed bottom-[5rem] inset-x-3 z-50 max-h-[70vh] overflow-y-auto rounded-2xl p-2.5 pb-3">
+            {CHAPTERS.map((chapter) => {
+              const pages = NAV.filter((n) => n.chapter === chapter);
+              if (pages.length === 0) return null;
+              return (
+                <div key={chapter} className="mb-1.5">
+                  <p className="px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-[0.16em] text-parchment/55">
+                    {chapter}
+                  </p>
+                  <ul className="grid grid-cols-2 gap-x-1 gap-y-0.5">
+                    {pages.map((item, i) => {
+                      const active = !item.disabled && isActive(item.to);
+                      const inner = (
+                        <span
+                          className="group flex items-center gap-2.5 rounded-xl px-2 py-1.5"
+                          style={{
+                            color: item.disabled
+                              ? "color-mix(in oklab, var(--color-parchment) 55%, transparent)"
+                              : active
+                                ? "var(--color-emerald-elixir)"
+                                : "var(--color-spectral)",
+                            background: active
+                              ? "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)"
+                              : undefined,
+                          }}
+                        >
+                          <span className={`orb-rune h-8 w-8 ${active ? "orb-rune-active" : ""}`}>
+                            <item.icon className="h-3.5 w-3.5" />
+                          </span>
+                          <span className="min-w-0 truncate text-[12px] font-medium">
+                            {item.label}
+                          </span>
+                        </span>
+                      );
+                      return (
+                        <li
+                          key={item.to}
+                          className="orb-in"
+                          style={{ animationDelay: `${i * 18}ms` }}
+                        >
+                          {item.disabled ? (
+                            <div className="opacity-70" title="Needs AI setup">
+                              {inner}
+                            </div>
+                          ) : (
+                            <Link to={item.to as any} onClick={() => setMoreOpen(false)}>
+                              {inner}
+                            </Link>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
-              ) : (
-                <Link key={item.label} to={item.to as any} onClick={() => setMoreOpen(false)}>
-                  {inner}
-                </Link>
               );
             })}
           </div>

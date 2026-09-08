@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Fragment, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useState, type ReactNode } from "react";
 import {
+  ArrowRight,
   Atom,
   BookMarked,
   Scale,
   Gauge,
   ClipboardList,
   Grid3x3,
+  GraduationCap,
   Users,
   ScanSearch,
   Brain,
@@ -33,6 +35,7 @@ import {
   Compass,
 } from "lucide-react";
 import { StudentShell } from "../components/StudentShell";
+import { PageHeader } from "../components/PageHeader";
 import { RequireRole } from "../components/RequireRole";
 import { useUserProfile, type Mastery } from "../lib/profile";
 import { joinClass } from "../lib/teacher";
@@ -505,7 +508,7 @@ function StudentHub() {
     const recommended = nextStep?.to === m.to;
     const mobileOnly = m.arOnly && platform.ready && !platform.arCapable;
     const card = (
-      <div className="card-arcane glass relative flex h-full flex-col items-center rounded-2xl p-4 pt-5 text-center">
+      <div className="glass relative flex h-full flex-col items-center rounded-2xl p-4 pt-5 text-center">
         {recommended && (
           <span
             className="absolute right-3 top-3 h-1.5 w-1.5 rounded-full bg-emerald-elixir"
@@ -548,113 +551,76 @@ function StudentHub() {
 
   return (
     <StudentShell title="Home">
-      {/* ── Hero — the immersive scene: wordmark over the scrying orb,
-          the apprentice's own cards drifting around it (ESOTERRA-style). ── */}
-      <section className="relative mb-16 flex min-h-[calc(100svh-8.5rem)] flex-col items-center justify-center overflow-hidden text-center">
-        {/* deep violet scene glow */}
-        <div
-          className="pointer-events-none absolute left-1/2 top-1/2 h-[46rem] w-[46rem] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-70 blur-3xl"
-          style={{
-            background:
-              "radial-gradient(circle, color-mix(in oklab, var(--color-wraith) 38%, transparent), transparent 65%)",
-          }}
-        />
-
-        {/* the scrying orb — the cauldron scene held in a sphere behind the text */}
-        <div
-          className="pointer-events-none absolute left-1/2 top-[46%] h-64 w-64 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full md:h-80 md:w-80"
-          style={{
-            boxShadow:
-              "0 0 90px -8px color-mix(in oklab, var(--color-wraith) 70%, transparent), inset 0 0 50px rgb(0 0 0 / 0.45)",
-          }}
-        >
-          <img
-            src="/images/alchemix-hero-banner.png"
-            alt=""
-            className="h-full w-full object-cover object-[47%_48%] opacity-90"
-          />
-        </div>
-
-        {/* drifting cards from the apprentice's own deck */}
-        {[
-          { src: "/image-trigger/image-trigger-alchemix.png", cls: "left-[7%] top-[14%] w-20 md:w-28", tilt: "-12deg", delay: "0s" },
-          { src: "/image-trigger/image-trigger-helium.png", cls: "right-[8%] top-[10%] w-16 md:w-24", tilt: "10deg", delay: "1.6s" },
-          { src: "/other_cards/3rd_card.png", cls: "left-[13%] bottom-[16%] w-16 md:w-24", tilt: "8deg", delay: "3.1s" },
-          { src: "/image-trigger/image-trigger-helium.png", cls: "hidden md:block right-[14%] bottom-[20%] w-20", tilt: "-8deg", delay: "0.9s" },
-          { src: "/image-trigger/image-trigger-alchemix.png", cls: "hidden lg:block right-[26%] top-[34%] w-14", tilt: "16deg", delay: "2.3s" },
-        ].map((c, i) => (
-          <img
-            key={i}
-            src={c.src}
-            alt=""
-            aria-hidden
-            className={`float-drift pointer-events-none absolute rounded-lg opacity-50 ${c.cls}`}
-            style={{
-              "--tilt": c.tilt,
-              animationDelay: c.delay,
-              boxShadow: "0 12px 40px -12px rgb(0 0 0 / 0.6)",
-            } as CSSProperties}
-          />
-        ))}
-
-        {/* the wordmark + welcome, floating over the orb */}
-        <div className="relative z-10 px-4">
-          <h1 className="font-serif text-5xl font-medium uppercase tracking-[0.26em] pl-[0.26em] text-spectral md:text-7xl">
-            AlcheMix
-          </h1>
-          <p className={`${LABEL} mt-3`}>Apprentice's Bench</p>
-
-          <p className="mx-auto mt-28 max-w-md font-serif text-base italic leading-relaxed text-parchment/90 md:mt-40 md:text-lg">
-            Welcome back, {name}. The Grimoire lies open — every page you turn explains a
-            little more of the world.
-          </p>
-
-          {stats.length > 0 && (
-            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-parchment/90">
+      <PageHeader
+        eyebrow="Apprentice's Bench"
+        title={`Welcome back, ${name}.`}
+        subtitle="Practise a module, then check back here for the scores and feedback your teacher posts."
+        icon={GraduationCap}
+        right={
+          stats.length > 0 ? (
+            <div className="flex items-center gap-2 text-xs text-parchment/70">
               {stats.map((s, i) => (
                 <Fragment key={s.key}>
-                  {i > 0 && <span className="text-parchment/40">·</span>}
+                  {i > 0 && <span className="text-parchment/30">·</span>}
                   {s.node}
                 </Fragment>
               ))}
             </div>
-          )}
+          ) : undefined
+        }
+      />
 
-          {nextStep ? (
-            <div className="mt-7 flex flex-wrap items-center justify-center gap-4">
-              <Link
-                to={nextStep.to as any}
-                className="btn-arcane btn-arcane-hover flex-shrink-0 text-sm"
-              >
-                Continue your path
-              </Link>
-              <span className="flex min-w-0 items-center gap-2.5 text-sm text-parchment/90">
-                <nextStep.icon className="h-4 w-4 flex-shrink-0 text-emerald-elixir" />
-                <span className="truncate">
-                  <span className="font-semibold text-spectral">{nextStep.title}</span>
-                  <span className="text-parchment/60"> is next</span>
-                </span>
-              </span>
-            </div>
-          ) : (
-            <p className="mt-7 font-serif text-sm italic text-parchment/90">
-              You've walked the whole Guide — keep the streak alight, or revisit any page below.
-            </p>
-          )}
-        </div>
-
-        {/* Scroll cue — the book continues below the fold */}
-        <a
-          href="#chapters"
-          className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-1 text-parchment/60 transition-colors hover:text-spectral"
-          aria-label="Scroll to the chapters"
+      {/* Continue card — the one strong accent on the page. The whole card is
+          the link; the orb echoes the chapter rail's nav language. */}
+      {nextStep ? (
+        <Link
+          to={nextStep.to as any}
+          className="group glass relative mb-6 flex items-center gap-4 overflow-hidden rounded-2xl p-5 transition-transform duration-200 hover:-translate-y-0.5"
         >
-          <span className={LABEL}>The chapters await</span>
-          <svg className="h-4 w-4 animate-bounce" viewBox="0 0 16 16" fill="none">
-            <path d="M3 6l5 5 5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          </svg>
-        </a>
-      </section>
+          {/* Teal wash bleeding in from the left edge + the spine marker,
+              matching the rail's current-chapter signature. */}
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-y-0 left-0 w-48"
+            style={{
+              background:
+                "linear-gradient(90deg, color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent), transparent)",
+            }}
+          />
+          <span
+            aria-hidden
+            className="absolute left-0 top-1/2 h-12 w-0.5 -translate-y-1/2 rounded-full"
+            style={{
+              background:
+                "linear-gradient(180deg, var(--color-emerald-elixir), var(--color-wraith))",
+            }}
+          />
+          <span className="orb-rune orb-rune-active h-12 w-12 text-emerald-elixir">
+            <nextStep.icon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className={LABEL}>Continue your path</p>
+            <h2 className="mt-0.5 font-ui text-base font-semibold text-spectral">
+              {nextStep.title}
+            </h2>
+            <p className="mt-0.5 font-serif text-sm text-parchment/70">{nextStep.why}</p>
+          </div>
+          <span className="flex flex-shrink-0 items-center gap-1.5 text-sm font-semibold text-emerald-elixir">
+            Open
+            <ArrowRight className="h-4 w-4 transition-transform duration-200 group-hover:translate-x-1" />
+          </span>
+        </Link>
+      ) : (
+        <div className="glass mb-6 rounded-2xl p-5">
+          <p className={LABEL}>Path complete</p>
+          <h2 className="mt-0.5 font-ui text-base font-semibold text-spectral">
+            You've walked the whole Guide, {name}.
+          </h2>
+          <p className="mt-0.5 font-serif text-sm text-parchment/70">
+            Every step is done — keep your streak alight, or revisit any module below.
+          </p>
+        </div>
+      )}
 
       {/* Mobile companion notice — capture tools live here; deep study is on the website. */}
       {platform.ready && platform.arCapable && (
@@ -671,7 +637,7 @@ function StudentHub() {
       <ClassRow uid={uid} profile={profile} />
 
       {/* Learning modules — monochrome card grid under chapter labels. */}
-      <section id="chapters" className="scroll-mt-24">
+      <section>
         {MODULE_GROUPS.map((group) => {
           const rows = MODULES.filter((m) => m.group === group);
           if (rows.length === 0) return null;

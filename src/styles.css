@@ -262,38 +262,6 @@
     radial-gradient(46rem 34rem at 45% 110%, color-mix(in oklab, var(--color-wraith) 20%, transparent), transparent 65%);
 }
 
-/* ── Arcane card frame ────────────────────────────────────────────────────
-   The fantasy-artifact card recipe (RPG character-card style): layered on the
-   glass base it adds an inner gilded hairline inset from the edge and four
-   tiny corner rivets — ornament with discipline. Pair as `card-arcane glass
-   rounded-2xl`; hover brightens the gilding. */
-@utility card-arcane {
-  position: relative;
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 0.4rem;
-    border: 1px solid color-mix(in oklab, var(--color-gold) 30%, transparent);
-    border-radius: 0.6rem;
-    pointer-events: none;
-    transition: border-color 0.2s ease;
-  }
-  &::after {
-    content: "";
-    position: absolute;
-    inset: 0.4rem;
-    pointer-events: none;
-    background:
-      radial-gradient(circle, color-mix(in oklab, var(--color-gold) 75%, transparent) 0 1.5px, transparent 2px) top left / 3px 3px no-repeat,
-      radial-gradient(circle, color-mix(in oklab, var(--color-gold) 75%, transparent) 0 1.5px, transparent 2px) top right / 3px 3px no-repeat,
-      radial-gradient(circle, color-mix(in oklab, var(--color-gold) 75%, transparent) 0 1.5px, transparent 2px) bottom left / 3px 3px no-repeat,
-      radial-gradient(circle, color-mix(in oklab, var(--color-gold) 75%, transparent) 0 1.5px, transparent 2px) bottom right / 3px 3px no-repeat;
-  }
-  &:hover::before {
-    border-color: color-mix(in oklab, var(--color-gold) 55%, transparent);
-  }
-}
-
 /* The crest emblem — a rotated-diamond badge holding an icon, worn top-centre
    of an arcane card. Use on a square wrapper; the icon inside stays upright. */
 @utility emblem-arcane {
@@ -312,18 +280,75 @@
   }
 }
 
-/* Floating drift — scattered artefacts (cards) bobbing slowly in the hero
-   scene. Set `--tilt` per element for its resting rotation. */
-@keyframes float-drift {
-  0%, 100% { transform: rotate(var(--tilt, 0deg)) translateY(0); }
-  50% { transform: rotate(var(--tilt, 0deg)) translateY(-14px); }
+/* ── Orb navigation ───────────────────────────────────────────────────────
+   The chapter rail's flyout renders each page as a small alchemical orb —
+   a gilded glass sphere holding the module's icon. The orbs sit in a tidy
+   scannable column (theme the pixels, not the layout); hovering the row makes
+   its orb glow, the active page's orb burns teal. */
+.orb-rune {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  border: 1px solid color-mix(in oklab, var(--color-gold) 32%, transparent);
+  background:
+    radial-gradient(circle at 32% 26%, color-mix(in oklab, white 26%, transparent), transparent 58%),
+    radial-gradient(circle at 50% 130%, color-mix(in oklab, var(--color-gold) 20%, transparent), transparent 72%),
+    color-mix(in oklab, var(--color-slate-sunken) 72%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 35%, transparent),
+    0 1px 2px color-mix(in oklab, var(--color-spectral) 10%, transparent);
+  transition:
+    box-shadow 0.25s ease,
+    border-color 0.25s ease,
+    color 0.2s ease,
+    transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-.float-drift {
-  animation: float-drift 8s ease-in-out infinite;
+.group:hover .orb-rune,
+.group:focus-visible .orb-rune {
+  border-color: color-mix(in oklab, var(--color-emerald-elixir) 55%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 35%, transparent),
+    0 0 14px -2px color-mix(in oklab, var(--color-emerald-elixir) 50%, transparent);
+  transform: scale(1.08);
 }
-@media (prefers-reduced-motion: reduce) {
-  .float-drift { animation: none; }
+.orb-rune-active {
+  border-color: color-mix(in oklab, var(--color-emerald-elixir) 65%, transparent);
+  background:
+    radial-gradient(circle at 32% 26%, color-mix(in oklab, white 26%, transparent), transparent 58%),
+    radial-gradient(circle at 50% 130%, color-mix(in oklab, var(--color-emerald-elixir) 28%, transparent), transparent 72%),
+    color-mix(in oklab, var(--color-slate-sunken) 72%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, white 35%, transparent),
+    0 0 16px -2px color-mix(in oklab, var(--color-emerald-elixir) 55%, transparent);
 }
+
+/* Orbs materialise: a quick staggered rise (delay set inline per row).
+   Entrance only — steady state is perfectly still. */
+@keyframes orb-in {
+  from { opacity: 0; transform: translateY(7px) scale(0.82); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.orb-in { animation: orb-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* The chapter flyout slides out of the rail. */
+@keyframes flyout-in {
+  from { opacity: 0; transform: translateX(-8px) scale(0.98); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+.flyout-in {
+  animation: flyout-in 0.18s ease-out both;
+  transform-origin: left center;
+}
+
+/* Mobile chapter sheet rises from the bottom bar. */
+@keyframes sheet-up {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.sheet-up { animation: sheet-up 0.26s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
 /* Slim, quiet scrollbar for the nav rail and other internal scrollers. */
 @utility scroll-slim {
@@ -342,45 +367,6 @@
   }
   &::-webkit-scrollbar-thumb:hover {
     background: color-mix(in oklab, var(--color-parchment) 35%, transparent);
-  }
-}
-
-/* Page-turn transitions — routes enter like a page of the Grimoire turning.
-   Forward = flipping toward the next page (enters from the right edge),
-   back = returning to an earlier page. Kept subtle; disabled for
-   reduced-motion users. */
-@keyframes page-turn-fwd {
-  from {
-    opacity: 0;
-    transform: perspective(1400px) rotateY(-5deg) translateX(26px);
-  }
-  to {
-    opacity: 1;
-    transform: perspective(1400px) rotateY(0deg) translateX(0);
-  }
-}
-@keyframes page-turn-back {
-  from {
-    opacity: 0;
-    transform: perspective(1400px) rotateY(5deg) translateX(-26px);
-  }
-  to {
-    opacity: 1;
-    transform: perspective(1400px) rotateY(0deg) translateX(0);
-  }
-}
-.page-turn-fwd {
-  animation: page-turn-fwd 0.34s ease-out;
-  transform-origin: left center;
-}
-.page-turn-back {
-  animation: page-turn-back 0.34s ease-out;
-  transform-origin: right center;
-}
-@media (prefers-reduced-motion: reduce) {
-  .page-turn-fwd,
-  .page-turn-back {
-    animation: none;
   }
 }
 
@@ -589,33 +575,57 @@
   color: transparent;
 }
 
-/* Primary CTA — teal → violet gradient (teal leads). */
+/* Primary CTA — solid teal, interface font. Quiet at rest; on hover a single
+   sheen sweeps across (polished metal under candlelight). */
 @utility btn-arcane {
   position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  font-family: var(--font-display);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-size: 0.85rem;
-  color: #ffffff;
-  background: linear-gradient(135deg,
-    color-mix(in oklab, var(--color-emerald-elixir) 90%, white 6%),
-    color-mix(in oklab, var(--color-wraith) 85%, black 4%));
-  border: 1px solid color-mix(in oklab, var(--color-emerald-elixir) 55%, white 20%);
+  padding: 0.65rem 1.4rem;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
+  color: var(--primary-foreground);
+  background: var(--color-primary);
+  border: 1px solid color-mix(in oklab, var(--color-primary) 80%, black 12%);
   border-radius: 0.625rem;
-  transition: transform 200ms cubic-bezier(.34,1.56,.64,1), box-shadow 300ms ease, filter 200ms;
+  transition: transform 150ms ease, box-shadow 200ms ease, filter 150ms ease;
   box-shadow:
-    0 0 24px -6px color-mix(in oklab, var(--color-emerald-elixir) 55%, transparent),
-    0 6px 20px -6px color-mix(in oklab, var(--color-wraith) 50%, transparent),
-    inset 0 1px 0 color-mix(in oklab, white 25%, transparent);
+    inset 0 1px 0 color-mix(in oklab, white 18%, transparent),
+    0 1px 2px color-mix(in oklab, var(--color-spectral) 14%, transparent);
+  /* The sheen — parked off the left edge, sweeps across once on hover-in
+     (no transition on the way back, so it never plays in reverse). */
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(
+      115deg,
+      transparent 38%,
+      color-mix(in oklab, white 30%, transparent) 50%,
+      transparent 62%
+    );
+    transform: translateX(-130%);
+  }
+  &:hover::after {
+    transform: translateX(130%);
+    transition: transform 600ms ease;
+  }
 }
 @utility btn-arcane-hover {
-  &:hover { transform: translateY(-2px) scale(1.02); filter: brightness(1.06); box-shadow: 0 12px 40px -8px color-mix(in oklab, var(--color-emerald-elixir) 60%, transparent); }
-  &:active { transform: translateY(1px) scale(0.98); }
+  &:hover {
+    transform: translateY(-1px);
+    filter: brightness(1.05);
+    box-shadow:
+      inset 0 1px 0 color-mix(in oklab, white 18%, transparent),
+      0 4px 12px -4px color-mix(in oklab, var(--color-primary) 45%, transparent);
+  }
+  &:active { transform: translateY(0); filter: brightness(0.97); }
 }
 
 /* Secondary CTA — quiet ghost that adapts to both themes. */
@@ -624,16 +634,16 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  font-family: var(--font-display);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-size: 0.85rem;
+  padding: 0.65rem 1.4rem;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: 0.875rem;
+  letter-spacing: 0.01em;
   color: var(--color-foreground);
   background: transparent;
   border: 1px solid var(--color-border);
   border-radius: 0.625rem;
-  transition: all 200ms cubic-bezier(.34,1.56,.64,1);
+  transition: color 150ms ease, border-color 150ms ease, transform 150ms ease;
   &:hover { color: var(--color-emerald-elixir); border-color: color-mix(in oklab, var(--color-emerald-elixir) 55%, transparent); transform: translateY(-1px); }
-  &:active { transform: translateY(1px); }
+  &:active { transform: translateY(0); }
 }

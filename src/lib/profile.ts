@@ -64,6 +64,8 @@ export interface StudentProfile {
   duelRecord?: Record<string, { wins: number; losses: number }>;
   /** Results on teacher-assigned quizzes, keyed by assignment id. */
   assignmentResults?: Record<string, { score: number; outOf: number }>;
+  /** True once the first-login walkthrough has been offered (taken OR declined). */
+  walkthroughDone?: boolean;
 }
 
 /** A student's best recorded run on a module Trial (a PhET-style game screen). */
@@ -316,6 +318,19 @@ export async function recordAssignmentResult(
     });
   } catch (err) {
     console.error("recordAssignmentResult failed:", err);
+  }
+}
+
+/**
+ * Marks the first-login walkthrough as offered (taken or declined), so the
+ * invitation modal never reappears on any device. Best-effort; never thrown.
+ */
+export async function markWalkthroughDone(uid: string | null): Promise<void> {
+  if (!uid) return;
+  try {
+    await setDoc(doc(db, "users", uid), { walkthroughDone: true }, { merge: true });
+  } catch (err) {
+    console.error("markWalkthroughDone failed:", err);
   }
 }
 
