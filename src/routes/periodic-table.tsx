@@ -276,22 +276,24 @@ function PeriodicTable() {
   const [trendKey, setTrendKey] = useState<TrendKey>("electronegativity");
   const [year, setYear] = useState(2016);
 
-  const detailRef = useRef<HTMLDivElement>(null);
-  // True only when the page loaded with a valid ?element= deep link.
-  const deepLinked = useRef(numberForSymbol(elementParam) !== undefined);
   const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => { if (uid) logPractice(uid, "periodic-table"); }, [uid]);
 
-  // Deep link: scroll the auto-opened detail panel into view on load.
+  // Modal behaviours: Esc closes; the page behind stops scrolling while open.
   useEffect(() => {
-    if (!deepLinked.current) return;
-    const t = setTimeout(
-      () => detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      150,
-    );
-    return () => clearTimeout(t);
-  }, []);
+    if (selectedNum === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeDetail();
+    };
+    window.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedNum]);
 
   // Keep the selection in sync if the URL changes underneath us.
   useEffect(() => {
@@ -508,9 +510,21 @@ function PeriodicTable() {
         </div>
       </div>
 
-      {/* ── Detail panel for the selected element ── */}
+      {/* ── Element detail — a modal over the table ── */}
       {selected && (
-      <div ref={detailRef} className="mt-8 grid scroll-mt-4 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div
+        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 md:items-center md:p-8"
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${selected.name} details`}
+      >
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={closeDetail}
+          aria-hidden
+        />
+        <div className="glass-strong sheet-up scroll-slim relative z-10 my-auto max-h-[calc(100vh-3rem)] w-full max-w-5xl overflow-y-auto rounded-2xl p-5 md:p-6">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {/* Viewer */}
         <div>
           <div className="mb-4 flex items-start gap-4">
@@ -659,6 +673,8 @@ function PeriodicTable() {
               </div>
             </div>
           )}
+        </div>
+      </div>
         </div>
       </div>
       )}

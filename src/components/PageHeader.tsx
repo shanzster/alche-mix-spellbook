@@ -21,7 +21,10 @@ export function PageHeader({
   right?: ReactNode;
 }) {
   return (
-    <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <header
+      data-tour="page-header"
+      className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+    >
       <div className="flex items-start gap-3.5">
         {Icon && (
           <span

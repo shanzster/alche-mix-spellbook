@@ -135,6 +135,7 @@ Owner: `src/lib/profile.ts` (`StudentProfile`). One doc per user, all roles.
 | duelRecord | map difficulty → {wins, losses} | |
 | assignmentResults | map assignmentId → {score, outOf} | |
 | walkthroughDone | boolean | first-login tour offered (taken or declined) |
+| craft | {mastered[], count, tier} | derived mastery ladder, synced by `lib/craft.ts` (trial ≥2★ / study / codex proof) |
 
 ### D3 — Firestore `users/{uid}/evidence/{autoId}` (subcollection)
 Owner: `src/lib/scavenger.ts` (`EvidenceEntry`). One doc per scavenger-hunt

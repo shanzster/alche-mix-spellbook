@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Check, Droplets, Snowflake, Sparkles, Thermometer, Wind, X as XIcon } from "lucide-react";
+import { Check, Droplets, Flame, Snowflake, Sparkles, Thermometer, Wind, X as XIcon } from "lucide-react";
 import { ModuleShell } from "../components/ModuleShell";
 import { RequireAuth } from "../components/RequireAuth";
 import { ConceptCard, DidYouKnow } from "../components/Learn";
@@ -61,7 +61,12 @@ const PHASE_META: Record<Phase, { label: string; color: string; icon: typeof Sno
 const N_PARTICLES = 60;
 const LAT_COLS = 10;
 
-function ParticleStage({ sim }: { sim: React.MutableRefObject<{ T: number; sub: Substance }> }) {
+interface SimState {
+  T: number;
+  sub: Substance;
+}
+
+function ParticleStage({ sim }: { sim: React.MutableRefObject<SimState> }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -440,6 +445,21 @@ function QuickCheck({ uid, best }: { uid: string | null; best?: { best: number; 
   );
 }
 
+// ── Phase transitions the student can cause — the quests ────────────────────
+const TRANSITIONS: Record<string, { id: string; text: string; label: string }> = {
+  "solid>liquid": { id: "melt", text: "Melted!", label: "Melt it" },
+  "liquid>solid": { id: "freeze", text: "Frozen!", label: "Freeze it" },
+  "liquid>gas": { id: "boil", text: "Boiled!", label: "Boil it" },
+  "gas>liquid": { id: "condense", text: "Condensed!", label: "Condense it" },
+  "solid>gas": { id: "sublime", text: "Sublimed!", label: "Sublime it (solid → gas)" },
+  "gas>solid": { id: "deposit", text: "Deposited!", label: "Deposit it (gas → solid)" },
+};
+
+function questsFor(sub: Substance) {
+  const ids = sub.sublimes ? ["sublime", "deposit"] : ["melt", "boil", "condense", "freeze"];
+  return ids.map((id) => Object.values(TRANSITIONS).find((t) => t.id === id)!);
+}
+
 // ── Page ────────────────────────────────────────────────────────────────────
 function States() {
   const { uid, profile } = useUserProfile();
@@ -450,8 +470,38 @@ function States() {
   // Record a single practice visit (no scoring).
   useEffect(() => { if (uid) logPractice(uid, "states"); }, [uid]);
 
-  const sim = useRef({ T, sub });
-  useEffect(() => { sim.current = { T, sub }; }, [T, sub]);
+  const sim = useRef<SimState>({ T, sub });
+  useEffect(() => { sim.current.T = T; sim.current.sub = sub; }, [T, sub]);
+
+  // ── Hold-to-heat / hold-to-cool: the burner and the ice bath ──
+  const holdDir = useRef<0 | 1 | -1>(0);
+  const holdRaf = useRef(0);
+  const [holding, setHolding] = useState<"heat" | "cool" | null>(null);
+  const startHold = (dir: 1 | -1) => {
+    holdDir.current = dir;
+    setHolding(dir === 1 ? "heat" : "cool");
+    cancelAnimationFrame(holdRaf.current);
+    let last = performance.now();
+    const loop = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      if (holdDir.current === 0) return;
+      const s = sim.current.sub;
+      // Full range in ~4 s of continuous hold.
+      const rate = (s.tMax - s.tMin) / 4;
+      setT((t) => Math.max(s.tMin, Math.min(s.tMax, t + holdDir.current * rate * dt)));
+      holdRaf.current = requestAnimationFrame(loop);
+    };
+    holdRaf.current = requestAnimationFrame(loop);
+  };
+  const stopHold = () => { holdDir.current = 0; setHolding(null); };
+  useEffect(() => () => cancelAnimationFrame(holdRaf.current), []);
+
+  // ── Phase-change flash + quest tracking ──
+  const [flash, setFlash] = useState<{ id: number; text: string; color: string } | null>(null);
+  const [done, setDone] = useState<Record<string, string[]>>({});
+  const flashSeq = useRef(0);
+  const prevRef = useRef<{ phase: Phase; subId: string } | null>(null);
 
   const changeSubstance = (id: string) => {
     const next = SUBSTANCES.find((s) => s.id === id) ?? SUBSTANCES[0];
@@ -460,6 +510,26 @@ function States() {
   };
 
   const phase = phaseOf(T, sub);
+
+  // Detect crossings: flash the change on the stage and tick off its quest.
+  useEffect(() => {
+    const prev = prevRef.current;
+    prevRef.current = { phase, subId };
+    if (!prev || prev.subId !== subId || prev.phase === phase) return;
+    const ev = TRANSITIONS[`${prev.phase}>${phase}`];
+    if (!ev) return;
+    setFlash({ id: ++flashSeq.current, text: ev.text, color: PHASE_META[phase].color });
+    setDone((d) =>
+      d[subId]?.includes(ev.id) ? d : { ...d, [subId]: [...(d[subId] ?? []), ev.id] },
+    );
+    const t = setTimeout(() => setFlash((f) => (f?.id === flashSeq.current ? null : f)), 1300);
+    return () => clearTimeout(t);
+  }, [phase, subId]);
+
+  const quests = questsFor(sub);
+  const doneHere = done[subId] ?? [];
+  const allDone = quests.every((q) => doneHere.includes(q.id));
+
   const NEAR = 6;
   const changing = Math.abs(T - sub.melt) <= NEAR
     ? (sub.sublimes ? "subliming…" : "melting…")
@@ -489,29 +559,122 @@ function States() {
       accent="var(--color-teal)"
       subtitle="Heat and cool real substances and watch the same particles rearrange — lattice, cluster, free flight. The heating curve reveals where the energy really goes."
       right={SubstanceToggle}
+      guide={[
+        "Hold the flame to heat and the snowflake to cool — watch the particles rearrange as the temperature crosses each phase boundary.",
+        "Watch the heating curve while you heat — where it goes flat, your energy is breaking particle attractions, not raising the temperature.",
+        "Clear every phase quest for a substance, then seal what you learned in the quick check below.",
+      ]}
     >
       <div className="grid gap-8 lg:grid-cols-2">
         {/* Simulation */}
         <div className="rounded-2xl overflow-hidden"
-          style={{ background: "radial-gradient(ellipse at 50% 40%, color-mix(in oklab, var(--color-violet-deep) 22%, transparent), color-mix(in oklab, var(--color-slate-sunken) 82%, transparent))", border: "1px solid var(--color-border)" }}>
-          <ParticleStage sim={sim} />
-          <div className="px-5 py-4 border-t flex items-center justify-center gap-3" style={{ borderColor: "var(--color-border)" }}>
-            <span className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: `color-mix(in oklab, ${meta.color} 16%, transparent)`, color: meta.color }}>
-              <PhaseIcon className="h-5 w-5" />
-            </span>
-            <div className="text-left">
-              <div className="font-ui font-medium text-lg" style={{ color: meta.color }}>
-                {sub.name} · {changing ?? meta.label}
+          style={{ background: "linear-gradient(180deg, color-mix(in oklab, var(--color-violet-deep) 14%, transparent), color-mix(in oklab, var(--color-slate-sunken) 82%, transparent))", border: "1px solid var(--color-border)" }}>
+          <div className="relative">
+            <ParticleStage sim={sim} />
+            {/* Phase-change flash */}
+            {flash && (
+              <div key={flash.id} className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <span
+                  className="animate-card-pop font-display text-4xl"
+                  style={{ color: flash.color, textShadow: `0 0 28px ${flash.color}` }}
+                >
+                  {flash.text}
+                </span>
               </div>
-              <div className="text-xs text-parchment/70">
-                {T.toFixed(0)} K ({(T - 273.15).toFixed(0)} °C) — {meta.blurb}
+            )}
+          </div>
+          <div className="px-5 py-4 border-t flex items-center justify-between gap-3" style={{ borderColor: "var(--color-border)" }}>
+            {/* Ice bath — hold to cool */}
+            <button
+              onPointerDown={() => startHold(-1)}
+              onPointerUp={stopHold}
+              onPointerLeave={stopHold}
+              onContextMenu={(e) => e.preventDefault()}
+              aria-label={`Hold to cool the ${sub.name}`}
+              className="flex h-12 w-12 flex-shrink-0 select-none items-center justify-center rounded-full transition-transform active:scale-90 touch-none"
+              style={{
+                color: "#7cc4fa",
+                background: holding === "cool"
+                  ? "color-mix(in oklab, #7cc4fa 24%, transparent)"
+                  : "color-mix(in oklab, #7cc4fa 10%, transparent)",
+                border: "1px solid color-mix(in oklab, #7cc4fa 45%, transparent)",
+                boxShadow: holding === "cool" ? "0 0 18px color-mix(in oklab, #7cc4fa 45%, transparent)" : "none",
+              }}
+            >
+              <Snowflake className={`h-5 w-5 ${holding === "cool" ? "animate-spin" : ""}`} style={{ animationDuration: "3s" }} />
+            </button>
+
+            <div className="flex min-w-0 items-center gap-3">
+              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: `color-mix(in oklab, ${meta.color} 16%, transparent)`, color: meta.color }}>
+                <PhaseIcon className="h-5 w-5" />
+              </span>
+              <div className="min-w-0 text-left">
+                <div className="truncate font-ui font-medium text-lg" style={{ color: meta.color }}>
+                  {sub.name} · {changing ?? meta.label}
+                </div>
+                <div className="text-xs text-parchment/70">
+                  {T.toFixed(0)} K ({(T - 273.15).toFixed(0)} °C) — {meta.blurb}
+                </div>
               </div>
             </div>
+
+            {/* Burner — hold to heat */}
+            <button
+              onPointerDown={() => startHold(1)}
+              onPointerUp={stopHold}
+              onPointerLeave={stopHold}
+              onContextMenu={(e) => e.preventDefault()}
+              aria-label={`Hold to heat the ${sub.name}`}
+              className="flex h-12 w-12 flex-shrink-0 select-none items-center justify-center rounded-full transition-transform active:scale-90 touch-none"
+              style={{
+                color: "#f2a65a",
+                background: holding === "heat"
+                  ? "color-mix(in oklab, #f2a65a 24%, transparent)"
+                  : "color-mix(in oklab, #f2a65a 10%, transparent)",
+                border: "1px solid color-mix(in oklab, #f2a65a 45%, transparent)",
+                boxShadow: holding === "heat" ? "0 0 18px color-mix(in oklab, #f2a65a 50%, transparent)" : "none",
+              }}
+            >
+              <Flame className={`h-5 w-5 ${holding === "heat" ? "animate-bubble" : ""}`} />
+            </button>
           </div>
         </div>
 
         {/* Controls + heating curve */}
         <div className="space-y-4">
+          {/* Phase quests — a reason to go looking for every transition */}
+          <div className="rounded-xl p-4" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: `1px solid ${allDone ? "color-mix(in oklab, var(--color-gold) 45%, transparent)" : "var(--color-border)"}` }}>
+            <div className="mb-2.5 flex items-center justify-between gap-2">
+              <span className="text-[11px] tracking-[0.15em] uppercase text-parchment/70">
+                Phase quests · {sub.name}
+              </span>
+              {allDone && (
+                <span className="flex items-center gap-1.5 text-xs font-ui font-medium text-gold">
+                  <Sparkles className="h-3.5 w-3.5" /> Phase master!
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {quests.map((q) => {
+                const hit = doneHere.includes(q.id);
+                return (
+                  <span
+                    key={q.id}
+                    className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition-colors"
+                    style={{
+                      color: hit ? "var(--color-emerald-elixir)" : "var(--color-parchment)",
+                      border: `1px solid color-mix(in oklab, ${hit ? "var(--color-emerald-elixir)" : "var(--color-parchment)"} ${hit ? "50%" : "25%"}, transparent)`,
+                      background: hit ? "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)" : "transparent",
+                    }}
+                  >
+                    {hit ? <Check className="h-3.5 w-3.5" /> : <span className="h-1.5 w-1.5 rounded-full bg-current opacity-40" />}
+                    {q.label}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+
           <TempSlider sub={sub} T={T} onChange={setT} />
 
           <div className="rounded-xl p-4" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px solid var(--color-border)" }}>

@@ -66,6 +66,8 @@ export interface StudentProfile {
   assignmentResults?: Record<string, { score: number; outOf: number }>;
   /** True once the first-login walkthrough has been offered (taken OR declined). */
   walkthroughDone?: boolean;
+  /** Derived mastery ladder — synced by `lib/craft.ts` (see CRAFTS/TIERS). */
+  craft?: { mastered: string[]; count: number; tier: number };
 }
 
 /** A student's best recorded run on a module Trial (a PhET-style game screen). */

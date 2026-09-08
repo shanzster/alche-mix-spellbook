@@ -343,6 +343,24 @@
   transform-origin: left center;
 }
 
+/* Walkthrough arrows — a gentle bob toward the highlighted element.
+   -y keeps the horizontal centring translate; -x keeps the vertical one. */
+@keyframes tour-bob-y {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, -6px); }
+}
+@keyframes tour-bob-y-down {
+  0%, 100% { transform: translate(-50%, 0); }
+  50% { transform: translate(-50%, 6px); }
+}
+@keyframes tour-bob-x {
+  0%, 100% { transform: translate(0, -50%); }
+  50% { transform: translate(-6px, -50%); }
+}
+.tour-bob-up { animation: tour-bob-y 1.6s ease-in-out infinite; }
+.tour-bob-down { animation: tour-bob-y-down 1.6s ease-in-out infinite; }
+.tour-bob-left { animation: tour-bob-x 1.6s ease-in-out infinite; }
+
 /* Mobile chapter sheet rises from the bottom bar. */
 @keyframes sheet-up {
   from { opacity: 0; transform: translateY(18px); }

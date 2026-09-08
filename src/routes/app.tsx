@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Fragment, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   Atom,
@@ -37,7 +37,8 @@ import {
 import { StudentShell } from "../components/StudentShell";
 import { PageHeader } from "../components/PageHeader";
 import { RequireRole } from "../components/RequireRole";
-import { useUserProfile, type Mastery } from "../lib/profile";
+import { useUserProfile, type Mastery, type StudentProfile } from "../lib/profile";
+import { CRAFTS, TIERS, computeCraft, syncCraft } from "../lib/craft";
 import { joinClass } from "../lib/teacher";
 import { nextGuideStep } from "../lib/guide";
 import { usePlatform } from "../lib/platform";
@@ -410,12 +411,20 @@ function ClassRow({
 
   if (profile?.classId) {
     return (
-      <p className="mb-2 flex items-center gap-2 text-sm text-parchment/70">
-        <Users className="h-4 w-4 flex-shrink-0" />
-        <span>
-          Enrolled in <span className="font-ui font-medium text-spectral">{profile.className}</span>
+      <div className="glass flex items-center gap-3.5 rounded-2xl p-5 lg:w-80 lg:flex-shrink-0">
+        <span className="orb-rune h-11 w-11 text-gold">
+          <Users className="h-4.5 w-4.5" />
         </span>
-      </p>
+        <div className="min-w-0">
+          <p className={LABEL}>Your class</p>
+          <p className="mt-0.5 truncate font-ui text-base font-semibold text-spectral">
+            {profile.className}
+          </p>
+          <p className="mt-0.5 font-serif text-sm text-parchment/70">
+            Your teacher sees your progress here.
+          </p>
+        </div>
+      </div>
     );
   }
 
@@ -433,34 +442,129 @@ function ClassRow({
   };
 
   return (
-    <form onSubmit={join} className="mb-2 flex flex-wrap items-center gap-3">
-      <span className="text-sm text-parchment/70">Have a class code from your teacher?</span>
-      <input
-        value={code}
-        onChange={(e) => setCode(e.target.value.toUpperCase())}
-        placeholder="6-char code"
-        maxLength={6}
-        className="w-32 rounded-lg px-3 py-1.5 text-sm tracking-[0.14em] uppercase text-spectral placeholder:text-parchment/40 placeholder:tracking-normal outline-none"
-        style={{
-          background: "color-mix(in oklab, var(--color-mist) 60%, transparent)",
-          border: "1px solid var(--color-border)",
-        }}
-      />
-      <button
-        type="submit"
-        disabled={joining || code.length < 4}
-        className="btn-arcane btn-arcane-hover text-xs disabled:opacity-60"
-      >
-        Join
-      </button>
+    <div className="glass flex flex-col justify-center gap-3 rounded-2xl p-5 lg:w-80 lg:flex-shrink-0">
+      <div className="flex items-center gap-3.5">
+        <span className="orb-rune h-11 w-11 text-gold">
+          <Users className="h-4.5 w-4.5" />
+        </span>
+        <div className="min-w-0">
+          <p className={LABEL}>Join your class</p>
+          <p className="mt-0.5 font-serif text-sm text-parchment/70">
+            Got a code from your teacher?
+          </p>
+        </div>
+      </div>
+      <form onSubmit={join} className="flex gap-2">
+        <input
+          value={code}
+          onChange={(e) => setCode(e.target.value.toUpperCase())}
+          placeholder="ABC123"
+          maxLength={6}
+          aria-label="Class code"
+          className="min-w-0 flex-1 rounded-lg border px-3 py-2 text-center font-ui text-sm font-semibold tracking-[0.3em] uppercase text-spectral placeholder:font-normal placeholder:tracking-[0.2em] placeholder:text-parchment/35 outline-none transition-colors focus:border-emerald-elixir"
+          style={{
+            background: "color-mix(in oklab, var(--color-mist) 60%, transparent)",
+          }}
+        />
+        <button
+          type="submit"
+          disabled={joining || code.length < 4}
+          className="btn-arcane btn-arcane-hover flex-shrink-0 text-xs disabled:opacity-60"
+        >
+          Join
+        </button>
+      </form>
       {error && <span className="text-xs text-crimson">{error}</span>}
-    </form>
+    </div>
+  );
+}
+
+/**
+ * The Craft — tiered mastery ladder. Fills only on real proof (trial ≥2★,
+ * Study topics done, compounds forged); gold diamonds mark each rank.
+ */
+function CraftBar({ profile }: { profile: StudentProfile }) {
+  const { mastered, count, tier } = computeCraft(profile);
+  const total = CRAFTS.length;
+  const cur = TIERS[tier];
+  const next = tier + 1 < TIERS.length ? TIERS[tier + 1] : null;
+  const masteredLabels = CRAFTS.filter((c) => mastered.includes(c.id)).map((c) => c.label);
+
+  return (
+    <div className="glass mb-6 rounded-2xl p-5">
+      <div className="flex flex-wrap items-center gap-3.5">
+        <span className="orb-rune h-11 w-11 flex-shrink-0 text-gold">
+          <FlaskConical className="h-4.5 w-4.5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className={LABEL}>Your craft</p>
+          <p className="mt-0.5 font-ui text-base font-semibold text-gold">{cur.name}</p>
+        </div>
+        <span
+          className="flex-shrink-0 font-ui text-sm font-medium text-parchment/70"
+          title={
+            masteredLabels.length > 0
+              ? `Mastered: ${masteredLabels.join(", ")}`
+              : "Pass a module's trial with 2★ or more to master it"
+          }
+        >
+          <span className="text-spectral">{count}</span>/{total} crafts mastered
+        </span>
+      </div>
+
+      {/* The ladder — teal fill, a gold diamond at every rank threshold. */}
+      <div className="relative mt-4 mb-1 h-2">
+        <div
+          className="absolute inset-0 overflow-hidden rounded-full"
+          style={{ background: "color-mix(in oklab, var(--color-parchment) 22%, transparent)" }}
+        >
+          <div
+            className="h-full rounded-full transition-all duration-700 ease-out"
+            style={{
+              width: `${(count / total) * 100}%`,
+              background: "var(--color-emerald-elixir)",
+            }}
+          />
+        </div>
+        {TIERS.slice(1).map((t) => {
+          const reached = count >= t.at;
+          return (
+            <span
+              key={t.name}
+              title={`${t.name} — ${t.at} craft${t.at === 1 ? "" : "s"}`}
+              className="absolute top-1/2 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rotate-45 rounded-[2px] transition-colors duration-500"
+              style={{
+                left: `${(t.at / total) * 100}%`,
+                background: reached
+                  ? "var(--color-gold)"
+                  : "color-mix(in oklab, var(--color-parchment) 35%, var(--color-mist))",
+                boxShadow: reached
+                  ? "0 0 8px color-mix(in oklab, var(--color-gold) 55%, transparent)"
+                  : "none",
+              }}
+            />
+          );
+        })}
+      </div>
+
+      <p className="mt-2.5 font-serif text-sm text-parchment/70">
+        {next
+          ? `Master ${next.at - count} more ${next.at - count === 1 ? "craft" : "crafts"} to become ${next.name}. Crafts are earned by passing a module's trial with 2★ or better.`
+          : "The highest rank — every craft in the book, mastered."}
+      </p>
+    </div>
   );
 }
 
 function StudentHub() {
   const { uid, profile } = useUserProfile();
   const platform = usePlatform();
+
+  // Backend: persist the derived craft ladder onto users/{uid}.craft whenever
+  // the underlying proof (trials, study, compounds) changes. Idempotent.
+  useEffect(() => {
+    syncCraft(uid, profile);
+  }, [uid, profile]);
   const nextStep = nextGuideStep(profile);
   const name = profile?.displayName?.split(" ")[0] ?? profile?.email?.split("@")[0] ?? "Apprentice";
   const grades = profile?.grades ?? {};
@@ -570,12 +674,14 @@ function StudentHub() {
         }
       />
 
-      {/* Continue card — the one strong accent on the page. The whole card is
-          the link; the orb echoes the chapter rail's nav language. */}
+      {/* Top band — the continue card (the page's one strong accent) beside
+          the class card, one balanced row on wide screens. */}
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-stretch">
       {nextStep ? (
         <Link
           to={nextStep.to as any}
-          className="group glass relative mb-6 flex items-center gap-4 overflow-hidden rounded-2xl p-5 transition-transform duration-200 hover:-translate-y-0.5"
+          data-tour="continue"
+          className="group glass relative flex flex-1 items-center gap-4 overflow-hidden rounded-2xl p-5 transition-transform duration-200 hover:-translate-y-0.5"
         >
           {/* Teal wash bleeding in from the left edge + the spine marker,
               matching the rail's current-chapter signature. */}
@@ -611,7 +717,7 @@ function StudentHub() {
           </span>
         </Link>
       ) : (
-        <div className="glass mb-6 rounded-2xl p-5">
+        <div className="glass flex-1 rounded-2xl p-5">
           <p className={LABEL}>Path complete</p>
           <h2 className="mt-0.5 font-ui text-base font-semibold text-spectral">
             You've walked the whole Guide, {name}.
@@ -621,6 +727,13 @@ function StudentHub() {
           </p>
         </div>
       )}
+
+      {/* Class enrolment card — the row's quieter right half. */}
+      <ClassRow uid={uid} profile={profile} />
+      </div>
+
+      {/* The Craft — tiered mastery ladder over the learning modules. */}
+      {profile && <CraftBar profile={profile} />}
 
       {/* Mobile companion notice — capture tools live here; deep study is on the website. */}
       {platform.ready && platform.arCapable && (
@@ -632,9 +745,6 @@ function StudentHub() {
           </span>
         </p>
       )}
-
-      {/* Class enrolment — one slim row. */}
-      <ClassRow uid={uid} profile={profile} />
 
       {/* Learning modules — monochrome card grid under chapter labels. */}
       <section>

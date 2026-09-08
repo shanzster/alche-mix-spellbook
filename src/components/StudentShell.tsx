@@ -301,6 +301,7 @@ function CategoryRail({
     <>
       <nav
         ref={railRef}
+        data-tour="rail"
         aria-label="Chapters"
         className="glass-strong scroll-slim hidden md:flex fixed left-3 top-1/2 z-40 max-h-[calc(100vh-7rem)] -translate-y-1/2 flex-col items-center gap-1 overflow-y-auto rounded-2xl p-1.5"
         onMouseLeave={scheduleClose}
@@ -651,7 +652,10 @@ export function StudentShell({ title, children }: { title?: string; children: Re
       )}
 
       {/* ── Mobile bottom nav — floating glass ── */}
-      <nav className="glass-strong md:hidden fixed bottom-2 inset-x-2 z-50 flex items-stretch justify-around h-16 rounded-2xl overflow-hidden">
+      <nav
+        data-tour="tabs"
+        className="glass-strong md:hidden fixed bottom-2 inset-x-2 z-50 flex items-stretch justify-around h-16 rounded-2xl overflow-hidden"
+      >
         {primary.map((item) => {
           const active = isActive(item.to);
           return (
