@@ -16,3 +16,8 @@ Quick facts:
 
 Background documents: `FEATURE_BRAINSTORM.md` (feature gap analysis vs 25
 chem-ed platforms) and `docs/brainstorm/` (research pack).
+
+`docs/DATA_INVENTORY.md` is the canonical feature + data-storage inventory
+(store IDs D1–D9) used for the owner's DFD and ERD work — consult it for any
+diagramming task, and update it in the same commit whenever a feature or
+storage shape changes.
