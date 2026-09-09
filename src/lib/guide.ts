@@ -277,7 +277,9 @@ export interface GuideStatus {
 }
 
 export function guideStatus(profile: StudentProfile | null): GuideStatus {
-  const steps = GUIDE.map((step) => ({
+  // Curated-out modules disappear from the whole guide: the /guide page,
+  // progress counts, and the recommended next step.
+  const steps = GUIDE.filter((s) => !MANUAL_HIDDEN_ROUTES.has(s.to)).map((step) => ({
     step,
     done: step.done(profile),
     detail: step.detail?.(profile) ?? null,

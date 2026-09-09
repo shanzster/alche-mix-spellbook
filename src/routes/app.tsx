@@ -763,11 +763,18 @@ function StudentHub() {
         })}
       </section>
 
-      {/* The Arcade — games & rewards, kept apart from the learning path. */}
-      <section className="mt-6">
-        <SectionRule>The Arcade — games & rewards</SectionRule>
-        {grid(ARCADE)}
-      </section>
+      {/* The Arcade — games & rewards, kept apart from the learning path.
+          Hidden entirely while the curator has its modules curated out. */}
+      {(() => {
+        const rows = ARCADE.filter((m) => !hiddenModules.has(m.to));
+        if (rows.length === 0) return null;
+        return (
+          <section className="mt-6">
+            <SectionRule>The Arcade — games & rewards</SectionRule>
+            {grid(rows)}
+          </section>
+        );
+      })()}
 
       {/* My Progress — populated by the teacher. */}
       <section className="mt-6 mb-4">
