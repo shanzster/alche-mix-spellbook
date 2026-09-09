@@ -39,6 +39,7 @@ import { PageHeader } from "../components/PageHeader";
 import { RequireRole } from "../components/RequireRole";
 import { useUserProfile, type Mastery, type StudentProfile } from "../lib/profile";
 import { CRAFTS, TIERS, computeCraft, syncCraft } from "../lib/craft";
+import { useHiddenModules } from "../lib/moduleVisibility";
 import { joinClass } from "../lib/teacher";
 import { nextGuideStep } from "../lib/guide";
 import { usePlatform } from "../lib/platform";
@@ -559,6 +560,8 @@ function CraftBar({ profile }: { profile: StudentProfile }) {
 function StudentHub() {
   const { uid, profile } = useUserProfile();
   const platform = usePlatform();
+  // Curated module visibility — hides the same modules the nav hides.
+  const { hidden: hiddenModules } = useHiddenModules();
 
   // Backend: persist the derived craft ladder onto users/{uid}.craft whenever
   // the underlying proof (trials, study, compounds) changes. Idempotent.
@@ -749,7 +752,7 @@ function StudentHub() {
       {/* Learning modules — monochrome card grid under chapter labels. */}
       <section>
         {MODULE_GROUPS.map((group) => {
-          const rows = MODULES.filter((m) => m.group === group);
+          const rows = MODULES.filter((m) => m.group === group && !hiddenModules.has(m.to));
           if (rows.length === 0) return null;
           return (
             <Fragment key={group}>

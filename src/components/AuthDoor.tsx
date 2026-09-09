@@ -1,14 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { FlaskConical, Mail, Lock, Eye, EyeOff, UserPlus } from "lucide-react";
-import { signUpWithEmail, signInWithGoogle } from "../lib/auth";
-
-export const Route = createFileRoute("/signup")({
-  component: SignupPage,
-  // /signup?role=teacher preselects the educator tab (linked from /educator).
-  validateSearch: (search: Record<string, unknown>): { role?: "teacher" } =>
-    search.role === "teacher" ? { role: "teacher" } : {},
-});
+import { FlaskConical, GraduationCap, Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
+import { fetchRole, homeForRole, signInWithEmail, signInWithGoogle } from "../lib/auth";
 
 function GoogleIcon() {
   return (
@@ -21,28 +14,34 @@ function GoogleIcon() {
   );
 }
 
-function SignupPage() {
+/**
+ * The sign-in page, shared by both entrances: `/login` (the student door,
+ * violet) and `/educator` (the Educator's Door, gold). Same auth backend —
+ * after sign-in everyone is routed by their profile role (student → /app,
+ * teacher → /teacher, admin → /admin), so entering through the "wrong" door
+ * still lands you in the right place.
+ */
+export function AuthDoor({ educator = false }: { educator?: boolean }) {
   const navigate = useNavigate();
-  const { role: roleParam } = Route.useSearch();
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-  const [confirm, setConfirm]   = useState("");
   const [showPw, setShowPw]     = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
-  const [role, setRole]         = useState<"student" | "teacher">(roleParam === "teacher" ? "teacher" : "student");
 
-  const destination = role === "teacher" ? "/teacher" : "/app";
+  const accent = educator ? "var(--color-gold)" : "var(--color-wraith)";
+
+  const settle = async (uid: string) => {
+    const role = await fetchRole(uid);
+    navigate({ to: homeForRole(role) });
+  };
 
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
-    if (password !== confirm) { setError("Passwords don't match."); return; }
-    if (password.length < 6)  { setError("Password must be at least 6 characters."); return; }
-    setLoading(true);
+    setError(""); setLoading(true);
     try {
-      await signUpWithEmail(email, password, role);
-      navigate({ to: destination });
+      const user = await signInWithEmail(email, password);
+      await settle(user.uid);
     } catch (err: any) {
       setError(friendlyError(err.code));
     } finally { setLoading(false); }
@@ -51,8 +50,8 @@ function SignupPage() {
   const handleGoogle = async () => {
     setError(""); setLoading(true);
     try {
-      await signInWithGoogle(role);
-      navigate({ to: destination });
+      const user = await signInWithGoogle();
+      await settle(user.uid);
     } catch (err: any) {
       console.error("Google sign-in failed:", err);
       if (err.code !== "auth/popup-closed-by-user") setError(friendlyError(err.code));
@@ -85,14 +84,22 @@ function SignupPage() {
               style={{
                 background: "#1D1D1B",
                 border: "3px solid color-mix(in oklab, var(--color-slate-sunken) 100%, transparent)",
-                boxShadow: "0 0 0 1px color-mix(in oklab, var(--color-wraith) 55%, transparent), 0 0 28px -4px color-mix(in oklab, var(--color-wraith) 70%, transparent)",
+                boxShadow: `0 0 0 1px color-mix(in oklab, ${accent} 55%, transparent), 0 0 28px -4px color-mix(in oklab, ${accent} 70%, transparent)`,
               }}>
               <img src="/images/logo-outline.png" alt="AlcheMix" className="h-9 w-9 object-contain"
-                style={{ filter: "drop-shadow(0 0 6px color-mix(in oklab, var(--color-wraith) 80%, transparent))" }} />
+                style={{ filter: `drop-shadow(0 0 6px color-mix(in oklab, ${accent} 80%, transparent))` }} />
             </div>
-            <span className="font-display text-xl tracking-[0.2em] text-spectral">AlcheMix AR</span>
+            <span className="font-display text-xl tracking-[0.2em] text-spectral">
+              AlcheMix AR{educator && <span className="text-gold"> · Educator</span>}
+            </span>
           </Link>
-          <p className="text-parchment/60 text-sm mt-1 tracking-wide">Create your alchemist account</p>
+          {educator ? (
+            <p className="text-parchment/60 text-sm mt-1 tracking-wide inline-flex items-center gap-1.5">
+              <GraduationCap className="h-4 w-4 text-gold" /> The Educator's Door — sign in to your console
+            </p>
+          ) : (
+            <p className="text-parchment/60 text-sm mt-1 tracking-wide">Sign in to enter the lab</p>
+          )}
         </div>
 
         {/* Card */}
@@ -100,25 +107,8 @@ function SignupPage() {
           style={{
             background: "color-mix(in oklab, var(--color-slate-sunken) 92%, transparent)",
             border: "1px solid color-mix(in oklab, var(--color-parchment) 20%, transparent)",
-            boxShadow: "0 0 60px -20px color-mix(in oklab, var(--color-wraith) 35%, transparent)",
+            boxShadow: `0 0 60px -20px color-mix(in oklab, ${accent} 35%, transparent)`,
           }}>
-
-          {/* Role selector */}
-          <div className="mb-6">
-            <p className="text-[10px] tracking-[0.25em] uppercase text-parchment/60 mb-2 text-center">I am signing up as a</p>
-            <div className="flex rounded-full p-1" style={{ background: "color-mix(in oklab, var(--color-mist) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-              {(["student", "teacher"] as const).map((r) => (
-                <button key={r} type="button" onClick={() => setRole(r)}
-                  className="flex-1 rounded-full py-2 text-xs tracking-[0.12em] uppercase transition font-display"
-                  style={role === r ? { background: "color-mix(in oklab, var(--color-emerald-elixir) 20%, transparent)", color: "var(--color-emerald-elixir)" } : { color: "var(--color-parchment)" }}>
-                  {r}
-                </button>
-              ))}
-            </div>
-            {role === "teacher" && (
-              <p className="text-[11px] text-gold/80 mt-2 text-center">Educator accounts require admin approval before access.</p>
-            )}
-          </div>
 
           {/* Google button */}
           <button onClick={handleGoogle} disabled={loading}
@@ -128,7 +118,7 @@ function SignupPage() {
               border: "1px solid color-mix(in oklab, var(--color-parchment) 30%, transparent)",
             }}>
             <GoogleIcon />
-            Sign up with Google
+            Continue with Google
           </button>
 
           {/* Divider */}
@@ -144,12 +134,17 @@ function SignupPage() {
               <label className="block text-xs tracking-[0.2em] uppercase text-parchment/60 mb-1.5">Email</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-parchment/40" />
-                <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                <input
+                  type="email" required value={email} onChange={e => setEmail(e.target.value)}
                   placeholder="your@email.com"
                   className="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm text-spectral placeholder:text-parchment/30 outline-none transition-all"
-                  style={{ background: "color-mix(in oklab, var(--color-mist) 80%, transparent)", border: "1px solid color-mix(in oklab, var(--color-parchment) 22%, transparent)" }}
-                  onFocus={e => (e.currentTarget.style.borderColor = "color-mix(in oklab, var(--color-wraith) 60%, transparent)")}
-                  onBlur={e => (e.currentTarget.style.borderColor = "color-mix(in oklab, var(--color-parchment) 22%, transparent)")} />
+                  style={{
+                    background: "color-mix(in oklab, var(--color-mist) 80%, transparent)",
+                    border: "1px solid color-mix(in oklab, var(--color-parchment) 22%, transparent)",
+                  }}
+                  onFocus={e => (e.currentTarget.style.borderColor = `color-mix(in oklab, ${accent} 60%, transparent)`)}
+                  onBlur={e => (e.currentTarget.style.borderColor = "color-mix(in oklab, var(--color-parchment) 22%, transparent)")}
+                />
               </div>
             </div>
 
@@ -157,36 +152,23 @@ function SignupPage() {
               <label className="block text-xs tracking-[0.2em] uppercase text-parchment/60 mb-1.5">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-parchment/40" />
-                <input type={showPw ? "text" : "password"} required value={password}
-                  onChange={e => setPassword(e.target.value)} placeholder="Min. 6 characters"
+                <input
+                  type={showPw ? "text" : "password"} required value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="••••••••"
                   className="w-full pl-10 pr-10 py-2.5 rounded-lg text-sm text-spectral placeholder:text-parchment/30 outline-none transition-all"
-                  style={{ background: "color-mix(in oklab, var(--color-mist) 80%, transparent)", border: "1px solid color-mix(in oklab, var(--color-parchment) 22%, transparent)" }}
-                  onFocus={e => (e.currentTarget.style.borderColor = "color-mix(in oklab, var(--color-wraith) 60%, transparent)")}
-                  onBlur={e => (e.currentTarget.style.borderColor = "color-mix(in oklab, var(--color-parchment) 22%, transparent)")} />
+                  style={{
+                    background: "color-mix(in oklab, var(--color-mist) 80%, transparent)",
+                    border: "1px solid color-mix(in oklab, var(--color-parchment) 22%, transparent)",
+                  }}
+                  onFocus={e => (e.currentTarget.style.borderColor = `color-mix(in oklab, ${accent} 60%, transparent)`)}
+                  onBlur={e => (e.currentTarget.style.borderColor = "color-mix(in oklab, var(--color-parchment) 22%, transparent)")}
+                />
                 <button type="button" onClick={() => setShowPw(p => !p)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-parchment/40 hover:text-parchment transition">
                   {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
-            </div>
-
-            <div>
-              <label className="block text-xs tracking-[0.2em] uppercase text-parchment/60 mb-1.5">Confirm Password</label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-parchment/40" />
-                <input type={showPw ? "text" : "password"} required value={confirm}
-                  onChange={e => setConfirm(e.target.value)} placeholder="Repeat password"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm text-spectral placeholder:text-parchment/30 outline-none transition-all"
-                  style={{
-                    background: "color-mix(in oklab, var(--color-mist) 80%, transparent)",
-                    border: `1px solid ${confirm && confirm !== password ? "color-mix(in oklab, var(--color-crimson) 60%, transparent)" : "color-mix(in oklab, var(--color-parchment) 22%, transparent)"}`,
-                  }}
-                  onFocus={e => (e.currentTarget.style.borderColor = "color-mix(in oklab, var(--color-wraith) 60%, transparent)")}
-                  onBlur={e => (e.currentTarget.style.borderColor = confirm && confirm !== password ? "color-mix(in oklab, var(--color-crimson) 60%, transparent)" : "color-mix(in oklab, var(--color-parchment) 22%, transparent)")} />
-              </div>
-              {confirm && confirm !== password && (
-                <p className="text-[10px] text-crimson mt-1 ml-1">Passwords don't match</p>
-              )}
             </div>
 
             {error && (
@@ -198,18 +180,35 @@ function SignupPage() {
             <button type="submit" disabled={loading}
               className="btn-arcane btn-arcane-hover w-full justify-center mt-2 disabled:opacity-50 disabled:cursor-not-allowed">
               {loading
-                ? <><FlaskConical className="h-4 w-4 animate-spin" /> Creating account…</>
-                : <><UserPlus className="h-4 w-4" /> Create Account</>}
+                ? <><FlaskConical className="h-4 w-4 animate-spin" /> Transmuting…</>
+                : <><LogIn className="h-4 w-4" /> Sign In</>}
             </button>
           </form>
         </div>
 
         {/* Footer links */}
         <p className="text-center text-sm text-parchment/50 mt-6">
-          Already have an account?{" "}
-          <Link to="/login" className="text-wraith hover:text-spectral transition font-display tracking-wide">
-            Sign in
-          </Link>
+          No account yet?{" "}
+          {educator ? (
+            <Link to="/signup" search={{ role: "teacher" }} className="text-gold hover:text-spectral transition font-display tracking-wide">
+              Create an educator account
+            </Link>
+          ) : (
+            <Link to="/signup" className="text-wraith hover:text-spectral transition font-display tracking-wide">
+              Create one
+            </Link>
+          )}
+        </p>
+        <p className="text-center text-sm text-parchment/50 mt-2">
+          {educator ? (
+            <Link to="/login" className="text-parchment/60 hover:text-spectral transition">
+              Not an educator? Student sign-in →
+            </Link>
+          ) : (
+            <Link to="/educator" className="inline-flex items-center gap-1.5 text-parchment/60 hover:text-gold transition">
+              <GraduationCap className="h-3.5 w-3.5" /> Are you an educator? Enter here
+            </Link>
+          )}
         </p>
         <p className="text-center mt-2">
           <Link to="/" className="text-xs text-parchment/40 hover:text-parchment/70 transition tracking-[0.15em] uppercase">
@@ -223,9 +222,10 @@ function SignupPage() {
 
 function friendlyError(code: string): string {
   const map: Record<string, string> = {
-    "auth/email-already-in-use":  "An account with that email already exists.",
+    "auth/user-not-found":        "No account found with that email.",
+    "auth/wrong-password":        "Incorrect password. Try again.",
     "auth/invalid-email":         "That doesn't look like a valid email.",
-    "auth/weak-password":         "Password is too weak. Use at least 6 characters.",
+    "auth/invalid-credential":    "Email or password is incorrect.",
     "auth/too-many-requests":     "Too many attempts. Please wait and try again.",
     "auth/network-request-failed":"Network error. Check your connection.",
     "auth/popup-blocked":         "Popup was blocked. Allow popups for this site.",

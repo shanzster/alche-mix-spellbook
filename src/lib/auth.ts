@@ -83,6 +83,21 @@ export async function signInWithEmail(email: string, password: string) {
   return result.user;
 }
 
+/** Reads the signed-in user's role from their profile doc. Best-effort. */
+export async function fetchRole(uid: string): Promise<Role | undefined> {
+  try {
+    const snap = await getDoc(doc(db, "users", uid));
+    return snap.exists() ? (snap.data() as { role?: Role }).role : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Where each role lands after signing in. */
+export function homeForRole(role?: Role): "/admin" | "/teacher" | "/app" {
+  return role === "admin" ? "/admin" : role === "teacher" ? "/teacher" : "/app";
+}
+
 export async function signOut() {
   await firebaseSignOut(auth);
 }

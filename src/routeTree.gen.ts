@@ -26,6 +26,7 @@ import { Route as RatesRouteImport } from './routes/rates'
 import { Route as QuizRouteImport } from './routes/quiz'
 import { Route as PeriodicTableRouteImport } from './routes/periodic-table'
 import { Route as MoleculesRouteImport } from './routes/molecules'
+import { Route as ModulesRouteImport } from './routes/modules'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
@@ -38,6 +39,7 @@ import { Route as EquilibriumRouteImport } from './routes/equilibrium'
 import { Route as EquationBalancerRouteImport } from './routes/equation-balancer'
 import { Route as ElementsRouteImport } from './routes/elements'
 import { Route as ElectroRouteImport } from './routes/electro'
+import { Route as EducatorRouteImport } from './routes/educator'
 import { Route as DuelsRouteImport } from './routes/duels'
 import { Route as DuelRouteImport } from './routes/duel'
 import { Route as DecayRouteImport } from './routes/decay'
@@ -135,6 +137,11 @@ const MoleculesRoute = MoleculesRouteImport.update({
   path: '/molecules',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ModulesRoute = ModulesRouteImport.update({
+  id: '/modules',
+  path: '/modules',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -193,6 +200,11 @@ const ElementsRoute = ElementsRouteImport.update({
 const ElectroRoute = ElectroRouteImport.update({
   id: '/electro',
   path: '/electro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EducatorRoute = EducatorRouteImport.update({
+  id: '/educator',
+  path: '/educator',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DuelsRoute = DuelsRouteImport.update({
@@ -263,6 +275,7 @@ export interface FileRoutesByFullPath {
   '/decay': typeof DecayRoute
   '/duel': typeof DuelRoute
   '/duels': typeof DuelsRoute
+  '/educator': typeof EducatorRoute
   '/electro': typeof ElectroRoute
   '/elements': typeof ElementsRoute
   '/equation-balancer': typeof EquationBalancerRoute
@@ -275,6 +288,7 @@ export interface FileRoutesByFullPath {
   '/leaderboard': typeof LeaderboardRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/modules': typeof ModulesRoute
   '/molecules': typeof MoleculesRoute
   '/periodic-table': typeof PeriodicTableRoute
   '/quiz': typeof QuizRoute
@@ -305,6 +319,7 @@ export interface FileRoutesByTo {
   '/decay': typeof DecayRoute
   '/duel': typeof DuelRoute
   '/duels': typeof DuelsRoute
+  '/educator': typeof EducatorRoute
   '/electro': typeof ElectroRoute
   '/elements': typeof ElementsRoute
   '/equation-balancer': typeof EquationBalancerRoute
@@ -317,6 +332,7 @@ export interface FileRoutesByTo {
   '/leaderboard': typeof LeaderboardRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/modules': typeof ModulesRoute
   '/molecules': typeof MoleculesRoute
   '/periodic-table': typeof PeriodicTableRoute
   '/quiz': typeof QuizRoute
@@ -348,6 +364,7 @@ export interface FileRoutesById {
   '/decay': typeof DecayRoute
   '/duel': typeof DuelRoute
   '/duels': typeof DuelsRoute
+  '/educator': typeof EducatorRoute
   '/electro': typeof ElectroRoute
   '/elements': typeof ElementsRoute
   '/equation-balancer': typeof EquationBalancerRoute
@@ -360,6 +377,7 @@ export interface FileRoutesById {
   '/leaderboard': typeof LeaderboardRoute
   '/learn': typeof LearnRoute
   '/login': typeof LoginRoute
+  '/modules': typeof ModulesRoute
   '/molecules': typeof MoleculesRoute
   '/periodic-table': typeof PeriodicTableRoute
   '/quiz': typeof QuizRoute
@@ -392,6 +410,7 @@ export interface FileRouteTypes {
     | '/decay'
     | '/duel'
     | '/duels'
+    | '/educator'
     | '/electro'
     | '/elements'
     | '/equation-balancer'
@@ -404,6 +423,7 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/learn'
     | '/login'
+    | '/modules'
     | '/molecules'
     | '/periodic-table'
     | '/quiz'
@@ -434,6 +454,7 @@ export interface FileRouteTypes {
     | '/decay'
     | '/duel'
     | '/duels'
+    | '/educator'
     | '/electro'
     | '/elements'
     | '/equation-balancer'
@@ -446,6 +467,7 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/learn'
     | '/login'
+    | '/modules'
     | '/molecules'
     | '/periodic-table'
     | '/quiz'
@@ -476,6 +498,7 @@ export interface FileRouteTypes {
     | '/decay'
     | '/duel'
     | '/duels'
+    | '/educator'
     | '/electro'
     | '/elements'
     | '/equation-balancer'
@@ -488,6 +511,7 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/learn'
     | '/login'
+    | '/modules'
     | '/molecules'
     | '/periodic-table'
     | '/quiz'
@@ -519,6 +543,7 @@ export interface RootRouteChildren {
   DecayRoute: typeof DecayRoute
   DuelRoute: typeof DuelRoute
   DuelsRoute: typeof DuelsRoute
+  EducatorRoute: typeof EducatorRoute
   ElectroRoute: typeof ElectroRoute
   ElementsRoute: typeof ElementsRoute
   EquationBalancerRoute: typeof EquationBalancerRoute
@@ -531,6 +556,7 @@ export interface RootRouteChildren {
   LeaderboardRoute: typeof LeaderboardRoute
   LearnRoute: typeof LearnRoute
   LoginRoute: typeof LoginRoute
+  ModulesRoute: typeof ModulesRoute
   MoleculesRoute: typeof MoleculesRoute
   PeriodicTableRoute: typeof PeriodicTableRoute
   QuizRoute: typeof QuizRoute
@@ -671,6 +697,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MoleculesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/modules': {
+      id: '/modules'
+      path: '/modules'
+      fullPath: '/modules'
+      preLoaderRoute: typeof ModulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login': {
       id: '/login'
       path: '/login'
@@ -753,6 +786,13 @@ declare module '@tanstack/react-router' {
       path: '/electro'
       fullPath: '/electro'
       preLoaderRoute: typeof ElectroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/educator': {
+      id: '/educator'
+      path: '/educator'
+      fullPath: '/educator'
+      preLoaderRoute: typeof EducatorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/duels': {
@@ -847,6 +887,7 @@ const rootRouteChildren: RootRouteChildren = {
   DecayRoute: DecayRoute,
   DuelRoute: DuelRoute,
   DuelsRoute: DuelsRoute,
+  EducatorRoute: EducatorRoute,
   ElectroRoute: ElectroRoute,
   ElementsRoute: ElementsRoute,
   EquationBalancerRoute: EquationBalancerRoute,
@@ -859,6 +900,7 @@ const rootRouteChildren: RootRouteChildren = {
   LeaderboardRoute: LeaderboardRoute,
   LearnRoute: LearnRoute,
   LoginRoute: LoginRoute,
+  ModulesRoute: ModulesRoute,
   MoleculesRoute: MoleculesRoute,
   PeriodicTableRoute: PeriodicTableRoute,
   QuizRoute: QuizRoute,

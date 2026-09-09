@@ -2,6 +2,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Compass, X } from "lucide-react";
 import { markWalkthroughDone, useUserProfile } from "../lib/profile";
+import { MANUAL_HIDDEN_ROUTES } from "../lib/moduleVisibility";
 
 /**
  * The first-login walkthrough.
@@ -31,8 +32,9 @@ interface TourStep {
 
 const PAGE_HEADER = ['[data-tour="page-header"]'];
 
-/** Every module of the book, in reading order — the full tour. */
-const TOUR_STEPS: TourStep[] = [
+/** Every module of the book, in reading order — the full tour.
+ *  Filtered below against the curator's hidden modules. */
+const ALL_TOUR_STEPS: TourStep[] = [
   {
     to: "/app",
     title: "Your next step",
@@ -231,6 +233,9 @@ const TOUR_STEPS: TourStep[] = [
     body: "That's the whole workshop. Press ⌘K anywhere for the full table of contents — and welcome to the bench, apprentice.",
   },
 ];
+
+/** The live tour — skips modules the curator has hidden in code. */
+const TOUR_STEPS: TourStep[] = ALL_TOUR_STEPS.filter((s) => !MANUAL_HIDDEN_ROUTES.has(s.to));
 
 const STEP_KEY = "alchemix.walkthrough.step";
 

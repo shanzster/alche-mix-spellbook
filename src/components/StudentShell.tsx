@@ -42,6 +42,7 @@ import { aiPing } from "../lib/ai";
 import { AskAlchemist } from "./AskAlchemist";
 import { ThemeToggle } from "./ThemeToggle";
 import { Walkthrough } from "./Walkthrough";
+import { useHiddenModules } from "../lib/moduleVisibility";
 
 // Log the AI self-test verdict to the browser console once per page load.
 // (The server caches the underlying Gemini call for 10 min — no quota burn.)
@@ -89,7 +90,9 @@ const CH_FIELD = "Field Work";
 
 // Every page of the book, in reading order. The order doubles as the pager's
 // page sequence; `chapter` groups them in the Table of Contents.
-const NAV: NavItem[] = [
+// Exported for the /modules curator page; at render time the shell filters
+// this list through config/modules (see lib/moduleVisibility).
+export const NAV: NavItem[] = [
   { to: "/app", label: "Home", icon: Home, chapter: CH_BENCH, primary: true },
   { to: "/cards", label: "Grimoire", icon: BookMarked, chapter: CH_BENCH, primary: true },
   { to: "/guide", label: "The Guide", icon: Compass, chapter: CH_BENCH },
@@ -123,7 +126,7 @@ const NAV: NavItem[] = [
   { to: "/scavenger", label: "Scavenger Hunt", icon: ScanSearch, chapter: CH_FIELD, primary: true },
 ];
 
-const CHAPTERS = [CH_BENCH, CH_1, CH_2, CH_3, CH_4, CH_5, CH_ARCADE, CH_FIELD];
+export const CHAPTERS = [CH_BENCH, CH_1, CH_2, CH_3, CH_4, CH_5, CH_ARCADE, CH_FIELD];
 
 /** Rail icon + short name for each chapter of the book. */
 const CHAPTER_META: Record<string, { icon: ComponentType<{ className?: string }>; short: string }> = {
@@ -144,8 +147,8 @@ function useActive() {
 }
 
 /** Index of the current route in the book's page order (-1 when off-book). */
-function pageIndexOf(pathname: string): number {
-  return NAV.findIndex((n) =>
+function pageIndexOf(pathname: string, nav: NavItem[]): number {
+  return nav.findIndex((n) =>
     n.to === "/app" ? pathname === "/app" : pathname === n.to || pathname.startsWith(n.to + "/"),
   );
 }
@@ -154,7 +157,7 @@ function pageIndexOf(pathname: string): number {
  * The Table of Contents — the book's full map, opened from the top bar or ⌘K.
  * Chapters as columns of quiet links; replaces the old always-there sidebar.
  */
-function TableOfContents({ onClose }: { onClose: () => void }) {
+function TableOfContents({ nav, onClose }: { nav: NavItem[]; onClose: () => void }) {
   const isActive = useActive();
 
   useEffect(() => {
@@ -186,13 +189,13 @@ function TableOfContents({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3">
-          {CHAPTERS.map((chapter) => (
+          {CHAPTERS.filter((chapter) => nav.some((n) => n.chapter === chapter)).map((chapter) => (
             <div key={chapter}>
               <p className="mb-1.5 px-1 text-[11px] uppercase tracking-[0.14em] text-parchment/50">
                 {chapter}
               </p>
               <ul className="space-y-0.5">
-                {NAV.filter((n) => n.chapter === chapter).map((item) => {
+                {nav.filter((n) => n.chapter === chapter).map((item) => {
                   const active = isActive(item.to);
                   return (
                     <li key={item.to}>
@@ -234,9 +237,11 @@ function TableOfContents({ onClose }: { onClose: () => void }) {
  * scannable column; only the pixels are magical.
  */
 function CategoryRail({
+  nav,
   onOpenToc,
   onSignOut,
 }: {
+  nav: NavItem[];
   onOpenToc: () => void;
   onSignOut: () => void;
 }) {
@@ -295,7 +300,8 @@ function CategoryRail({
     };
   }, [open]);
 
-  const pages = open ? NAV.filter((n) => n.chapter === open) : [];
+  const pages = open ? nav.filter((n) => n.chapter === open) : [];
+  const visibleChapters = CHAPTERS.filter((ch) => nav.some((n) => n.chapter === ch));
 
   return (
     <>
@@ -326,9 +332,9 @@ function CategoryRail({
 
         <div className="my-1 h-px w-6 flex-shrink-0" style={{ background: "var(--color-border)" }} />
 
-        {CHAPTERS.map((chapter) => {
+        {visibleChapters.map((chapter) => {
           const meta = CHAPTER_META[chapter];
-          const chapterActive = NAV.some((n) => n.chapter === chapter && isActive(n.to));
+          const chapterActive = nav.some((n) => n.chapter === chapter && isActive(n.to));
           const isOpen = open === chapter;
           return (
             <button
@@ -479,9 +485,14 @@ export function StudentShell({ title, children }: { title?: string; children: Re
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [moreOpen, setMoreOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState(false);
-  const pageIndex = pageIndexOf(pathname);
-  const prevPage = pageIndex > 0 ? NAV[pageIndex - 1] : null;
-  const nextPage = pageIndex >= 0 && pageIndex < NAV.length - 1 ? NAV[pageIndex + 1] : null;
+  // Live module visibility — the curator's config/modules doc filters every
+  // nav surface (rail, contents, pager, mobile sheet) in real time.
+  const { hidden } = useHiddenModules();
+  // Home stays no matter what the config doc says — the shell needs an anchor.
+  const nav = NAV.filter((n) => n.to === "/app" || !hidden.has(n.to));
+  const pageIndex = pageIndexOf(pathname, nav);
+  const prevPage = pageIndex > 0 ? nav[pageIndex - 1] : null;
+  const nextPage = pageIndex >= 0 && pageIndex < nav.length - 1 ? nav[pageIndex + 1] : null;
   useAIVerdictLog();
 
   // ⌘K / Ctrl+K toggles the Table of Contents.
@@ -500,8 +511,8 @@ export function StudentShell({ title, children }: { title?: string; children: Re
     await signOut();
     navigate({ to: "/" });
   };
-  const primary = NAV.filter((n) => n.primary);
-  const moreItems = NAV.filter((n) => !n.primary);
+  const primary = nav.filter((n) => n.primary);
+  const moreItems = nav.filter((n) => !n.primary);
   const moreActive = moreItems.some((n) => !n.disabled && isActive(n.to));
 
   return (
@@ -510,7 +521,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
       <div className="bg-aurora pointer-events-none fixed inset-0 z-0" />
 
       {/* ── Desktop chrome — the chapter rail carries everything ── */}
-      <CategoryRail onOpenToc={() => setTocOpen(true)} onSignOut={handleSignOut} />
+      <CategoryRail nav={nav} onOpenToc={() => setTocOpen(true)} onSignOut={handleSignOut} />
 
       {/* ── Mobile top bar — floating glass ── */}
       <header className="glass-strong md:hidden fixed top-2 inset-x-2 z-40 flex items-center justify-between h-14 px-4 rounded-2xl">
@@ -553,9 +564,9 @@ export function StudentShell({ title, children }: { title?: string; children: Re
             title="Open the Table of Contents"
           >
             <BookOpen className="h-3.5 w-3.5 text-parchment/60" />
-            <span className="text-xs whitespace-nowrap">{NAV[pageIndex].label}</span>
+            <span className="text-xs whitespace-nowrap">{nav[pageIndex].label}</span>
             <span className="text-xs text-parchment/45 whitespace-nowrap">
-              {pageIndex + 1}/{NAV.length}
+              {pageIndex + 1}/{nav.length}
             </span>
           </button>
           {nextPage ? (
@@ -576,7 +587,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
       )}
 
       {/* ── Table of Contents overlay ── */}
-      {tocOpen && <TableOfContents onClose={() => setTocOpen(false)} />}
+      {tocOpen && <TableOfContents nav={nav} onClose={() => setTocOpen(false)} />}
 
       {/* ── First-login walkthrough — offer modal + page-to-page tour card ── */}
       <Walkthrough />
@@ -593,7 +604,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
           />
           <div className="glass-strong scroll-slim sheet-up fixed bottom-[5rem] inset-x-3 z-50 max-h-[70vh] overflow-y-auto rounded-2xl p-2.5 pb-3">
             {CHAPTERS.map((chapter) => {
-              const pages = NAV.filter((n) => n.chapter === chapter);
+              const pages = nav.filter((n) => n.chapter === chapter);
               if (pages.length === 0) return null;
               return (
                 <div key={chapter} className="mb-1.5">

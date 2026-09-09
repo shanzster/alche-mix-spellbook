@@ -23,6 +23,7 @@ import {
 import {
   useClassEvidence, reviewEvidence, isPendingReview, type TeacherEvidenceEntry,
 } from "../lib/scavenger";
+import { CRAFTS, TIERS } from "../lib/craft";
 
 export const Route = createFileRoute("/teacher")({
   component: () => (
@@ -46,11 +47,16 @@ function ClassCard({ cls }: { cls: ClassInfo }) {
   const copy = async () => { try { await navigator.clipboard.writeText(cls.id); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ } };
 
   return (
-    <div className="rounded-2xl p-5" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 65%, transparent)", border: "1px solid var(--color-border)" }}>
+    <div className="glass rounded-2xl p-5">
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="flex items-center gap-3">
+          <span className="orb-rune h-10 w-10 flex-shrink-0 text-gold">
+            <Users className="h-4 w-4" />
+          </span>
+          <div>
           <h3 className="font-display text-lg">{cls.name}</h3>
           <p className="text-xs text-parchment/60 mt-0.5 inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {roster.length} enrolled</p>
+          </div>
         </div>
         <button onClick={copy} className="flex items-center gap-2 rounded-lg px-3 py-2 transition hover:-translate-y-0.5"
           style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent)" }}>
@@ -98,9 +104,11 @@ function ClassesTab({ teacherId, teacherName, classes }: { teacherId: string; te
       </form>
 
       {classes.length === 0 ? (
-        <div className="rounded-2xl px-5 py-10 text-center" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px dashed color-mix(in oklab, var(--color-parchment) 30%, transparent)" }}>
-          <Users className="h-8 w-8 text-parchment/50 mx-auto mb-3" />
-          <p className="font-display text-base mb-1">No classes yet</p>
+        <div className="glass rounded-2xl px-5 py-10 text-center">
+          <span className="orb-rune mx-auto flex h-12 w-12 text-gold">
+            <Users className="h-5 w-5" />
+          </span>
+          <p className="font-display text-base mb-1 mt-3">No classes yet</p>
           <p className="text-sm text-parchment/60">Create your first class to generate a join code students can use.</p>
         </div>
       ) : (
@@ -510,7 +518,7 @@ function MatrixTab({ classes }: { classes: ClassInfo[] }) {
   // The class's trial set — the union of every trial anyone has attempted.
   const trialIds = Array.from(new Set(students.flatMap((s) => Object.keys(s.data?.trials ?? {}))));
   const maxStars = trialIds.length * 3;
-  const columnCount = CURRICULUM.length + 3; // name + topics + trials + engagement
+  const columnCount = CURRICULUM.length + 4; // name + topics + craft + trials + engagement
 
   return (
     <div className="space-y-6">
@@ -544,6 +552,7 @@ function MatrixTab({ classes }: { classes: ClassInfo[] }) {
                     {CURRICULUM.map((t) => (
                       <th key={t.id} className="px-2 py-3 text-center text-[10px] tracking-[0.1em] uppercase text-parchment/50 font-normal">{t.title}</th>
                     ))}
+                    <th className="px-2 py-3 text-center text-[10px] tracking-[0.1em] uppercase text-parchment/50 font-normal">Craft</th>
                     <th className="px-2 py-3 text-center text-[10px] tracking-[0.1em] uppercase text-parchment/50 font-normal">Trials</th>
                     <th className="px-2 py-3 text-center text-[10px] tracking-[0.1em] uppercase text-parchment/50 font-normal">Engagement</th>
                   </tr>
@@ -568,6 +577,21 @@ function MatrixTab({ classes }: { classes: ClassInfo[] }) {
                           {CURRICULUM.map((t) => (
                             <td key={t.id} className="px-2 py-3 text-center"><StageChip pp={s.data?.pathProgress?.[t.id]} /></td>
                           ))}
+                          <td className="px-2 py-3 text-center">
+                            {(() => {
+                              const craft = s.data?.craft;
+                              const tierName = TIERS[Math.min(craft?.tier ?? 0, TIERS.length - 1)].name;
+                              return (
+                                <span
+                                  className="text-xs whitespace-nowrap"
+                                  title={`${craft?.count ?? 0}/${CRAFTS.length} crafts mastered (trial ≥2★)`}
+                                  style={{ color: (craft?.count ?? 0) > 0 ? "var(--color-gold)" : "color-mix(in oklab, var(--color-parchment) 45%, transparent)" }}
+                                >
+                                  {tierName}
+                                </span>
+                              );
+                            })()}
+                          </td>
                           <td className="px-2 py-3 text-center">
                             {maxStars === 0 ? (
                               <span className="text-xs text-parchment/40">—</span>
@@ -627,9 +651,11 @@ const cardStyle = { background: "color-mix(in oklab, var(--color-slate-sunken) 6
 
 function AuthorEmpty({ icon: Icon, title, desc }: { icon: typeof Layers; title: string; desc: string }) {
   return (
-    <div className="rounded-2xl px-5 py-10 text-center" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px dashed color-mix(in oklab, var(--color-parchment) 30%, transparent)" }}>
-      <Icon className="h-8 w-8 text-parchment/50 mx-auto mb-3" />
-      <p className="font-display text-base mb-1">{title}</p>
+    <div className="glass rounded-2xl px-5 py-10 text-center">
+      <span className="orb-rune mx-auto flex h-12 w-12 text-gold">
+        <Icon className="h-5 w-5" />
+      </span>
+      <p className="font-display text-base mb-1 mt-3">{title}</p>
       <p className="text-sm text-parchment/60">{desc}</p>
     </div>
   );
@@ -1020,6 +1046,15 @@ function MissionsTab({ classes }: { classes: ClassInfo[] }) {
   );
 }
 
+/** Hover name chip for the console rail — same language as the student rail. */
+function RailChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="glass-strong pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-x-1 -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium text-spectral opacity-0 transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100">
+      {children}
+    </span>
+  );
+}
+
 function TeacherConsole() {
   const { uid, profile } = useUserProfile();
   const navigate = useNavigate();
@@ -1036,44 +1071,111 @@ function TeacherConsole() {
     { key: "missions", label: "Missions", icon: ListChecks },
   ] as const;
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate({ to: "/" });
+  };
+
   return (
     <div className="bg-arcane min-h-screen text-spectral">
+      <div className="bg-aurora pointer-events-none fixed inset-0 z-0" />
       <div className="bg-arcane-stars pointer-events-none fixed inset-0 z-0 opacity-50" />
 
-      {/* Top bar */}
-      <header className="relative z-10 flex items-center justify-between px-5 md:px-8 h-16 border-b backdrop-blur-xl" style={{ borderColor: "var(--color-border)", background: "color-mix(in oklab, var(--color-slate-sunken) 80%, transparent)" }}>
-        <Link to="/" className="flex items-center gap-2.5">
-          <img src="/images/logo-outline.png" alt="" className="h-8 w-8 object-contain" style={{ filter: "drop-shadow(0 0 8px color-mix(in oklab, var(--color-emerald-elixir) 60%, transparent))" }} />
-          <span className="font-display text-lg tracking-[0.15em]">AlcheMix <span className="text-teal">Educator</span></span>
+      {/* ── Desktop rail — the console's only chrome, like the student side ── */}
+      <nav
+        aria-label="Console sections"
+        className="glass-strong hidden md:flex fixed left-3 top-1/2 z-40 -translate-y-1/2 flex-col items-center gap-1 rounded-2xl p-1.5"
+      >
+        <Link to="/" aria-label="AlcheMix home" className="group relative flex h-11 w-10 flex-shrink-0 items-center justify-center">
+          <img src="/images/logo-outline.png" alt="" className="h-7 w-7 object-contain transition-transform duration-200 group-hover:scale-110" />
+          <RailChip>AlcheMix · Educator</RailChip>
         </Link>
-        <div className="flex items-center gap-3">
-          <ThemeToggle className="!h-9 !w-9" />
-          <button onClick={async () => { await signOut(); navigate({ to: "/" }); }} className="inline-flex items-center gap-1.5 text-xs text-parchment/70 hover:text-crimson transition">
-            <LogOut className="h-4 w-4" /> <span className="hidden sm:inline">Sign out</span>
+
+        <div className="my-1 h-px w-6 flex-shrink-0" style={{ background: "var(--color-border)" }} />
+
+        {TABS.map((t) => {
+          const active = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              aria-label={t.label}
+              className="group relative flex h-10 w-10 items-center justify-center rounded-xl transition-colors hover:bg-teal/10"
+              style={{
+                color: active ? "var(--color-emerald-elixir)" : "var(--color-parchment)",
+                background: active ? "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)" : undefined,
+              }}
+            >
+              {active && (
+                <span
+                  className="absolute left-0 h-5 w-0.5 rounded-full"
+                  style={{ background: "linear-gradient(180deg, var(--color-emerald-elixir), var(--color-wraith))" }}
+                />
+              )}
+              <t.icon className="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
+              <RailChip>{t.label}</RailChip>
+            </button>
+          );
+        })}
+
+        <div className="my-1 h-px w-6 flex-shrink-0" style={{ background: "var(--color-border)" }} />
+
+        <div className="group relative flex-shrink-0">
+          <ThemeToggle className="!h-10 !w-10 !rounded-xl !border-0 !bg-transparent" />
+          <RailChip>Theme</RailChip>
+        </div>
+        <button
+          onClick={handleSignOut}
+          aria-label="Sign out"
+          className="group relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-parchment/60 transition-colors hover:bg-crimson/10 hover:text-crimson"
+        >
+          <LogOut className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
+          <RailChip>Sign out</RailChip>
+        </button>
+      </nav>
+
+      {/* ── Mobile top bar ── */}
+      <header className="glass-strong md:hidden fixed top-2 inset-x-2 z-40 flex h-14 items-center justify-between rounded-2xl px-4">
+        <Link to="/" className="flex items-center gap-2">
+          <img src="/images/logo-outline.png" alt="" className="h-7 w-7 object-contain" />
+          <span className="font-ui text-sm font-medium tracking-[0.12em]">
+            AlcheMix <span className="text-teal">Educator</span>
+          </span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle className="!h-8 !w-8" />
+          <button
+            onClick={handleSignOut}
+            aria-label="Sign out"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-parchment/60 transition-colors hover:bg-crimson/10 hover:text-crimson"
+          >
+            <LogOut className="h-3.5 w-3.5" />
           </button>
         </div>
       </header>
 
-      <div className="relative z-10 mx-auto max-w-5xl px-5 md:px-8 py-8">
-        <PageHeader eyebrow="Educator Console" title={`Welcome, ${name}.`} subtitle="Set up classes, enrol students with a join code, and grade their progress." icon={GraduationCap} />
+      <div className="relative z-10 px-5 pt-20 pb-12 md:pl-24 md:pr-8 md:pt-10">
+        <div className="mx-auto max-w-6xl">
+          <PageHeader eyebrow="Educator Console" title={`Welcome, ${name}.`} subtitle="Set up classes, enrol students with a join code, and grade their progress." icon={GraduationCap} />
 
-        {/* Tabs */}
-        <div className="inline-flex flex-wrap rounded-full p-1 mb-8" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }}>
-          {TABS.map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs tracking-[0.1em] uppercase transition"
-              style={tab === t.key ? { background: "color-mix(in oklab, var(--color-emerald-elixir) 18%, transparent)", color: "var(--color-emerald-elixir)" } : { color: "var(--color-parchment)" }}>
-              <t.icon className="h-3.5 w-3.5" /> {t.label}
-            </button>
-          ))}
+          {/* Mobile tabs — the rail's phone projection */}
+          <div className="glass-strong scroll-slim md:hidden -mt-2 mb-6 flex gap-1 overflow-x-auto rounded-2xl p-1">
+            {TABS.map((t) => (
+              <button key={t.key} onClick={() => setTab(t.key)}
+                className="flex flex-shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium transition-colors"
+                style={tab === t.key ? { background: "color-mix(in oklab, var(--color-emerald-elixir) 14%, transparent)", color: "var(--color-emerald-elixir)" } : { color: "var(--color-parchment)" }}>
+                <t.icon className="h-3.5 w-3.5" /> {t.label}
+              </button>
+            ))}
+          </div>
+
+          {tab === "classes" && <ClassesTab teacherId={uid ?? ""} teacherName={profile?.displayName ?? profile?.email ?? null} classes={classes} />}
+          {tab === "gradebook" && <GradebookTab classes={classes} />}
+          {tab === "evidence" && <EvidenceTab classes={classes} />}
+          {tab === "matrix" && <MatrixTab classes={classes} />}
+          {tab === "quizzes" && <QuizBuilderTab classes={classes} />}
+          {tab === "missions" && <MissionsTab classes={classes} />}
         </div>
-
-        {tab === "classes" && <ClassesTab teacherId={uid ?? ""} teacherName={profile?.displayName ?? profile?.email ?? null} classes={classes} />}
-        {tab === "gradebook" && <GradebookTab classes={classes} />}
-        {tab === "evidence" && <EvidenceTab classes={classes} />}
-        {tab === "matrix" && <MatrixTab classes={classes} />}
-        {tab === "quizzes" && <QuizBuilderTab classes={classes} />}
-        {tab === "missions" && <MissionsTab classes={classes} />}
       </div>
     </div>
   );

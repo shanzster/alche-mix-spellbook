@@ -10,6 +10,7 @@
  * the guide just keeps showing the recommended path back.
  */
 import type { ComponentType, CSSProperties } from "react";
+import { MANUAL_HIDDEN_ROUTES } from "./moduleVisibility";
 import {
   ShieldAlert,
   Atom,
@@ -294,5 +295,10 @@ export function guideStatus(profile: StudentProfile | null): GuideStatus {
 /** The single recommended next step, for surfacing outside the Grimoire (e.g. Home). */
 export function nextGuideStep(profile: StudentProfile | null): GuideStep | null {
   const { steps, nextIndex } = guideStatus(profile);
-  return nextIndex === -1 ? null : steps[nextIndex].step;
+  if (nextIndex === -1) return null;
+  // Never recommend a module the curator has hidden — walk on to the next.
+  for (let i = nextIndex; i < steps.length; i++) {
+    if (!steps[i].done && !MANUAL_HIDDEN_ROUTES.has(steps[i].step.to)) return steps[i].step;
+  }
+  return null;
 }

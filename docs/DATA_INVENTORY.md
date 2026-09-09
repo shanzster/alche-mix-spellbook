@@ -178,6 +178,13 @@ reviewedAt. 1:1 with a teacher's user doc.
 | `alchemix-duel-seen:{duelId}` | `src/lib/duel-net.ts` | "new since last visit" log bookmark |
 | Cache Storage `alchemix-{SW_VERSION}` | `public/sw.js` | offline app shell + conservative runtime cache |
 
+### D10 — Firestore `config/modules` (module visibility)
+Owner: `src/lib/moduleVisibility.ts`. One doc: `hidden: string[]` (route
+paths curated off the student navigation). Written from the public `/modules`
+Curator page (admin-only per rules); read live by every `StudentShell` to
+filter the rail, Table of Contents, pager, and mobile nav. `/app` is never
+filtered (shell anchor).
+
 ### D9 — Static in-code datasets (read-only "reference stores")
 Not databases, but they appear on DFDs as the content source every module
 reads. All in `src/lib/` unless noted: `cards.ts` (12 base cards + the
