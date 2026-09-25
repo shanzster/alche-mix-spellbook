@@ -540,9 +540,14 @@ function Landing() {
                       </li>
                     ))}
                   </ul>
-                  <Link to="/app" className="btn-ghost-arcane text-sm">
-                    <Eye className="h-4 w-4" /> View Dashboard
-                  </Link>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Link to="/schools" className="btn-ghost-arcane text-sm">
+                      <GraduationCap className="h-4 w-4" /> Why Schools Choose AlcheMix
+                    </Link>
+                    <Link to="/app" className="btn-ghost-arcane text-sm">
+                      <Eye className="h-4 w-4" /> View Dashboard
+                    </Link>
+                  </div>
                 </div>
               </div>
             </Reveal>

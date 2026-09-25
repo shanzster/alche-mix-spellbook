@@ -19,6 +19,7 @@ import { Route as StartersRouteImport } from './routes/starters'
 import { Route as SolutionsRouteImport } from './routes/solutions'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ShopRouteImport } from './routes/shop'
+import { Route as SchoolsRouteImport } from './routes/schools'
 import { Route as ScavengerRouteImport } from './routes/scavenger'
 import { Route as ScannerRouteImport } from './routes/scanner'
 import { Route as ReactionsRouteImport } from './routes/reactions'
@@ -101,6 +102,11 @@ const SignupRoute = SignupRouteImport.update({
 const ShopRoute = ShopRouteImport.update({
   id: '/shop',
   path: '/shop',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SchoolsRoute = SchoolsRouteImport.update({
+  id: '/schools',
+  path: '/schools',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScavengerRoute = ScavengerRouteImport.update({
@@ -303,6 +309,7 @@ export interface FileRoutesByFullPath {
   '/reactions': typeof ReactionsRoute
   '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
+  '/schools': typeof SchoolsRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
   '/solutions': typeof SolutionsRoute
@@ -348,6 +355,7 @@ export interface FileRoutesByTo {
   '/reactions': typeof ReactionsRoute
   '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
+  '/schools': typeof SchoolsRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
   '/solutions': typeof SolutionsRoute
@@ -394,6 +402,7 @@ export interface FileRoutesById {
   '/reactions': typeof ReactionsRoute
   '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
+  '/schools': typeof SchoolsRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
   '/solutions': typeof SolutionsRoute
@@ -441,6 +450,7 @@ export interface FileRouteTypes {
     | '/reactions'
     | '/scanner'
     | '/scavenger'
+    | '/schools'
     | '/shop'
     | '/signup'
     | '/solutions'
@@ -486,6 +496,7 @@ export interface FileRouteTypes {
     | '/reactions'
     | '/scanner'
     | '/scavenger'
+    | '/schools'
     | '/shop'
     | '/signup'
     | '/solutions'
@@ -531,6 +542,7 @@ export interface FileRouteTypes {
     | '/reactions'
     | '/scanner'
     | '/scavenger'
+    | '/schools'
     | '/shop'
     | '/signup'
     | '/solutions'
@@ -577,6 +589,7 @@ export interface RootRouteChildren {
   ReactionsRoute: typeof ReactionsRoute
   ScannerRoute: typeof ScannerRoute
   ScavengerRoute: typeof ScavengerRoute
+  SchoolsRoute: typeof SchoolsRoute
   ShopRoute: typeof ShopRoute
   SignupRoute: typeof SignupRoute
   SolutionsRoute: typeof SolutionsRoute
@@ -659,6 +672,13 @@ declare module '@tanstack/react-router' {
       path: '/shop'
       fullPath: '/shop'
       preLoaderRoute: typeof ShopRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/schools': {
+      id: '/schools'
+      path: '/schools'
+      fullPath: '/schools'
+      preLoaderRoute: typeof SchoolsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scavenger': {
@@ -929,6 +949,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReactionsRoute: ReactionsRoute,
   ScannerRoute: ScannerRoute,
   ScavengerRoute: ScavengerRoute,
+  SchoolsRoute: SchoolsRoute,
   ShopRoute: ShopRoute,
   SignupRoute: SignupRoute,
   SolutionsRoute: SolutionsRoute,

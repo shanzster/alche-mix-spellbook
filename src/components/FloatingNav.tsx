@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Info, Atom, Compass, LogIn, LogOut, UserPlus } from "lucide-react";
+import { Info, Atom, Compass, School, LogIn, LogOut, UserPlus } from "lucide-react";
 import { onAuthChange, signOut, type User } from "../lib/auth";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -9,6 +9,7 @@ const NAV_LINKS = [
   { href: "/about", label: "About", icon: Info },
   { href: "/elements", label: "Elements", icon: Atom },
   { href: "/learn", label: "How It Works", icon: Compass },
+  { href: "/schools", label: "For Schools", icon: School },
 ] as const;
 
 function NavLink({ href, label, icon: Icon }: (typeof NAV_LINKS)[number]) {
@@ -161,6 +162,7 @@ export function FloatingNav() {
           </Link>
 
           <NavLink {...NAV_LINKS[2]} />
+          <NavLink {...NAV_LINKS[3]} />
 
           {/* Mobile: theme + auth live inside the pill so nothing overlaps. */}
           <span className="flex items-center gap-1.5 md:hidden">
