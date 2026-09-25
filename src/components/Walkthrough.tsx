@@ -48,6 +48,12 @@ const ALL_TOUR_STEPS: TourStep[] = [
     anchors: ['[data-tour="rail"]', '[data-tour="tabs"]'],
   },
   {
+    to: "/app",
+    title: "Your craft rank",
+    body: "Every apprentice begins as a Novice. Pass a module's trial with 2 stars or better to master its craft — each mastered craft fills this ladder and raises your rank, from Novice all the way to Archalchemist.",
+    anchors: ['[data-tour="craft"]'],
+  },
+  {
     to: "/cards",
     title: "The Grimoire",
     body: "Your card collection. Scan the physical AR cards to claim them, mix cards to forge compounds, and print what you forge.",
@@ -183,6 +189,12 @@ const ALL_TOUR_STEPS: TourStep[] = [
     to: "/quiz",
     title: "3D Visual Quiz",
     body: "Prove your craft against questions built from the 3D models themselves.",
+    anchors: PAGE_HEADER,
+  },
+  {
+    to: "/identifier",
+    title: "Element Identifier",
+    body: "A mystery element, five real clues — name it in as few as you can, like an assayer reading ore.",
     anchors: PAGE_HEADER,
   },
   {

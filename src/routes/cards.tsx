@@ -104,35 +104,60 @@ function Grimoire() {
           const owned = collected.includes(el.symbol);
           const color = CARD_COLOR[el.key] ?? "var(--color-emerald-elixir)";
           return owned ? (
-            <button
-              key={el.key}
-              onClick={() => setOpen(el)}
-              className="group relative flex aspect-[3/4] flex-col items-center justify-center rounded-2xl p-4 transition-all duration-200 hover:-translate-y-1"
-              style={{
-                background: `radial-gradient(circle at 40% 22%, color-mix(in oklab, ${color} 30%, transparent), color-mix(in oklab, var(--color-slate-sunken) 80%, transparent))`,
-                border: `1.5px solid color-mix(in oklab, ${color} 45%, transparent)`,
-                boxShadow: `0 10px 34px -18px ${color}`,
-              }}
-            >
-              <span className="font-sans text-4xl font-semibold leading-none" style={{ color }}>
-                {el.symbol}
-              </span>
-              <span className="mt-1 text-[10px] text-parchment/60">
-                {el.number} · {el.mass}
-              </span>
-              <span className="mt-2 font-ui font-medium text-sm text-spectral">{el.name}</span>
-              <span className="mt-0.5 text-[10px] text-parchment/60">{el.category}</span>
-              <span
-                className="mt-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[9px] tracking-[0.12em] uppercase"
+            el.image ? (
+              // Image-front card — the physical card's AR trigger artwork.
+              <button
+                key={el.key}
+                onClick={() => setOpen(el)}
+                className="group relative flex aspect-[3/4] flex-col overflow-hidden rounded-2xl transition-all duration-200 hover:-translate-y-1"
                 style={{
-                  color,
-                  background: `color-mix(in oklab, ${color} 14%, transparent)`,
-                  border: `1px solid color-mix(in oklab, ${color} 35%, transparent)`,
+                  border: `1.5px solid color-mix(in oklab, ${color} 45%, transparent)`,
+                  boxShadow: `0 10px 34px -18px ${color}`,
                 }}
               >
-                <Sparkles className="h-2.5 w-2.5" /> Collected
-              </span>
-            </button>
+                <img src={el.image} alt={`${el.name} card`} className="h-full w-full object-cover" />
+                <span
+                  className="absolute bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-1 text-[9px] tracking-[0.12em] uppercase backdrop-blur"
+                  style={{
+                    color,
+                    background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)",
+                    border: `1px solid color-mix(in oklab, ${color} 35%, transparent)`,
+                  }}
+                >
+                  <Sparkles className="h-2.5 w-2.5" /> Collected
+                </span>
+              </button>
+            ) : (
+              <button
+                key={el.key}
+                onClick={() => setOpen(el)}
+                className="group relative flex aspect-[3/4] flex-col items-center justify-center rounded-2xl p-4 transition-all duration-200 hover:-translate-y-1"
+                style={{
+                  background: `radial-gradient(circle at 40% 22%, color-mix(in oklab, ${color} 30%, transparent), color-mix(in oklab, var(--color-slate-sunken) 80%, transparent))`,
+                  border: `1.5px solid color-mix(in oklab, ${color} 45%, transparent)`,
+                  boxShadow: `0 10px 34px -18px ${color}`,
+                }}
+              >
+                <span className="font-sans text-4xl font-semibold leading-none" style={{ color }}>
+                  {el.symbol}
+                </span>
+                <span className="mt-1 text-[10px] text-parchment/60">
+                  {el.number} · {el.mass}
+                </span>
+                <span className="mt-2 font-ui font-medium text-sm text-spectral">{el.name}</span>
+                <span className="mt-0.5 text-[10px] text-parchment/60">{el.category}</span>
+                <span
+                  className="mt-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[9px] tracking-[0.12em] uppercase"
+                  style={{
+                    color,
+                    background: `color-mix(in oklab, ${color} 14%, transparent)`,
+                    border: `1px solid color-mix(in oklab, ${color} 35%, transparent)`,
+                  }}
+                >
+                  <Sparkles className="h-2.5 w-2.5" /> Collected
+                </span>
+              </button>
+            )
           ) : (
             <div
               key={el.key}

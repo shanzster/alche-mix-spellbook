@@ -60,6 +60,7 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 | /titration | Titration Lab | AI grading of the unknown assay (`aiGradeAnswer`, E3) |
 | /decay | Radioactive Decay | — |
 | /quiz | 3D Visual Quiz | persisted bests in `trials` |
+| /identifier | Element Identifier (mystery-element clue game) | persisted bests in `trials`; clues built from static periodic-table + lore data (**D9**) |
 | /elements | Element Explorer (public, no auth) | static data **D9** only |
 
 ### 1.3 Capture companion (mobile / PWA)
@@ -83,7 +84,7 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 | Feature | Route / file | Data touchpoints |
 |---|---|---|
 | Class creation + join codes | `/teacher` · `src/lib/teacher.ts` | creates `classes/{CODE}` **D4** (the join code IS the doc id) |
-| Student joins a class | `/app` join dialog | writes roster entry **D5** + stamps `users/{uid}.classId/.className` |
+| Student joins a class | `/app` join dialog · optional school-code field on `/signup` | writes roster entry **D5** + stamps `users/{uid}.classId/.className` |
 | Gradebook (5 topics) + mastery | `/teacher` | writes `users/{uid}.grades`, `.mastery` (teacher-entered — the only real grades in the system) |
 | Quiz Builder (+ curriculum seeding, live results) | `/teacher` | quizzes stored as an **array field on the class doc** (`classes/{id}.quizzes[]`); results read from students' `assignmentResults` |
 | Mission Configurator | `/teacher` | `classes/{id}.missions[]`; completion proven by students' `practice.*` counters |

@@ -33,6 +33,7 @@ import {
   Droplets,
   Coffee,
   Compass,
+  Fingerprint,
 } from "lucide-react";
 import { StudentShell } from "../components/StudentShell";
 import { PageHeader } from "../components/PageHeader";
@@ -293,6 +294,15 @@ const MODULES: ModuleRow[] = [
     status: "live",
     group: "Prove Your Craft",
   },
+  {
+    icon: Fingerprint,
+    title: "Element Identifier",
+    desc: "Name the mystery element from real clues — fewer is better.",
+    color: "var(--color-gold)",
+    to: "/identifier",
+    status: "live",
+    group: "Prove Your Craft",
+  },
   // ── Field Work ──
   {
     icon: ScanLine,
@@ -492,7 +502,7 @@ function CraftBar({ profile }: { profile: StudentProfile }) {
   const masteredLabels = CRAFTS.filter((c) => mastered.includes(c.id)).map((c) => c.label);
 
   return (
-    <div className="glass mb-6 rounded-2xl p-5">
+    <div className="glass mb-6 rounded-2xl p-5" data-tour="craft">
       <div className="flex flex-wrap items-center gap-3.5">
         <span className="orb-rune h-11 w-11 flex-shrink-0 text-gold">
           <FlaskConical className="h-4.5 w-4.5" />
@@ -614,29 +624,38 @@ function StudentHub() {
     const live = m.status === "live";
     const recommended = nextStep?.to === m.to;
     const mobileOnly = m.arOnly && platform.ready && !platform.arCapable;
+    // Compact row card — icon beside a one-line summary keeps every chapter's
+    // grid short, so more of the bench fits on screen without scrolling.
     const card = (
-      <div className="glass relative flex h-full flex-col items-center rounded-2xl p-4 pt-5 text-center">
+      <div className="glass relative flex h-full items-center gap-3 rounded-2xl p-3 text-left">
         {recommended && (
           <span
-            className="absolute right-3 top-3 h-1.5 w-1.5 rounded-full bg-emerald-elixir"
+            className="absolute right-2.5 top-2.5 h-1.5 w-1.5 rounded-full bg-emerald-elixir"
             title="Up next on your Guide path"
           />
         )}
-        {!live && <span className={`absolute left-3 top-3 ${LABEL}`}>{STATUS_LABEL[m.status]}</span>}
-        <span className="emblem-arcane h-11 w-11 flex-shrink-0">
+        <span className="emblem-arcane h-9 w-9 flex-shrink-0">
           <m.icon
-            className={`relative h-4.5 w-4.5 transition-colors ${
+            className={`relative h-4 w-4 transition-colors ${
               recommended ? "text-emerald-elixir" : "text-gold"
             }`}
           />
         </span>
-        <div className="mt-3 font-serif text-[15px] font-semibold tracking-wide text-spectral">
-          {m.title}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <span className="truncate font-serif text-sm font-semibold tracking-wide text-spectral">
+              {m.title}
+            </span>
+            {!live && <span className={`ml-auto flex-shrink-0 ${LABEL}`}>{STATUS_LABEL[m.status]}</span>}
+          </div>
+          <p
+            className="truncate font-serif text-[11px] italic leading-snug text-parchment/70"
+            title={m.desc}
+          >
+            {m.desc}
+          </p>
+          {mobileOnly && <p className="mt-0.5 text-[10px] text-parchment/50">On mobile</p>}
         </div>
-        <p className="mt-1 font-serif text-xs italic leading-snug text-parchment/70 line-clamp-2">
-          {m.desc}
-        </p>
-        {mobileOnly && <p className="mt-2 text-xs text-parchment/50">On mobile</p>}
       </div>
     );
     return live ? (
@@ -651,7 +670,7 @@ function StudentHub() {
   };
 
   const grid = (rows: ModuleRow[]) => (
-    <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
       {rows.map(renderCard)}
     </div>
   );

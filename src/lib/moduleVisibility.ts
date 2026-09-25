@@ -14,21 +14,10 @@ import { db } from "./firebase";
 const ref = () => doc(db, "config", "modules");
 
 /**
- * TEMP (owner curation, 2026-09-09): chapters hidden in code until their
- * modules are ready — The Study, Advanced Labs, Prove Your Craft, and the
- * Arcade. Remove entries here to bring them back. Applied on top of (union
- * with) the live config/modules doc.
+ * Chapters/modules hidden in code (route paths). Empty = everything shows.
+ * Applied on top of (union with) the live config/modules doc.
  */
-export const MANUAL_HIDDEN_ROUTES = new Set<string>([
-  // II · The Study
-  "/study",
-  // IV · Advanced Labs
-  "/gas-laws", "/solutions", "/thermo", "/rates", "/equilibrium", "/electro", "/titration", "/decay",
-  // V · Prove Your Craft
-  "/quiz",
-  // The Arcade
-  "/duel", "/duels", "/table-game", "/leaderboard", "/shop",
-]);
+export const MANUAL_HIDDEN_ROUTES = new Set<string>([]);
 
 export function useHiddenModules() {
   const [hidden, setHidden] = useState<Set<string>>(new Set(MANUAL_HIDDEN_ROUTES));

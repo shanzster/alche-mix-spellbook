@@ -34,6 +34,8 @@ export interface ARElement {
   mass: string;
   category: string;
   facts: string[];
+  /** The physical card's AR trigger artwork — doubles as the Grimoire card front. */
+  image?: string;
 }
 
 /** Anchor index = position here = compile order of the trigger images. */
@@ -50,6 +52,7 @@ export const AR_ELEMENTS: ARElement[] = [
       "Origin: The Grand Grimoire",
       "Glows faintly under moonlight",
     ],
+    image: "/image-trigger/image-trigger-alchemix.png",
   },
   {
     key: "helium",
@@ -63,6 +66,7 @@ export const AR_ELEMENTS: ARElement[] = [
       "Second-lightest element of all",
       "Lighter than air — balloons float",
     ],
+    image: "/image-trigger/image-trigger-helium.png",
   },
 ];
 

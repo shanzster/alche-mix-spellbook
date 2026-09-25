@@ -86,19 +86,65 @@ export const SCAVENGER_ELEMENTS: ScavengerElement[] = [
   { symbol: "Au", name: "Gold", number: 79, color: "#fbbf24", nucleus: "#fde68a",
     hint: "Precious metal — check for jewellery.",
     examples: ["a gold ring or chain", "gold-coloured jewellery"] },
+  { symbol: "Li", name: "Lithium", number: 3, color: "#f87171", nucleus: "#fca5a5",
+    hint: "Powers your phone's rechargeable battery.",
+    examples: ["a phone or laptop battery label", "a rechargeable power bank"] },
+  { symbol: "F", name: "Fluorine", number: 9, color: "#4ade80", nucleus: "#86efac",
+    hint: "Check your toothpaste tube.",
+    examples: ["a toothpaste tube (fluoride)", "a non-stick pan (PTFE)", "a mouthwash label"] },
+  { symbol: "Si", name: "Silicon", number: 14, color: "#38bdf8", nucleus: "#7dd3fc",
+    hint: "In glass, sand and every computer chip.",
+    examples: ["a glass or window", "sand", "a computer or phone chip", "ceramic tiles"] },
+  { symbol: "P", name: "Phosphorus", number: 15, color: "#fb7185", nucleus: "#fda4af",
+    hint: "Strike a match — it's on the box.",
+    examples: ["a matchbox striking strip", "match heads", "a plant fertiliser label"] },
+  { symbol: "Ti", name: "Titanium", number: 22, color: "#a5b4fc", nucleus: "#c7d2fe",
+    hint: "Hides in bright white paint and sunscreen.",
+    examples: ["bright white wall paint", "sunscreen (titanium dioxide)", "glasses frames"] },
+  { symbol: "Cr", name: "Chromium", number: 24, color: "#93c5fd", nucleus: "#bfdbfe",
+    hint: "The mirror-shine plating on taps.",
+    examples: ["a chrome tap or fitting", "a stainless-steel sink", "a chrome-plated tool"] },
+  { symbol: "Ni", name: "Nickel", number: 28, color: "#a3a3a3", nucleus: "#d4d4d4",
+    hint: "Silvery coins and stainless steel.",
+    examples: ["a silver-coloured coin", "stainless-steel cutlery", "a rechargeable battery (NiMH)"] },
+  { symbol: "Ag", name: "Silver", number: 47, color: "#cbd5e1", nucleus: "#e2e8f0",
+    hint: "The precious white metal — check jewellery.",
+    examples: ["silver jewellery", "the reflective back of a mirror", "silver-plated cutlery"] },
+  { symbol: "I", name: "Iodine", number: 53, color: "#c084fc", nucleus: "#d8b4fe",
+    hint: "In the first-aid kit and iodised salt.",
+    examples: ["iodine antiseptic in a first-aid kit", "an iodised table-salt label", "seaweed snacks"] },
+  { symbol: "W", name: "Tungsten", number: 74, color: "#eab308", nucleus: "#fde047",
+    hint: "The filament in old-style light bulbs.",
+    examples: ["an old incandescent bulb's filament", "a drill bit (tungsten carbide)"] },
 ];
 
 export function scavengerElement(symbol: string): ScavengerElement | undefined {
   return SCAVENGER_ELEMENTS.find((e) => e.symbol === symbol);
 }
 
+/**
+ * Mission phrasings — picked deterministically per element so each hunt reads
+ * differently without ever changing what the AI is asked to verify.
+ */
+const MISSION_TEMPLATES: ((el: ScavengerElement) => string)[] = [
+  (el) =>
+    `Find and photograph an object in your home that contains the element ` +
+    `${el.name} (${el.symbol}). Common sources include: ${el.examples.join(", ")}.`,
+  (el) =>
+    `The Alchemist needs proof of ${el.name} (${el.symbol}). Hunt through your ` +
+    `home and photograph something that contains it — try: ${el.examples.join(", ")}.`,
+  (el) =>
+    `Your quarry today is ${el.name} (${el.symbol}). Track down and photograph ` +
+    `a household source of this element, such as: ${el.examples.join(", ")}.`,
+  (el) =>
+    `Somewhere in your home hides ${el.name} (${el.symbol}). Capture it on ` +
+    `camera — likely hiding places: ${el.examples.join(", ")}.`,
+];
+
 /** The mission prompt sent to the AI (and shown to the student). */
 export function buildMissionQuestion(el: ScavengerElement): string {
-  return (
-    `Find and photograph an object in your home that contains the element ` +
-    `${el.name} (${el.symbol}). Common sources include: ${el.examples.join(", ")}. ` +
-    `Does the photo plausibly show something containing ${el.name}?`
-  );
+  const mission = MISSION_TEMPLATES[el.number % MISSION_TEMPLATES.length](el);
+  return `${mission} Does the photo plausibly show something containing ${el.name}?`;
 }
 
 // ── Image helper: downscale a captured frame so it fits a Firestore doc ────────

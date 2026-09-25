@@ -52,6 +52,7 @@ export const CRAFTS: CraftDef[] = [
   { id: "electro", label: "The Voltaic Forge", done: trial2("electro") },
   { id: "titration", label: "Titration Lab", done: trial2("titration") },
   { id: "quiz", label: "3D Visual Quiz", done: trial2("quiz") },
+  { id: "identifier", label: "Element Identifier", done: trial2("identifier") },
 ];
 
 /** The ranks of the craft — `at` is the mastered-count threshold. */

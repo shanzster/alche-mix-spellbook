@@ -32,6 +32,7 @@ import {
   Magnet,
   Droplets,
   Coffee,
+  Fingerprint,
 } from "lucide-react";
 import { CURRICULUM } from "./curriculum";
 import type { StudentProfile } from "./profile";
@@ -240,6 +241,15 @@ export const GUIDE: GuideStep[] = [
     icon: ClipboardList,
     why: "Prove you can identify elements from their rotating atoms alone.",
     done: (p) => practised(p, "quiz"),
+  },
+  {
+    id: "identifier",
+    chapter: CH5,
+    title: "Element Identifier",
+    to: "/identifier",
+    icon: Fingerprint,
+    why: "Deduce mystery elements from real clues — family, state, properties, lore.",
+    done: (p) => practised(p, "identifier"),
   },
   {
     id: "starters",

@@ -35,6 +35,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Fingerprint,
 } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { signOut } from "../lib/auth";
@@ -117,6 +118,7 @@ export const NAV: NavItem[] = [
   { to: "/titration", label: "Titration Lab", icon: Beaker, chapter: CH_4 },
   { to: "/decay", label: "Radioactive Decay", icon: Radiation, chapter: CH_4 },
   { to: "/quiz", label: "3D Quiz", icon: ClipboardList, chapter: CH_5 },
+  { to: "/identifier", label: "Element Identifier", icon: Fingerprint, chapter: CH_5 },
   { to: "/duel", label: "Duel", icon: Swords, chapter: CH_ARCADE },
   { to: "/duels", label: "Class Duels", icon: Swords, chapter: CH_ARCADE },
   { to: "/table-game", label: "Placement Trials", icon: Crosshair, chapter: CH_ARCADE },

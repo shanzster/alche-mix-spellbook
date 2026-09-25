@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { FlaskConical, Mail, Lock, Eye, EyeOff, UserPlus } from "lucide-react";
-import { signUpWithEmail, signInWithGoogle } from "../lib/auth";
+import { FlaskConical, Mail, Lock, Eye, EyeOff, UserPlus, Users } from "lucide-react";
+import { signUpWithEmail, signInWithGoogle, type User } from "../lib/auth";
+import { joinClass } from "../lib/teacher";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
@@ -31,8 +32,19 @@ function SignupPage() {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
   const [role, setRole]         = useState<"student" | "teacher">(roleParam === "teacher" ? "teacher" : "student");
+  const [classCode, setClassCode] = useState("");
 
   const destination = role === "teacher" ? "/teacher" : "/app";
+
+  // Best-effort: enrolment must never block account creation — an unmatched
+  // code just lands the student on the Bench, where the join card remains.
+  const joinWithCode = async (user: User) => {
+    if (role !== "student" || classCode.trim().length < 4) return;
+    await joinClass(
+      { uid: user.uid, name: user.displayName ?? null, email: user.email ?? null },
+      classCode,
+    );
+  };
 
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +53,8 @@ function SignupPage() {
     if (password.length < 6)  { setError("Password must be at least 6 characters."); return; }
     setLoading(true);
     try {
-      await signUpWithEmail(email, password, role);
+      const user = await signUpWithEmail(email, password, role);
+      await joinWithCode(user);
       navigate({ to: destination });
     } catch (err: any) {
       setError(friendlyError(err.code));
@@ -51,7 +64,8 @@ function SignupPage() {
   const handleGoogle = async () => {
     setError(""); setLoading(true);
     try {
-      await signInWithGoogle(role);
+      const user = await signInWithGoogle(role);
+      await joinWithCode(user);
       navigate({ to: destination });
     } catch (err: any) {
       console.error("Google sign-in failed:", err);
@@ -119,6 +133,33 @@ function SignupPage() {
               <p className="text-[11px] text-gold/80 mt-2 text-center">Educator accounts require admin approval before access.</p>
             )}
           </div>
+
+          {/* School / class code — entered at registration so the student lands
+              already enrolled. Optional: the Bench's join card remains the
+              fallback for codes handed out later. */}
+          {role === "student" && (
+            <div className="mb-6">
+              <label className="block text-xs tracking-[0.2em] uppercase text-parchment/60 mb-1.5">
+                School code <span className="normal-case tracking-normal text-parchment/40">(optional)</span>
+              </label>
+              <div className="relative">
+                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-parchment/40" />
+                <input
+                  value={classCode}
+                  onChange={e => setClassCode(e.target.value.toUpperCase())}
+                  placeholder="ABC123"
+                  maxLength={6}
+                  aria-label="School code"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm font-semibold tracking-[0.3em] uppercase text-spectral placeholder:font-normal placeholder:tracking-[0.2em] placeholder:text-parchment/30 outline-none transition-all"
+                  style={{ background: "color-mix(in oklab, var(--color-mist) 80%, transparent)", border: "1px solid color-mix(in oklab, var(--color-parchment) 22%, transparent)" }}
+                  onFocus={e => (e.currentTarget.style.borderColor = "color-mix(in oklab, var(--color-wraith) 60%, transparent)")}
+                  onBlur={e => (e.currentTarget.style.borderColor = "color-mix(in oklab, var(--color-parchment) 22%, transparent)")} />
+              </div>
+              <p className="text-[11px] text-parchment/50 mt-1.5">
+                Got a code from your teacher? Enter it to join their class right away.
+              </p>
+            </div>
+          )}
 
           {/* Google button */}
           <button onClick={handleGoogle} disabled={loading}
