@@ -57,6 +57,10 @@ function MoleculeCanvas({ color = "var(--color-wraith)" }: { color?: string }) {
     const canvas = ref.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d")!;
+    // Canvas paint styles can't resolve CSS var() — pin the colour on the
+    // element and read back the computed value so color-mix gets a real colour.
+    canvas.style.color = color;
+    const paint = getComputedStyle(canvas).color;
     const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
     resize();
     window.addEventListener("resize", resize);
@@ -82,16 +86,16 @@ function MoleculeCanvas({ color = "var(--color-wraith)" }: { color?: string }) {
           if (d < 180) {
             const a = (1 - d / 180) * 0.55;
             ctx.beginPath(); ctx.moveTo(nodes[i].x, nodes[i].y); ctx.lineTo(nodes[j].x, nodes[j].y);
-            ctx.strokeStyle = `color-mix(in oklab, ${color} ${Math.round(a*100)}%, transparent)`;
+            ctx.strokeStyle = `color-mix(in oklab, ${paint} ${Math.round(a*100)}%, transparent)`;
             ctx.lineWidth = (1 - d / 180) * 2; ctx.stroke();
           }
         }
       }
       for (const n of nodes) {
         ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-        ctx.fillStyle = `color-mix(in oklab, ${color} 14%, transparent)`; ctx.fill();
-        ctx.strokeStyle = `color-mix(in oklab, ${color} 45%, transparent)`; ctx.lineWidth = 1.2; ctx.stroke();
-        ctx.fillStyle = `color-mix(in oklab, ${color} 80%, transparent)`;
+        ctx.fillStyle = `color-mix(in oklab, ${paint} 14%, transparent)`; ctx.fill();
+        ctx.strokeStyle = `color-mix(in oklab, ${paint} 45%, transparent)`; ctx.lineWidth = 1.2; ctx.stroke();
+        ctx.fillStyle = `color-mix(in oklab, ${paint} 80%, transparent)`;
         ctx.font = `600 10px "EB Garamond", serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
         ctx.fillText(n.label, n.x, n.y);
       }
@@ -187,7 +191,7 @@ function ElementSelector() {
             <button
               key={el.sym}
               onClick={() => setSelected(el)}
-              className="relative flex items-center justify-center rounded-lg font-display text-sm transition-all duration-200 hover:scale-110"
+              className="relative flex items-center justify-center rounded-lg font-ui text-sm font-bold transition-all duration-200 hover:scale-110"
               style={{
                 width: 44, height: 44,
                 background: `radial-gradient(circle at 35% 35%, color-mix(in oklab, ${el.c} ${isActive ? 80 : 55}%, white 15%), color-mix(in oklab, ${el.c} ${isActive ? 50 : 25}%, transparent))`,
@@ -454,7 +458,7 @@ function Landing() {
                   </div>
                   <div className="h-0.5 w-12 mx-auto mb-5 rounded-full"
                     style={{ background: `color-mix(in oklab, ${color} 50%, transparent)` }} />
-                  <h3 className="font-display text-xl text-center mb-3">{title}</h3>
+                  <h3 className="text-xl text-center mb-3">{title}</h3>
                   <p className="text-parchment text-sm leading-relaxed text-center flex-1">{body}</p>
                   <p className="mt-4 text-center text-xs tracking-[0.2em] uppercase" style={{ color }}>{detail}</p>
                 </div>
@@ -488,7 +492,7 @@ function Landing() {
                       <GraduationCap className="h-6 w-6 text-wraith" />
                     </div>
                     <div>
-                      <h3 className="font-display text-2xl">For Students</h3>
+                      <h3 className="text-2xl">For Students</h3>
                       <p className="text-xs text-wraith tracking-[0.2em] uppercase mt-0.5">The Apprentice</p>
                     </div>
                   </div>
@@ -525,7 +529,7 @@ function Landing() {
                       <Eye className="h-6 w-6 text-gold" />
                     </div>
                     <div>
-                      <h3 className="font-display text-2xl">For Educators</h3>
+                      <h3 className="text-2xl">For Educators</h3>
                       <p className="text-xs text-gold tracking-[0.2em] uppercase mt-0.5">The Astrolabe</p>
                     </div>
                   </div>
@@ -619,8 +623,8 @@ function Landing() {
                           color,
                         }}>{icon}</div>
                     </div>
-                    <div className="font-display text-xs tracking-[0.3em] uppercase mb-1" style={{ color }}>{n}</div>
-                    <h3 className="font-display text-base mb-2">{title}</h3>
+                    <div className="font-ui text-xs font-bold tracking-[0.3em] uppercase mb-1" style={{ color }}>{n}</div>
+                    <h3 className="text-base mb-2">{title}</h3>
                     <p className="text-parchment text-xs leading-relaxed">{body}</p>
                   </div>
                 </Reveal>
@@ -639,7 +643,7 @@ function Landing() {
           </Reveal>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { icon: <Atom className="h-7 w-7" />, label: "Element Explorer", desc: "All 118 elements, colour-coded by category. Bohr model diagrams, electron shells, and curated facts — filterable and searchable.", tag: "Guest Access", tagColor: "var(--color-wraith)", to: "/elements", btnLabel: "Explore Now" },
+              { icon: <Atom className="h-7 w-7" />, label: "Element Explorer", desc: "42 curated elements, colour-coded by category. Bohr model diagrams, electron shells, and curated facts — filterable and searchable.", tag: "Guest Access", tagColor: "var(--color-wraith)", to: "/elements", btnLabel: "Explore Now" },
               { icon: <BookMarked className="h-7 w-7" />, label: "Grimoire Cards", desc: "A physical card set of the 12 essential base elements — each one AR-scannable, unlocking 3D molecular models. The remaining 30 elements must be forged.", tag: "Physical + Digital", tagColor: "var(--color-gold)", to: "/grimoire", btnLabel: "View Collection" },
               { icon: <Zap className="h-7 w-7" />, label: "The Platform", desc: "The full AlcheMix experience — Reaction Sandbox, Educator Astrolabe, and AI Evidence Journal, all in one AR-powered web app.", tag: "Full Platform", tagColor: "var(--color-emerald-elixir)", to: "/app", btnLabel: "Open Platform" },
             ].map(({ icon, label, desc, tag, tagColor, to, btnLabel }) => (
@@ -653,9 +657,9 @@ function Landing() {
                       <span className="text-[9px] tracking-[0.25em] uppercase rounded-full px-2.5 py-0.5"
                         style={{ color: tagColor, background: `color-mix(in oklab, ${tagColor} 12%, transparent)`, border: `1px solid color-mix(in oklab, ${tagColor} 30%, transparent)` }}>{tag}</span>
                     </div>
-                    <h3 className="font-display text-xl mb-3">{label}</h3>
+                    <h3 className="text-xl mb-3">{label}</h3>
                     <p className="text-parchment text-sm leading-relaxed flex-1">{desc}</p>
-                    <Link to={to as any} className="mt-6 inline-flex items-center gap-2 text-sm font-display tracking-[0.1em] transition-all duration-200" style={{ color: tagColor }}
+                    <Link to={to as any} className="mt-6 inline-flex items-center gap-2 text-sm font-ui font-semibold transition-all duration-200" style={{ color: tagColor }}
                       onMouseEnter={e => (e.currentTarget.style.gap = "10px")}
                       onMouseLeave={e => (e.currentTarget.style.gap = "8px")}>
                       {btnLabel} <ArrowRight className="h-3.5 w-3.5" />
@@ -669,10 +673,10 @@ function Landing() {
       </section>
 
       {/* ── Quiet divider ── */}
-      <section className="relative z-10 py-16">
+      <section className="relative z-10 py-10">
         <div className="mx-auto flex max-w-5xl items-center gap-5 px-6">
           <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, transparent, var(--color-border))" }} />
-          <p className="font-display text-sm text-gold tracking-[0.35em] uppercase whitespace-nowrap">Every element tells a story</p>
+          <p className="font-ui text-xs font-semibold text-gold tracking-[0.35em] uppercase whitespace-nowrap">Every element tells a story</p>
           <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, var(--color-border), transparent)" }} />
         </div>
       </section>
@@ -683,14 +687,14 @@ function Landing() {
           <div className="grid grid-cols-1 gap-px md:grid-cols-3 rounded-2xl overflow-hidden"
             style={{ border: "1px solid color-mix(in oklab, var(--color-parchment) 15%, transparent)" }}>
             {[
-              { stat: "42", label: "Elements in the explorer", sub: "Every element on the periodic table" },
+              { stat: "42", label: "Elements in the explorer", sub: "12 base cards + 30 forged discoveries" },
               { stat: "3D AR", label: "Molecular visualisation", sub: "Rendered in your physical space" },
               { stat: "AI-Graded", label: "Evidence submissions", sub: "Instant feedback on real-world samples" },
             ].map(({ stat, label, sub }) => (
               <div key={stat} className="flex flex-col items-center gap-2 px-8 py-10 text-center"
                 style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)" }}>
                 <p className="font-display text-3xl text-wraith">{stat}</p>
-                <p className="font-display text-sm text-spectral">{label}</p>
+                <p className="font-ui text-sm font-semibold text-spectral">{label}</p>
                 <p className="text-xs text-parchment/60">{sub}</p>
               </div>
             ))}
@@ -699,7 +703,7 @@ function Landing() {
       </section>
 
       {/* ── SECTION 8: Final CTA ── */}
-      <section className="relative overflow-hidden py-32 z-10">
+      <section className="relative overflow-hidden py-24 z-10">
         <div className="absolute inset-0 pointer-events-none"
           style={{ background: "radial-gradient(ellipse at 50% 50%, color-mix(in oklab, var(--color-wraith) 18%, transparent), transparent 60%)" }} />
         <Reveal className="relative mx-auto max-w-3xl px-6 text-center">

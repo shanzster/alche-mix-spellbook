@@ -174,10 +174,11 @@
 
 /*
   The compressed display font is hard to read for element symbols and dense data.
-  On the Elements page only, swap headings + `.font-display` text for the
-  secondary font (EB Garamond) so symbols, numbers, and stats are easy to scan.
+  On the Elements page only, swap lower headings + `.font-display` text for the
+  interface sans so symbols, numbers, and stats are easy to scan. The page h1
+  keeps the display font — it's the brand voice, same as every other page.
 */
-.elements-readable :is(h1, h2, h3, h4, h5, h6, .font-display):not(header *) {
+.elements-readable :is(h2, h3, h4, h5, h6, .font-display):not(header *, h1, h1 *) {
   font-family: var(--font-sans);
   letter-spacing: 0;
 }
@@ -579,6 +580,13 @@
   text-shadow:
     0 0 12px color-mix(in oklab, var(--color-emerald-elixir) 55%, transparent),
     0 0 32px color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent);
+}
+
+/* Neon glows are a night-sky effect — on the light (parchment) theme they read
+   as ink smudges around the letters, so they only ignite in dark mode. */
+html:not(.dark) .text-glow-violet,
+html:not(.dark) .text-glow-teal {
+  text-shadow: none;
 }
 
 /* Aurora wordmark — teal → violet → gold (primary-led, dual identity). */

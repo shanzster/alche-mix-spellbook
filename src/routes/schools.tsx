@@ -179,7 +179,7 @@ function SchoolsPage() {
                   >
                     {icon}
                   </div>
-                  <h3 className="font-display mb-3 text-xl">{title}</h3>
+                  <h3 className="mb-3 text-xl">{title}</h3>
                   <p className="mb-5 flex-1 text-sm leading-relaxed text-parchment">{body}</p>
                   <ul className="space-y-2.5">
                     {points.map((p) => (
@@ -214,7 +214,7 @@ function SchoolsPage() {
                   }}
                 >
                   <span className="mb-4" style={{ color }}>{icon}</span>
-                  <h3 className="font-display mb-2 text-lg">{title}</h3>
+                  <h3 className="mb-2 text-lg">{title}</h3>
                   <p className="text-sm leading-relaxed text-parchment">{desc}</p>
                 </div>
               </Reveal>
@@ -252,8 +252,8 @@ function SchoolsPage() {
                         {icon}
                       </div>
                     </div>
-                    <div className="font-display mb-1 text-xs uppercase tracking-[0.3em]" style={{ color }}>{n}</div>
-                    <h3 className="font-display mb-2 text-base">{title}</h3>
+                    <div className="font-ui mb-1 text-xs font-bold uppercase tracking-[0.3em]" style={{ color }}>{n}</div>
+                    <h3 className="mb-2 text-base">{title}</h3>
                     <p className="text-xs leading-relaxed text-parchment">{body}</p>
                   </div>
                 </Reveal>
@@ -290,7 +290,7 @@ function SchoolsPage() {
                     {icon}
                   </span>
                   <div>
-                    <h3 className="font-display mb-1.5 text-base">{title}</h3>
+                    <h3 className="mb-1.5 text-base">{title}</h3>
                     <p className="text-sm leading-relaxed text-parchment">{body}</p>
                   </div>
                 </div>
@@ -319,7 +319,7 @@ function SchoolsPage() {
                 style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)" }}
               >
                 <p className="font-display text-3xl text-wraith">{stat}</p>
-                <p className="font-display text-sm text-spectral">{label}</p>
+                <p className="font-ui text-sm font-semibold text-spectral">{label}</p>
                 <p className="text-xs text-parchment/60">{sub}</p>
               </div>
             ))}

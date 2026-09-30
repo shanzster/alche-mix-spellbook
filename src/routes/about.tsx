@@ -97,7 +97,7 @@ function AboutPage() {
       <FloatingNav />
 
       {/* ── HERO ── */}
-      <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+      <section className="relative min-h-[82vh] flex items-center justify-center overflow-hidden pt-28 pb-16">
         {/* Single soft accent glow behind the copy */}
         <div className="absolute inset-0 z-0"
           style={{ background: "radial-gradient(ellipse 100% 70% at 50% 60%, color-mix(in oklab, var(--color-emerald-elixir) 18%, transparent), color-mix(in oklab, var(--color-wraith) 12%, transparent) 45%, transparent 68%)" }} />
@@ -198,7 +198,7 @@ function AboutPage() {
                   </div>
                   <div className="h-0.5 w-12 mx-auto mb-5 rounded-full"
                     style={{ background: `color-mix(in oklab, ${color} 50%, transparent)` }} />
-                  <h3 className="font-display text-xl text-center mb-3">{title}</h3>
+                  <h3 className="text-xl text-center mb-3">{title}</h3>
                   <p className="text-parchment text-sm leading-relaxed text-center flex-1">{body}</p>
                   <p className="mt-4 text-center text-xs tracking-[0.2em] uppercase"
                     style={{ color }}>{detail}</p>
@@ -233,7 +233,7 @@ function AboutPage() {
                       <GraduationCap className="h-6 w-6 text-wraith" />
                     </div>
                     <div>
-                      <h3 className="font-display text-2xl">For Students</h3>
+                      <h3 className="text-2xl">For Students</h3>
                       <p className="text-xs text-wraith tracking-[0.2em] uppercase mt-0.5">The Apprentice</p>
                     </div>
                   </div>
@@ -278,7 +278,7 @@ function AboutPage() {
                       <Eye className="h-6 w-6 text-gold" />
                     </div>
                     <div>
-                      <h3 className="font-display text-2xl">For Educators</h3>
+                      <h3 className="text-2xl">For Educators</h3>
                       <p className="text-xs text-gold tracking-[0.2em] uppercase mt-0.5">The Astrolabe</p>
                     </div>
                   </div>
@@ -319,7 +319,7 @@ function AboutPage() {
             <Reveal>
               <p className="text-xs tracking-[0.4em] text-gold uppercase mb-3">The Main Stage</p>
               <h2 className="font-display text-4xl mb-6">
-                12 elements.<br />
+                42 elements.<br />
                 <span className="text-wraith text-glow-violet">All waiting to be forged.</span>
               </h2>
               <p className="text-parchment leading-relaxed mb-5">
@@ -351,7 +351,7 @@ function AboutPage() {
                 ].map(({ sym, color }) => (
                   <div
                     key={sym}
-                    className="flex items-center justify-center rounded-lg font-display text-sm transition-transform duration-200 hover:scale-110"
+                    className="flex items-center justify-center rounded-lg font-ui text-sm font-bold transition-transform duration-200 hover:scale-110"
                     style={{
                       width: 44, height: 44,
                       background: `radial-gradient(circle at 35% 35%, color-mix(in oklab, ${color} 60%, white 15%), color-mix(in oklab, ${color} 30%, transparent))`,
@@ -453,8 +453,8 @@ function AboutPage() {
                       </div>
                     </div>
                     <div className="text-center">
-                      <div className="font-display text-xs tracking-[0.3em] uppercase mb-1" style={{ color }}>{n}</div>
-                      <h3 className="font-display text-base mb-2">{title}</h3>
+                      <div className="font-ui text-xs font-bold tracking-[0.3em] uppercase mb-1" style={{ color }}>{n}</div>
+                      <h3 className="text-base mb-2">{title}</h3>
                       <p className="text-parchment text-xs leading-relaxed">{body}</p>
                     </div>
                   </div>
@@ -466,10 +466,10 @@ function AboutPage() {
       </section>
 
       {/* ── Quiet divider ── */}
-      <section className="relative z-10 py-16">
+      <section className="relative z-10 py-10">
         <div className="mx-auto flex max-w-5xl items-center gap-5 px-6">
           <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, transparent, var(--color-border))" }} />
-          <p className="font-display text-sm text-gold tracking-[0.35em] uppercase whitespace-nowrap">Every element tells a story</p>
+          <p className="font-ui text-xs font-semibold text-gold tracking-[0.35em] uppercase whitespace-nowrap">Every element tells a story</p>
           <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, var(--color-border), transparent)" }} />
         </div>
       </section>

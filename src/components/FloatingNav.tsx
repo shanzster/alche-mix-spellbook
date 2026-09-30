@@ -26,7 +26,7 @@ function NavLink({ href, label, icon: Icon }: (typeof NAV_LINKS)[number]) {
     >
       <Icon className="h-4 w-4 flex-shrink-0" />
       {/* Label is visible from sm up; icon-only on the smallest screens. */}
-      <span className="hidden sm:inline font-display text-[11px] tracking-[0.12em] uppercase whitespace-nowrap">
+      <span className="hidden sm:inline font-ui text-xs font-semibold tracking-[0.04em] whitespace-nowrap">
         {label}
       </span>
     </Link>
@@ -65,14 +65,14 @@ function AuthPill({ user, bare = false }: { user: User | null; bare?: boolean })
             <img src={user.photoURL} alt={user.displayName ?? "User"} className="h-full w-full object-cover" referrerPolicy="no-referrer" />
           ) : (
             <div
-              className="h-full w-full flex items-center justify-center font-display text-[10px] text-teal"
+              className="h-full w-full flex items-center justify-center font-ui text-[10px] font-bold text-teal"
               style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 18%, transparent)" }}
             >
               {(user.displayName ?? user.email ?? "U")[0].toUpperCase()}
             </div>
           )}
         </div>
-        <span className="hidden sm:inline font-display text-[11px] tracking-[0.1em] text-foreground max-w-[80px] truncate">
+        <span className="hidden sm:inline font-ui text-xs font-medium text-foreground max-w-[80px] truncate">
           {user.displayName?.split(" ")[0] ?? user.email?.split("@")[0]}
         </span>
         <button
@@ -93,7 +93,7 @@ function AuthPill({ user, bare = false }: { user: User | null; bare?: boolean })
     <div className={wrap} style={pillStyle}>
       <Link
         to="/login"
-        className="flex items-center gap-1.5 h-7 rounded-full px-3 font-display text-[11px] tracking-[0.1em] uppercase transition-all duration-200 hover:scale-105"
+        className="flex items-center gap-1.5 h-7 rounded-full px-3 font-ui text-xs font-semibold transition-all duration-200 hover:scale-105"
         style={{
           background: "color-mix(in oklab, var(--color-emerald-elixir) 14%, transparent)",
           border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent)",
@@ -104,7 +104,7 @@ function AuthPill({ user, bare = false }: { user: User | null; bare?: boolean })
       </Link>
       <Link
         to="/signup"
-        className="flex items-center gap-1.5 h-7 rounded-full px-3 font-display text-[11px] tracking-[0.1em] uppercase transition-all duration-200 hover:scale-105"
+        className="flex items-center gap-1.5 h-7 rounded-full px-3 font-ui text-xs font-semibold transition-all duration-200 hover:scale-105"
         style={{
           background: "color-mix(in oklab, var(--color-wraith) 14%, transparent)",
           border: "1px solid color-mix(in oklab, var(--color-wraith) 35%, transparent)",
