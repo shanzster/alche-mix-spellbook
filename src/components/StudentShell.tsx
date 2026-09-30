@@ -255,6 +255,15 @@ function CategoryRail({
   const railRef = useRef<HTMLElement>(null);
   const openTimer = useRef<number | undefined>(undefined);
   const closeTimer = useRef<number | undefined>(undefined);
+  // Hover name chip. Rendered OUTSIDE the rail (position: fixed) — the rail
+  // scrolls vertically, and a chip absolutely-positioned inside a scroll
+  // container would both get clipped and create a horizontal scrollbar.
+  const [hint, setHint] = useState<{ text: string; y: number } | null>(null);
+  const showHint = (e: React.MouseEvent<HTMLElement>, text: string) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setHint({ text, y: r.top + r.height / 2 });
+  };
+  const clearHint = () => setHint(null);
 
   const cancelTimers = () => {
     window.clearTimeout(openTimer.current);
@@ -311,25 +320,26 @@ function CategoryRail({
         ref={railRef}
         data-tour="rail"
         aria-label="Chapters"
-        className="glass-strong scroll-slim hidden md:flex fixed left-3 top-1/2 z-40 max-h-[calc(100vh-7rem)] -translate-y-1/2 flex-col items-center gap-1 overflow-y-auto rounded-2xl p-1.5"
-        onMouseLeave={scheduleClose}
+        className="glass-strong scroll-slim hidden md:flex fixed left-3 top-1/2 z-40 max-h-[calc(100vh-7rem)] -translate-y-1/2 flex-col items-center gap-1 overflow-y-auto overflow-x-hidden rounded-2xl p-1.5"
+        onMouseLeave={() => {
+          scheduleClose();
+          clearHint();
+        }}
+        onScroll={clearHint}
       >
         {/* Crest — home to The Bench */}
         <Link
           to="/app"
           aria-label="AlcheMix — home"
           className="group relative flex h-11 w-10 flex-shrink-0 items-center justify-center"
+          onMouseEnter={(e) => showHint(e, "AlcheMix · Home")}
+          onMouseLeave={clearHint}
         >
           <img
             src="/images/logo-outline.png"
             alt=""
             className="h-7 w-7 object-contain transition-transform duration-200 group-hover:scale-110"
           />
-          {!open && (
-            <span className="glass-strong pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-x-1 -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium text-spectral opacity-0 transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100">
-              AlcheMix · Home
-            </span>
-          )}
         </Link>
 
         <div className="my-1 h-px w-6 flex-shrink-0" style={{ background: "var(--color-border)" }} />
@@ -344,7 +354,11 @@ function CategoryRail({
               ref={(el) => {
                 btnRefs.current[chapter] = el;
               }}
-              onMouseEnter={() => scheduleOpen(chapter)}
+              onMouseEnter={(e) => {
+                scheduleOpen(chapter);
+                showHint(e, chapter);
+              }}
+              onMouseLeave={clearHint}
               onClick={() => {
                 cancelTimers();
                 setOpen(isOpen ? null : chapter);
@@ -374,12 +388,6 @@ function CategoryRail({
                 />
               )}
               <meta.icon className="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
-              {/* Name chip — slides in on hover while no flyout is out */}
-              {!open && (
-                <span className="glass-strong pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-x-1 -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium text-spectral opacity-0 transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100">
-                  {chapter}
-                </span>
-              )}
             </button>
           );
         })}
@@ -394,23 +402,19 @@ function CategoryRail({
           }}
           aria-label="Open the Table of Contents"
           className="group relative flex h-10 w-10 items-center justify-center rounded-xl text-parchment/70 transition-colors hover:bg-teal/10 hover:text-emerald-elixir"
+          onMouseEnter={(e) => showHint(e, "Contents · ⌘K")}
+          onMouseLeave={clearHint}
         >
           <BookOpen className="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
-          {!open && (
-            <span className="glass-strong pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-x-1 -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium text-spectral opacity-0 transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100">
-              Contents · ⌘K
-            </span>
-          )}
         </button>
 
         {/* Day / night */}
-        <div className="group relative flex-shrink-0">
+        <div
+          className="group relative flex-shrink-0"
+          onMouseEnter={(e) => showHint(e, "Theme")}
+          onMouseLeave={clearHint}
+        >
           <ThemeToggle className="!h-10 !w-10 !rounded-xl !border-0 !bg-transparent" />
-          {!open && (
-            <span className="glass-strong pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-x-1 -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium text-spectral opacity-0 transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100">
-              Theme
-            </span>
-          )}
         </div>
 
         {/* Leave the workshop */}
@@ -418,15 +422,22 @@ function CategoryRail({
           onClick={onSignOut}
           aria-label="Sign out"
           className="group relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-parchment/60 transition-colors hover:bg-crimson/10 hover:text-crimson"
+          onMouseEnter={(e) => showHint(e, "Sign out")}
+          onMouseLeave={clearHint}
         >
           <LogOut className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
-          {!open && (
-            <span className="glass-strong pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-x-1 -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium text-spectral opacity-0 transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100">
-              Sign out
-            </span>
-          )}
         </button>
       </nav>
+
+      {/* Hover name chip — fixed beside the rail, outside its scroll box */}
+      {hint && !open && (
+        <span
+          className="glass-strong pointer-events-none fixed left-[4.4rem] z-50 hidden -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium text-spectral md:block"
+          style={{ top: hint.y }}
+        >
+          {hint.text}
+        </span>
+      )}
 
       {/* ── Chapter flyout — the pages as a column of orbs ── */}
       {open && (
