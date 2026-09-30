@@ -248,7 +248,7 @@ export const GUIDE: GuideStep[] = [
     title: "Element Identifier",
     to: "/identifier",
     icon: Fingerprint,
-    why: "Deduce mystery elements from real clues — family, state, properties, lore.",
+    why: "Aim the camera at everyday things and read the elements inside them — or deduce mystery elements from real clues.",
     done: (p) => practised(p, "identifier"),
   },
   {

@@ -24,6 +24,7 @@
 | Feature | Route / file | Data touchpoints |
 |---|---|---|
 | Sign up / login (email+password, Google popup) | `/login`, `/signup` · `src/lib/auth.ts` | Firebase Auth **D1**; creates/merges `users/{uid}` **D2** |
+| School Door (school-code signup/login, split from the general pages) | `/school-signup`, `/school-login` · `src/components/SchoolDoor.tsx` | Firebase Auth **D1**; live code lookup on `classes/{CODE}` **D4**; enrols via roster entry **D5** + stamps `users/{uid}.classId/.className` |
 | Role gating (student / teacher / admin) | `src/lib/auth.ts`, `src/lib/admin.ts` | reads `users/{uid}.role`, `.status`; admin allowlist is hardcoded (`ADMIN_EMAILS`) |
 | Teacher ID + face-match verification | `/teacher` onboarding · `src/lib/admin.ts`, `src/lib/facematch.ts` | writes `verifications/{uid}` **D7** (downscaled ID + selfie JPEGs as data URLs); admin approval flips `users/{uid}.status` |
 | Admin console (user/class management, verification review) | `/admin` · `src/lib/admin.ts` | reads all of **D2**, **D4**, **D7**; writes `status` fields |
@@ -60,7 +61,7 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 | /titration | Titration Lab | AI grading of the unknown assay (`aiGradeAnswer`, E3) |
 | /decay | Radioactive Decay | — |
 | /quiz | 3D Visual Quiz | persisted bests in `trials` |
-| /identifier | Element Identifier (mystery-element clue game) | persisted bests in `trials`; clues built from static periodic-table + lore data (**D9**) |
+| /identifier | Element Identifier (live camera lens: every item in frame → its elements, via `aiIdentifyItems`; + the mystery-element clue game) | camera (E4); Gemini via `aiIdentifyItems` (E3) with on-device COCO-SSD fallback; persisted bests in `trials`; clues built from static periodic-table + lore data (**D9**); nothing new stored |
 | /elements | Element Explorer (public, no auth) | static data **D9** only |
 
 ### 1.3 Capture companion (mobile / PWA)
@@ -84,7 +85,7 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 | Feature | Route / file | Data touchpoints |
 |---|---|---|
 | Class creation + join codes | `/teacher` · `src/lib/teacher.ts` | creates `classes/{CODE}` **D4** (the join code IS the doc id) |
-| Student joins a class | `/app` join dialog · optional school-code field on `/signup` | writes roster entry **D5** + stamps `users/{uid}.classId/.className` |
+| Student joins a class | `/app` join dialog · School Door (`/school-signup`, `/school-login`) | writes roster entry **D5** + stamps `users/{uid}.classId/.className` |
 | Gradebook (5 topics) + mastery | `/teacher` | writes `users/{uid}.grades`, `.mastery` (teacher-entered — the only real grades in the system) |
 | Quiz Builder (+ curriculum seeding, live results) | `/teacher` | quizzes stored as an **array field on the class doc** (`classes/{id}.quizzes[]`); results read from students' `assignmentResults` |
 | Mission Configurator | `/teacher` | `classes/{id}.missions[]`; completion proven by students' `practice.*` counters |

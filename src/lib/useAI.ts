@@ -14,11 +14,13 @@ import {
   aiAskAlchemist,
   aiGenerateProblem,
   aiGradeAnswer,
+  aiIdentifyItems,
   aiScanFrame,
   aiStatus,
   aiVerifyMission,
   type GeneratedProblem,
   type GradeResult,
+  type IdentifyResult,
   type ScanResult,
   type TutorResult,
   type VerifyResult,
@@ -71,6 +73,7 @@ export function useAI() {
       { elementName: string; elementSymbol: string; examples: string[]; imageBase64: string },
       ScanResult
     >(aiScanFrame),
+    identifyItems: run<{ imageBase64: string }, IdentifyResult>(aiIdentifyItems),
     generateProblem: run<{ topic?: string; seed?: string }, GeneratedProblem>(
       aiGenerateProblem,
     ),

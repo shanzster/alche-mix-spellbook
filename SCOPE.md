@@ -87,7 +87,7 @@ Gemini (`GEMINI_API_KEY`, server-only via `createServerFn`) · Nitro/Cloudflare.
 | /titration | Titration Lab | Strong + weak acid, 3 indicators, pour realism, unknown assay |
 | /decay | Radioactive Decay | 6 isotopes, half-life slider |
 | /quiz | 3D Visual Quiz | 4 question templates, persisted bests |
-| /identifier | Element Identifier | Mystery-element deduction: 5 rounds × 5 real-data clues, name-or-symbol guesses, persisted bests |
+| /identifier | Element Identifier | Live camera lens — AI reads every item in frame for the elements it contains (on-device COCO-SSD + composition-map fallback when keyless) — plus the 5-round clue-deduction trial with persisted bests |
 | /duel | Duel the Alchemist | vs-AI card battles (easy/medium/hard), stats from real chemistry, forge move |
 | /duels | Class Duels | Async PvP vs classmates over the duel engine (duels/{id} Firestore docs) |
 | /leaderboard | Hall of Records | Class leaderboards (stars/duels/compounds/streaks) via roster denormalization |

@@ -67,6 +67,26 @@ export interface ScanResult {
   source: AISource;
 }
 
+/** One visible item and the real chemical elements inside it. */
+export interface IdentifiedElement {
+  symbol: string;
+  name: string;
+  /** Where that element lives in the item, e.g. "copper wiring inside". */
+  note: string;
+}
+export interface IdentifiedItem {
+  item: string;
+  confidence: number; // 0..1
+  elements: IdentifiedElement[];
+}
+/** The Element Identifier's read of a whole frame: every item + its elements. */
+export interface IdentifyResult {
+  items: IdentifiedItem[];
+  /** One warm line about the frame as a whole. */
+  summary: string;
+  source: AISource;
+}
+
 // ── Input shapes ──────────────────────────────────────────────────────────────
 interface VerifyInput {
   question: string;
@@ -79,6 +99,10 @@ interface ScanInput {
   elementSymbol: string;
   examples: string[];
   /** Raw base64 (no `data:` prefix) of a small camera frame. */
+  imageBase64: string;
+}
+interface IdentifyInput {
+  /** Raw base64 (no `data:` prefix) of the captured frame. */
   imageBase64: string;
 }
 interface GenerateInput {
@@ -230,6 +254,74 @@ export const aiScanFrame = createServerFn({ method: "POST" })
       // Keyless / rate-limited / offline → the on-device COCO eye still runs.
       console.warn("[AI] aiScanFrame unavailable (using on-device eye only):", err);
       return { present: false, label: "", confidence: 0, reason: "", source: "fallback" };
+    }
+  });
+
+// ════════════════════════════════════════════════════════════════════════════
+//  1c. Element Identifier — every item in the frame + the elements it contains.
+//  AI is the source of truth for accuracy; the client falls back to the
+//  on-device COCO-SSD eye + curated composition map when keyless/offline.
+// ════════════════════════════════════════════════════════════════════════════
+export const aiIdentifyItems = createServerFn({ method: "POST" })
+  .validator((d: IdentifyInput) => d)
+  .handler(async ({ data }): Promise<IdentifyResult> => {
+    try {
+      const { askGemini } = await import("./server/gemini");
+      const verdict = await askGemini<Omit<IdentifyResult, "source">>({
+        system:
+          "You are a chemistry vision assistant for an Element Identifier. " +
+          "Look at one photo and identify each distinct physical item in view " +
+          "(up to 6, most prominent first). For each item, list the chemical " +
+          "elements it genuinely contains — the main structural ones plus the " +
+          "famous or notable ones. Think like a materials chemist: a computer " +
+          "mouse is carbon/hydrogen plastics around copper wiring, silicon " +
+          "chips and gold contacts; a drinking glass is silicon and oxygen " +
+          "with sodium and calcium; tap water is hydrogen and oxygen. Real " +
+          "chemistry only — if you are not confident an element is present, " +
+          "leave it out. Proper IUPAC symbols. 2–6 elements per item, most " +
+          "abundant first. Each note is one short phrase saying where that " +
+          "element lives in the item, written for a high-schooler.",
+        jsonSchema: {
+          type: "object",
+          properties: {
+            items: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  item: { type: "string" },
+                  confidence: { type: "number" },
+                  elements: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        symbol: { type: "string" },
+                        name: { type: "string" },
+                        note: { type: "string" },
+                      },
+                      required: ["symbol", "name", "note"],
+                    },
+                  },
+                },
+                required: ["item", "confidence", "elements"],
+              },
+            },
+            summary: { type: "string" },
+          },
+          required: ["items", "summary"],
+        },
+        parts: [
+          { inlineData: { mimeType: "image/jpeg", data: data.imageBase64 } },
+          {
+            text: "Identify every distinct item in this photo and the chemical elements each one contains.",
+          },
+        ],
+      });
+      return { ...verdict, source: "gemini" };
+    } catch (err) {
+      console.error("[AI] aiIdentifyItems unavailable (client falls back to the on-device eye):", err);
+      return { items: [], summary: "", source: "fallback" };
     }
   });
 

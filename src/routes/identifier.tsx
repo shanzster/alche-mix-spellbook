@@ -1,21 +1,39 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
 import {
+  Camera,
   Check,
   Eye,
   Fingerprint,
+  Loader2,
   RefreshCw,
+  RotateCcw,
+  ScanSearch,
   ScrollText,
+  Sparkles,
   Star,
   Timer,
   Trophy,
+  Upload,
   X,
 } from "lucide-react";
 import { ModuleShell } from "../components/ModuleShell";
 import { RequireAuth } from "../components/RequireAuth";
 import { useUserProfile, logPractice, recordTrial } from "../lib/profile";
-import { elementByNumber, type TableElement } from "../lib/periodic-table-data";
+import {
+  elementByNumber,
+  PERIODIC_ELEMENTS,
+  type TableElement,
+} from "../lib/periodic-table-data";
 import { ELEMENT_LORE } from "../lib/element-lore";
+import { useAI } from "../lib/useAI";
+import { downscaleImage } from "../lib/scavenger";
+import {
+  detectImageItems,
+  startItemScanner,
+  type ItemDetection,
+} from "../lib/element-vision";
+import type { IdentifiedItem } from "../lib/ai";
 
 export const Route = createFileRoute("/identifier")({
   component: () => (
@@ -26,14 +44,470 @@ export const Route = createFileRoute("/identifier")({
 });
 
 /**
- * Element Identifier — the Assayer's Trial.
+ * Element Identifier — two instruments on one bench.
  *
- * A mystery element is drawn from the real periodic-table data and described
- * through five progressively sharper clues (family → state & discovery →
- * measured properties → the name's origin → proton count). The apprentice
- * names it — by name or symbol — in as few clues as possible. Fully
- * deterministic: every clue comes from the curated datasets, no AI involved.
+ * THE LENS (default): point the camera at anything. Every item in the frame
+ * is identified and broken down into the chemical elements it really contains
+ * (a mouse → copper wiring, silicon chips, carbon plastics…). Gemini is the
+ * source of truth for accuracy; keyless, the on-device COCO-SSD eye + a
+ * curated composition map give an honest offline estimate.
+ *
+ * THE TRIAL: the original deduction game — five mystery elements described
+ * through five progressively sharper clues, fully deterministic, no AI.
  */
+
+const ACCENT = "var(--color-emerald-elixir)";
+
+type Mode = "lens" | "trial";
+
+function Identifier() {
+  const [mode, setMode] = useState<Mode>("lens");
+  const ai = useAI();
+
+  return (
+    <ModuleShell
+      title="Element Identifier"
+      eyebrow={mode === "lens" ? "The Assayer's Lens" : "The Assayer's Trial"}
+      icon={Fingerprint}
+      subtitle={
+        mode === "lens"
+          ? "Point the lens at anything. Every item in the frame is read for the chemical elements it truly contains."
+          : "Five mystery elements, five clues each — real data only. Name each one in as few clues as you can."
+      }
+      right={
+        mode === "lens" ? (
+          ai.configured === false ? (
+            <span
+              className="text-[10px] tracking-[0.15em] uppercase rounded-full px-3 py-1.5 whitespace-nowrap"
+              style={{
+                color: "var(--color-gold)",
+                background: "color-mix(in oklab, var(--color-gold) 12%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)",
+              }}
+            >
+              Offline estimate
+            </span>
+          ) : ai.configured ? (
+            <span
+              className="text-[10px] tracking-[0.15em] uppercase rounded-full px-3 py-1.5 whitespace-nowrap inline-flex items-center gap-1.5"
+              style={{
+                color: ACCENT,
+                background: `color-mix(in oklab, ${ACCENT} 12%, transparent)`,
+                border: `1px solid color-mix(in oklab, ${ACCENT} 30%, transparent)`,
+              }}
+            >
+              <Sparkles className="h-3 w-3" /> AI-verified
+            </span>
+          ) : undefined
+        ) : undefined
+      }
+    >
+      {/* Mode switch — the two instruments */}
+      <div
+        className="mb-6 inline-flex rounded-full p-1"
+        style={{
+          background: "color-mix(in oklab, var(--color-mist) 60%, transparent)",
+          border: "1px solid var(--color-border)",
+        }}
+      >
+        {(
+          [
+            { key: "lens", label: "Live Lens", icon: ScanSearch },
+            { key: "trial", label: "Deduction Trial", icon: ScrollText },
+          ] as const
+        ).map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setMode(key)}
+            className="inline-flex items-center gap-2 rounded-full px-4 py-2 font-ui text-xs font-semibold transition"
+            style={
+              mode === key
+                ? {
+                    background: `color-mix(in oklab, ${ACCENT} 18%, transparent)`,
+                    color: ACCENT,
+                  }
+                : { color: "var(--color-parchment)" }
+            }
+          >
+            <Icon className="h-3.5 w-3.5" /> {label}
+          </button>
+        ))}
+      </div>
+
+      {mode === "lens" ? <LiveLens ai={ai} /> : <AssayTrial />}
+    </ModuleShell>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  THE LENS — camera → every item → its elements
+// ════════════════════════════════════════════════════════════════════════════
+
+const elementName = (symbol: string): string =>
+  PERIODIC_ELEMENTS.find((e) => e.symbol === symbol)?.name ?? symbol;
+
+/** Offline estimate: turn on-device detections into result items. */
+const itemsFromDetections = (dets: ItemDetection[]): IdentifiedItem[] =>
+  dets
+    .filter((d) => d.elements.length > 0)
+    .slice(0, 6)
+    .map((d) => ({
+      item: d.label,
+      confidence: d.score,
+      elements: d.elements.map((symbol) => ({
+        symbol,
+        name: elementName(symbol),
+        note: "",
+      })),
+    }));
+
+interface AssayResult {
+  items: IdentifiedItem[];
+  summary: string;
+  source: "gemini" | "fallback";
+}
+
+function LiveLens({ ai }: { ai: ReturnType<typeof useAI> }) {
+  const { uid } = useUserProfile();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const overlayRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const liveItemsRef = useRef<ItemDetection[]>([]);
+
+  const [camState, setCamState] = useState<"idle" | "live" | "denied">("idle");
+  const [eye, setEye] = useState<"loading" | "live" | "off">("loading");
+  const [liveCount, setLiveCount] = useState(0);
+  const [shot, setShot] = useState<{ dataUrl: string; base64: string } | null>(null);
+  const [assaying, setAssaying] = useState(false);
+  const [result, setResult] = useState<AssayResult | null>(null);
+  const loggedRef = useRef(false);
+
+  // The live eye: box every recognised object with the elements it contains.
+  useEffect(() => {
+    if (camState !== "live" || !videoRef.current || !overlayRef.current) return;
+    setEye("loading");
+    const scanner = startItemScanner({
+      video: videoRef.current,
+      canvas: overlayRef.current,
+      onReady: () => setEye("live"),
+      onError: () => setEye("off"),
+      onUpdate: (items) => {
+        liveItemsRef.current = items;
+        setLiveCount(items.length);
+      },
+    });
+    return scanner.stop;
+  }, [camState]);
+
+  const stopCam = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  };
+
+  const startCam = async () => {
+    setResult(null);
+    setShot(null);
+    try {
+      if (!navigator.mediaDevices?.getUserMedia)
+        throw new Error("no camera API (needs HTTPS or localhost)");
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false,
+      });
+      streamRef.current = stream;
+      setCamState("live");
+    } catch (err) {
+      console.warn("[Identifier] camera unavailable:", err);
+      setCamState("denied");
+    }
+  };
+
+  // Attach the stream AFTER the <video> exists (same race as the scavenger).
+  useEffect(() => {
+    if (camState !== "live") return;
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!video || !stream) return;
+    video.srcObject = stream;
+    video.play().catch(() => {});
+  }, [camState]);
+
+  useEffect(() => stopCam, []);
+
+  /** Run one assay over items + a frame: AI first, on-device estimate second. */
+  const assay = async (base64: string, offlineItems: ItemDetection[]) => {
+    setAssaying(true);
+    setResult(null);
+    let out: AssayResult;
+    try {
+      const r = await ai.identifyItems({ imageBase64: base64 });
+      out =
+        r.source === "gemini" && r.items.length > 0
+          ? { items: r.items.slice(0, 6), summary: r.summary, source: "gemini" }
+          : { items: itemsFromDetections(offlineItems), summary: "", source: "fallback" };
+    } catch {
+      out = { items: itemsFromDetections(offlineItems), summary: "", source: "fallback" };
+    }
+    setResult(out);
+    setAssaying(false);
+    if (uid && !loggedRef.current && out.items.length > 0) {
+      loggedRef.current = true;
+      void logPractice(uid, "identifier");
+    }
+  };
+
+  /** Freeze the live frame and assay it. */
+  const captureAndAssay = async () => {
+    const video = videoRef.current;
+    if (!video || !video.videoWidth) return;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d")!.drawImage(video, 0, 0);
+    const raw = canvas.toDataURL("image/jpeg", 0.9);
+    const offline = liveItemsRef.current;
+    stopCam();
+    setCamState("idle");
+    const small = await downscaleImage(raw);
+    setShot(small);
+    await assay(small.base64, offline);
+  };
+
+  /** Uploaded photo: downscale, detect on-device for the fallback, assay. */
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    const small = await downscaleImage(file);
+    setShot(small);
+    setCamState("idle");
+    stopCam();
+    let offline: ItemDetection[] = [];
+    try {
+      const img = new Image();
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = small.dataUrl;
+      });
+      offline = await detectImageItems(img);
+    } catch {
+      /* AI path may still succeed */
+    }
+    await assay(small.base64, offline);
+  };
+
+  const reset = () => {
+    setShot(null);
+    setResult(null);
+    setCamState("idle");
+  };
+
+  return (
+    <section>
+      {/* Camera / photo stage */}
+      <div
+        className="relative mb-4 overflow-hidden rounded-2xl"
+        style={{
+          border: "1px solid var(--color-border)",
+          background: "#0b1220",
+          aspectRatio: "4/3",
+          maxWidth: "42rem",
+        }}
+      >
+        {shot ? (
+          <img src={shot.dataUrl} alt="Your frame" className="h-full w-full object-cover" />
+        ) : camState === "live" ? (
+          <>
+            <video ref={videoRef} playsInline muted className="h-full w-full object-cover" />
+            <canvas
+              ref={overlayRef}
+              className="pointer-events-none absolute inset-0 h-full w-full"
+            />
+            <div
+              className="pointer-events-none absolute left-1/2 top-3 z-10 max-w-[92%] -translate-x-1/2 truncate rounded-2xl px-3 py-1.5 text-center text-xs backdrop-blur"
+              style={{
+                background: "rgba(11,18,32,0.78)",
+                color: liveCount > 0 ? "#2dd4bf" : "var(--color-parchment)",
+                border: `1px solid ${liveCount > 0 ? "rgba(45,212,191,0.5)" : "rgba(232,220,192,0.2)"}`,
+              }}
+            >
+              {eye === "loading"
+                ? "Summoning the Assayer's lens…"
+                : liveCount > 0
+                  ? `${liveCount} item${liveCount === 1 ? "" : "s"} in view — assay the frame!`
+                  : "Sweep the lens over everyday things…"}
+            </div>
+          </>
+        ) : (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-6 text-center text-parchment/60">
+            <ScanSearch className="h-9 w-9" style={{ color: ACCENT }} />
+            {camState === "denied" ? (
+              <p className="text-sm">
+                Camera unavailable — allow camera permission and use HTTPS (or localhost). You can
+                still upload a photo instead.
+              </p>
+            ) : (
+              <p className="text-sm">
+                Open the lens and point it at anything — a mouse, a spoon, your lunch. Every item
+                is read for its elements.
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Controls */}
+      <div className="flex flex-wrap gap-3">
+        {camState === "live" ? (
+          <button
+            onClick={captureAndAssay}
+            className="btn-arcane btn-arcane-hover text-sm"
+            style={liveCount > 0 ? { boxShadow: "0 0 24px -6px #2dd4bf" } : undefined}
+          >
+            <Camera className="h-4 w-4" /> Assay the frame
+          </button>
+        ) : (
+          <>
+            <button onClick={startCam} className="btn-arcane btn-arcane-hover text-sm">
+              <Camera className="h-4 w-4" /> Open the lens
+            </button>
+            <button onClick={() => fileRef.current?.click()} className="btn-ghost-arcane text-sm">
+              <Upload className="h-4 w-4" /> Upload a photo
+            </button>
+            {(shot || result) && (
+              <button onClick={reset} className="btn-ghost-arcane text-sm">
+                <RotateCcw className="h-4 w-4" /> Clear
+              </button>
+            )}
+          </>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          onChange={onFile}
+          className="hidden"
+        />
+      </div>
+
+      {/* Reading */}
+      {assaying && (
+        <div className="mt-6 flex items-center gap-3 text-sm text-parchment/70">
+          <Loader2 className="h-4 w-4 animate-spin text-teal" />
+          The Alchemist studies the frame…
+        </div>
+      )}
+
+      {result && !assaying && (
+        <section className="mt-6">
+          <div className="mb-3 flex flex-wrap items-center gap-2 px-1">
+            <h2 className="font-ui text-sm font-medium uppercase tracking-[0.2em] text-parchment/70">
+              The reading
+            </h2>
+            <span
+              className="rounded-full px-2.5 py-0.5 text-[10px] uppercase tracking-[0.15em]"
+              style={
+                result.source === "gemini"
+                  ? {
+                      color: ACCENT,
+                      background: `color-mix(in oklab, ${ACCENT} 12%, transparent)`,
+                      border: `1px solid color-mix(in oklab, ${ACCENT} 30%, transparent)`,
+                    }
+                  : {
+                      color: "var(--color-gold)",
+                      background: "color-mix(in oklab, var(--color-gold) 12%, transparent)",
+                      border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)",
+                    }
+              }
+            >
+              {result.source === "gemini" ? "AI-verified" : "Offline estimate"}
+            </span>
+          </div>
+
+          {result.items.length === 0 ? (
+            <div
+              className="rounded-2xl p-6 text-sm text-parchment/70"
+              style={{
+                background: "color-mix(in oklab, var(--color-slate-sunken) 65%, transparent)",
+                border: "1px solid var(--color-border)",
+              }}
+            >
+              The lens found nothing it could name in that frame. Move closer, add light, and try
+              a clear everyday object — cutlery, a phone, a plant, a snack.
+            </div>
+          ) : (
+            <>
+              {result.summary && (
+                <p className="mb-4 max-w-2xl px-1 font-serif text-sm text-parchment">
+                  {result.summary}
+                </p>
+              )}
+              <div className="grid gap-4 sm:grid-cols-2">
+                {result.items.map((it, idx) => (
+                  <div
+                    key={`${it.item}-${idx}`}
+                    className="rounded-2xl p-5"
+                    style={{
+                      background:
+                        "color-mix(in oklab, var(--color-slate-sunken) 68%, transparent)",
+                      border: `1px solid color-mix(in oklab, ${ACCENT} 25%, transparent)`,
+                    }}
+                  >
+                    <div className="mb-3 flex items-baseline justify-between gap-2">
+                      <h3 className="text-base capitalize">{it.item}</h3>
+                      <span className="flex-shrink-0 text-[10px] text-parchment/50">
+                        {Math.round(Math.min(1, Math.max(0, it.confidence)) * 100)}% sure
+                      </span>
+                    </div>
+                    <ul className="space-y-2">
+                      {it.elements.map((el) => (
+                        <li key={el.symbol} className="flex items-start gap-2.5">
+                          <Link
+                            to="/periodic-table"
+                            search={{ element: el.symbol }}
+                            className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg font-ui text-xs font-bold transition-transform hover:scale-110"
+                            style={{
+                              color: ACCENT,
+                              background: `color-mix(in oklab, ${ACCENT} 14%, transparent)`,
+                              border: `1px solid color-mix(in oklab, ${ACCENT} 38%, transparent)`,
+                            }}
+                            title={`${el.name} in the periodic table`}
+                          >
+                            {el.symbol}
+                          </Link>
+                          <div className="min-w-0">
+                            <div className="font-ui text-sm font-medium">{el.name}</div>
+                            {el.note && (
+                              <div className="text-[11px] leading-snug text-parchment/60">
+                                {el.note}
+                              </div>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-4 px-1 text-[11px] text-parchment/50">
+                {result.source === "gemini"
+                  ? "Read by the Alchemist's eye from your photo — tap any symbol to study that element."
+                  : "Estimated on-device from what the lens recognised — connect the AI key for a true per-item reading."}
+              </p>
+            </>
+          )}
+        </section>
+      )}
+    </section>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+//  THE TRIAL — the original five-round deduction game (deterministic, no AI)
+// ════════════════════════════════════════════════════════════════════════════
 
 // Well-known elements a middle/high-schooler can reasonably deduce.
 const POOL_NUMBERS = [
@@ -148,7 +622,7 @@ interface RoundState {
   pointsEarned: number;
 }
 
-function Identifier() {
+function AssayTrial() {
   const { uid, profile } = useUserProfile();
   const [phase, setPhase] = useState<"intro" | "play" | "done">("intro");
   const [elements, setElements] = useState<TableElement[]>([]);
@@ -232,19 +706,7 @@ function Identifier() {
   const lore = round ? ELEMENT_LORE[round.el.symbol] : undefined;
 
   return (
-    <ModuleShell
-      title="Element Identifier"
-      eyebrow="The Assayer's Trial"
-      icon={Fingerprint}
-      subtitle="Five mystery elements, five clues each — real data only. Name each one in as few clues as you can."
-      right={
-        phase === "play" ? (
-          <span className="inline-flex items-center gap-2 text-xs tracking-[0.15em] uppercase text-parchment/70">
-            <Fingerprint className="h-4 w-4 text-teal" /> Element {roundIdx + 1} / {ROUNDS} · {score} pts
-          </span>
-        ) : undefined
-      }
-    >
+    <>
       {phase === "intro" && (
         <div
           className="rounded-2xl p-10 text-center"
@@ -286,123 +748,128 @@ function Identifier() {
       )}
 
       {phase === "play" && round && (
-        <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
-          {/* The clue scroll */}
-          <div
-            className="rounded-2xl p-6"
-            style={{
-              background:
-                "radial-gradient(ellipse at 50% 0%, color-mix(in oklab, var(--color-violet-deep) 20%, transparent), color-mix(in oklab, var(--color-slate-sunken) 82%, transparent))",
-              border: "1px solid var(--color-border)",
-            }}
-          >
-            <div className="mb-4 flex items-center gap-2">
-              <ScrollText className="h-4 w-4 text-gold" />
-              <h2 className="font-ui font-medium text-spectral">The assay notes</h2>
-              <span className="ml-auto text-xs text-parchment/50">
-                clue {round.revealed} / {round.clues.length}
-              </span>
-            </div>
-            <ol className="space-y-3">
-              {round.clues.slice(0, round.revealed).map((clue, i) => (
-                <li
-                  key={i}
-                  className="rounded-r-lg py-2.5 pl-4 pr-3 font-serif text-sm text-parchment"
-                  style={{
-                    borderLeft: "3px solid color-mix(in oklab, var(--color-gold) 45%, transparent)",
-                    background: "color-mix(in oklab, var(--color-gold) 6%, transparent)",
-                  }}
-                >
-                  {clue}
-                </li>
-              ))}
-            </ol>
-            {round.solved === null && round.revealed < round.clues.length && (
-              <button
-                onClick={revealNext}
-                className="mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-parchment/80 transition-colors hover:text-spectral"
-                style={{ border: "1px solid var(--color-border)" }}
-              >
-                <Eye className="h-4 w-4" /> Reveal another clue (−1 point)
-              </button>
-            )}
+        <>
+          <div className="mb-4 inline-flex items-center gap-2 text-xs tracking-[0.15em] uppercase text-parchment/70">
+            <Fingerprint className="h-4 w-4 text-teal" /> Element {roundIdx + 1} / {ROUNDS} · {score} pts
           </div>
-
-          {/* The guess */}
-          <div>
-            <h2 className="font-display text-2xl mb-4">Name the element</h2>
-            {round.solved === null ? (
-              <>
-                <form onSubmit={submitGuess} className="flex gap-2">
-                  <input
-                    value={guess}
-                    onChange={(e) => setGuess(e.target.value)}
-                    placeholder="Name or symbol — e.g. Iron or Fe"
-                    aria-label="Your guess"
-                    autoFocus
-                    className="min-w-0 flex-1 rounded-xl px-4 py-3 font-ui text-sm text-spectral placeholder:text-parchment/35 outline-none transition-colors focus:border-emerald-elixir"
+          <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
+            {/* The clue scroll */}
+            <div
+              className="rounded-2xl p-6"
+              style={{
+                background:
+                  "radial-gradient(ellipse at 50% 0%, color-mix(in oklab, var(--color-violet-deep) 20%, transparent), color-mix(in oklab, var(--color-slate-sunken) 82%, transparent))",
+                border: "1px solid var(--color-border)",
+              }}
+            >
+              <div className="mb-4 flex items-center gap-2">
+                <ScrollText className="h-4 w-4 text-gold" />
+                <h2 className="font-ui font-medium text-spectral">The assay notes</h2>
+                <span className="ml-auto text-xs text-parchment/50">
+                  clue {round.revealed} / {round.clues.length}
+                </span>
+              </div>
+              <ol className="space-y-3">
+                {round.clues.slice(0, round.revealed).map((clue, i) => (
+                  <li
+                    key={i}
+                    className="rounded-r-lg py-2.5 pl-4 pr-3 font-serif text-sm text-parchment"
                     style={{
-                      background: "color-mix(in oklab, var(--color-slate-sunken) 62%, transparent)",
-                      border: "1px solid var(--color-border)",
-                    }}
-                  />
-                  <button
-                    type="submit"
-                    disabled={guess.trim().length === 0}
-                    className="btn-arcane btn-arcane-hover flex-shrink-0 disabled:opacity-50"
-                  >
-                    <Check className="h-4 w-4" /> Call it
-                  </button>
-                </form>
-                {wrongGuess && (
-                  <div
-                    className="mt-4 rounded-r-lg py-3 pl-4 pr-3 text-sm text-parchment"
-                    style={{
-                      borderLeft: "3px solid color-mix(in oklab, var(--color-gold) 60%, transparent)",
-                      background: "color-mix(in oklab, var(--color-gold) 7%, transparent)",
+                      borderLeft: "3px solid color-mix(in oklab, var(--color-gold) 45%, transparent)",
+                      background: "color-mix(in oklab, var(--color-gold) 6%, transparent)",
                     }}
                   >
-                    <span className="font-ui font-medium text-gold">Not {wrongGuess}. </span>
-                    A wrong call isn't wasted — the next clue narrows the field. Read the notes again.
-                  </div>
-                )}
+                    {clue}
+                  </li>
+                ))}
+              </ol>
+              {round.solved === null && round.revealed < round.clues.length && (
                 <button
-                  onClick={giveUp}
-                  className="mt-4 inline-flex items-center gap-1.5 text-xs text-parchment/50 transition-colors hover:text-parchment"
+                  onClick={revealNext}
+                  className="mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm text-parchment/80 transition-colors hover:text-spectral"
+                  style={{ border: "1px solid var(--color-border)" }}
                 >
-                  <X className="h-3.5 w-3.5" /> Concede this element
+                  <Eye className="h-4 w-4" /> Reveal another clue (−1 point)
                 </button>
-              </>
-            ) : (
-              <>
-                <div
-                  className="rounded-2xl p-6"
-                  style={{
-                    background: `color-mix(in oklab, ${round.solved ? "var(--color-emerald-elixir)" : "var(--color-gold)"} 8%, transparent)`,
-                    border: `1px solid color-mix(in oklab, ${round.solved ? "var(--color-emerald-elixir)" : "var(--color-gold)"} 35%, transparent)`,
-                  }}
-                >
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-parchment/60">
-                    {round.solved ? `Named it — +${round.pointsEarned} points` : "It was"}
-                  </p>
-                  <p className="mt-1 font-display text-3xl text-spectral">
-                    {round.el.name}{" "}
-                    <span className="text-parchment/60 text-2xl">({round.el.symbol})</span>
-                  </p>
-                  <p className="mt-1 text-sm text-parchment/70">
-                    Element {round.el.number} · {round.el.category} · mass {round.el.mass}
-                  </p>
-                  {lore && (
-                    <p className="mt-3 font-serif text-sm text-parchment">{lore.history}</p>
+              )}
+            </div>
+
+            {/* The guess */}
+            <div>
+              <h2 className="font-display text-2xl mb-4">Name the element</h2>
+              {round.solved === null ? (
+                <>
+                  <form onSubmit={submitGuess} className="flex gap-2">
+                    <input
+                      value={guess}
+                      onChange={(e) => setGuess(e.target.value)}
+                      placeholder="Name or symbol — e.g. Iron or Fe"
+                      aria-label="Your guess"
+                      autoFocus
+                      className="min-w-0 flex-1 rounded-xl px-4 py-3 font-ui text-sm text-spectral placeholder:text-parchment/35 outline-none transition-colors focus:border-emerald-elixir"
+                      style={{
+                        background: "color-mix(in oklab, var(--color-slate-sunken) 62%, transparent)",
+                        border: "1px solid var(--color-border)",
+                      }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={guess.trim().length === 0}
+                      className="btn-arcane btn-arcane-hover flex-shrink-0 disabled:opacity-50"
+                    >
+                      <Check className="h-4 w-4" /> Call it
+                    </button>
+                  </form>
+                  {wrongGuess && (
+                    <div
+                      className="mt-4 rounded-r-lg py-3 pl-4 pr-3 text-sm text-parchment"
+                      style={{
+                        borderLeft: "3px solid color-mix(in oklab, var(--color-gold) 60%, transparent)",
+                        background: "color-mix(in oklab, var(--color-gold) 7%, transparent)",
+                      }}
+                    >
+                      <span className="font-ui font-medium text-gold">Not {wrongGuess}. </span>
+                      A wrong call isn't wasted — the next clue narrows the field. Read the notes again.
+                    </div>
                   )}
-                </div>
-                <button onClick={nextRound} className="btn-arcane btn-arcane-hover mt-5 w-full justify-center">
-                  {roundIdx + 1 >= ROUNDS ? "See results" : "Next element"}
-                </button>
-              </>
-            )}
+                  <button
+                    onClick={giveUp}
+                    className="mt-4 inline-flex items-center gap-1.5 text-xs text-parchment/50 transition-colors hover:text-parchment"
+                  >
+                    <X className="h-3.5 w-3.5" /> Concede this element
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div
+                    className="rounded-2xl p-6"
+                    style={{
+                      background: `color-mix(in oklab, ${round.solved ? "var(--color-emerald-elixir)" : "var(--color-gold)"} 8%, transparent)`,
+                      border: `1px solid color-mix(in oklab, ${round.solved ? "var(--color-emerald-elixir)" : "var(--color-gold)"} 35%, transparent)`,
+                    }}
+                  >
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-parchment/60">
+                      {round.solved ? `Named it — +${round.pointsEarned} points` : "It was"}
+                    </p>
+                    <p className="mt-1 font-display text-3xl text-spectral">
+                      {round.el.name}{" "}
+                      <span className="text-parchment/60 text-2xl">({round.el.symbol})</span>
+                    </p>
+                    <p className="mt-1 text-sm text-parchment/70">
+                      Element {round.el.number} · {round.el.category} · mass {round.el.mass}
+                    </p>
+                    {lore && (
+                      <p className="mt-3 font-serif text-sm text-parchment">{lore.history}</p>
+                    )}
+                  </div>
+                  <button onClick={nextRound} className="btn-arcane btn-arcane-hover mt-5 w-full justify-center">
+                    {roundIdx + 1 >= ROUNDS ? "See results" : "Next element"}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       {phase === "done" && (
@@ -433,6 +900,6 @@ function Identifier() {
           </button>
         </div>
       )}
-    </ModuleShell>
+    </>
   );
 }

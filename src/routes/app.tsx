@@ -297,7 +297,7 @@ const MODULES: ModuleRow[] = [
   {
     icon: Fingerprint,
     title: "Element Identifier",
-    desc: "Name the mystery element from real clues — fewer is better.",
+    desc: "Point the lens at anything — every item is read for its elements. Plus the clue-deduction trial.",
     color: "var(--color-gold)",
     to: "/identifier",
     status: "live",

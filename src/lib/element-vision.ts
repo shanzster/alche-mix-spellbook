@@ -72,6 +72,11 @@ export function classContainsElement(cls: string, symbol: string): boolean {
   return (CLASS_ELEMENTS[cls] ?? []).includes(symbol);
 }
 
+/** Every element this object class plausibly contains (Identifier fallback). */
+export function elementsForClass(cls: string): string[] {
+  return CLASS_ELEMENTS[cls] ?? [];
+}
+
 export interface LiveDetection {
   label: string;
   score: number;
@@ -172,9 +177,106 @@ export function startElementDetector(opts: StartOpts): DetectorHandle {
   };
 }
 
+// ── Element Identifier mode ──────────────────────────────────────────────────
+// Same camera loop, but no hunted element: EVERY recognised object gets a
+// neutral reticle labelled with the elements it plausibly contains. This is
+// the live preview layer AND the keyless fallback for the frame assay.
+
+export interface ItemDetection {
+  label: string;
+  score: number;
+  elements: string[]; // symbols, e.g. ["Cu","Sn","Au"]
+}
+
+interface ItemScannerOpts {
+  video: HTMLVideoElement;
+  canvas: HTMLCanvasElement;
+  /** Fires after every pass with the distinct items in view (best score per label). */
+  onUpdate?: (items: ItemDetection[]) => void;
+  onReady?: () => void;
+  onError?: (err: unknown) => void;
+}
+
+/** Live detect → draw loop for the Identifier: boxes every object with its elements. */
+export function startItemScanner(opts: ItemScannerOpts): DetectorHandle {
+  const { video, canvas, onUpdate, onReady, onError } = opts;
+  let stopped = false;
+  let timer = 0;
+
+  const run = async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let model: any;
+    try {
+      model = await loadModel();
+    } catch (err) {
+      console.warn("[Vision] item scanner unavailable:", err);
+      if (!stopped) onError?.(err);
+      return;
+    }
+    if (stopped) return;
+    onReady?.();
+
+    const tick = async () => {
+      if (stopped) return;
+      if (video.readyState >= 2 && video.videoWidth > 0) {
+        try {
+          const preds = (await model.detect(video, 8, 0.5)) as {
+            bbox: [number, number, number, number];
+            class: string;
+            score: number;
+          }[];
+          if (stopped) return;
+          drawItems(canvas, video, preds);
+          onUpdate?.(dedupeDetections(preds));
+        } catch (err) {
+          console.warn("[Vision] detect pass failed:", err);
+        }
+      }
+      timer = window.setTimeout(tick, 140);
+    };
+    void tick();
+  };
+  void run();
+
+  return {
+    stop: () => {
+      stopped = true;
+      window.clearTimeout(timer);
+      canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
+    },
+  };
+}
+
+/** One-shot detection over a still image (the Identifier's upload fallback). */
+export async function detectImageItems(
+  img: HTMLImageElement | HTMLCanvasElement,
+): Promise<ItemDetection[]> {
+  const model = await loadModel();
+  const preds = (await model.detect(img, 8, 0.4)) as {
+    bbox: [number, number, number, number];
+    class: string;
+    score: number;
+  }[];
+  return dedupeDetections(preds);
+}
+
+/** Distinct labels, best score first, each with its plausible elements. */
+function dedupeDetections(
+  preds: { class: string; score: number }[],
+): ItemDetection[] {
+  const best = new Map<string, number>();
+  for (const p of preds) {
+    if ((best.get(p.class) ?? 0) < p.score) best.set(p.class, p.score);
+  }
+  return [...best.entries()]
+    .map(([label, score]) => ({ label, score, elements: elementsForClass(label) }))
+    .sort((a, b) => b.score - a.score);
+}
+
 // ── Reticle drawing ──────────────────────────────────────────────────────────
 const GREEN = "#34d399";
 const RED = "#f87171";
+const TEAL = "#2dd4bf";
 
 function draw(
   canvas: HTMLCanvasElement,
@@ -210,38 +312,90 @@ function draw(
     const w = p.bbox[2] * s;
     const h = p.bbox[3] * s;
 
-    // Scanner-style corner brackets ("square tracker").
-    const arm = Math.max(14, Math.min(w, h) * 0.18);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
-    ctx.shadowColor = color;
-    ctx.shadowBlur = 8;
-    ctx.beginPath();
-    // top-left
-    ctx.moveTo(x, y + arm); ctx.lineTo(x, y); ctx.lineTo(x + arm, y);
-    // top-right
-    ctx.moveTo(x + w - arm, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + arm);
-    // bottom-right
-    ctx.moveTo(x + w, y + h - arm); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w - arm, y + h);
-    // bottom-left
-    ctx.moveTo(x + arm, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + h - arm);
-    ctx.stroke();
-    // faint full outline to tie the brackets together
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 0.25;
-    ctx.strokeRect(x, y, w, h);
-    ctx.globalAlpha = 1;
-
     // Label chip: "scissors ✓ Fe" / "cup ✗"
-    const label = `${p.class} ${match ? `✓ ${elementSymbol}` : "✗"}`;
-    ctx.font = "600 12px system-ui, sans-serif";
-    const tw = ctx.measureText(label).width;
-    const chipY = y > 24 ? y - 22 : y + 4;
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.roundRect(x, chipY, tw + 14, 18, 6);
-    ctx.fill();
-    ctx.fillStyle = "#0b1220";
-    ctx.fillText(label, x + 7, chipY + 13);
+    drawReticle(ctx, x, y, w, h, color, `${p.class} ${match ? `✓ ${elementSymbol}` : "✗"}`);
   }
+}
+
+/** Identifier mode: every object gets a teal reticle listing its elements. */
+function drawItems(
+  canvas: HTMLCanvasElement,
+  video: HTMLVideoElement,
+  preds: { bbox: [number, number, number, number]; class: string; score: number }[],
+) {
+  const dw = canvas.clientWidth;
+  const dh = canvas.clientHeight;
+  const dpr = window.devicePixelRatio || 1;
+  if (canvas.width !== dw * dpr || canvas.height !== dh * dpr) {
+    canvas.width = dw * dpr;
+    canvas.height = dh * dpr;
+  }
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, dw, dh);
+
+  const vw = video.videoWidth;
+  const vh = video.videoHeight;
+  if (!vw || !vh) return;
+  const s = Math.max(dw / vw, dh / vh);
+  const ox = (dw - vw * s) / 2;
+  const oy = (dh - vh * s) / 2;
+
+  for (const p of preds) {
+    const elements = elementsForClass(p.class);
+    // Label chip: "mouse · Cu Sn Au C Fe" (or just the name if unmapped).
+    const label = elements.length > 0 ? `${p.class} · ${elements.join(" ")}` : p.class;
+    drawReticle(
+      ctx,
+      p.bbox[0] * s + ox,
+      p.bbox[1] * s + oy,
+      p.bbox[2] * s,
+      p.bbox[3] * s,
+      TEAL,
+      label,
+    );
+  }
+}
+
+/** Scanner-style corner brackets + a filled label chip. */
+function drawReticle(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  color: string,
+  label: string,
+) {
+  const arm = Math.max(14, Math.min(w, h) * 0.18);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 3;
+  ctx.shadowColor = color;
+  ctx.shadowBlur = 8;
+  ctx.beginPath();
+  // top-left
+  ctx.moveTo(x, y + arm); ctx.lineTo(x, y); ctx.lineTo(x + arm, y);
+  // top-right
+  ctx.moveTo(x + w - arm, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + arm);
+  // bottom-right
+  ctx.moveTo(x + w, y + h - arm); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w - arm, y + h);
+  // bottom-left
+  ctx.moveTo(x + arm, y + h); ctx.lineTo(x, y + h); ctx.lineTo(x, y + h - arm);
+  ctx.stroke();
+  // faint full outline to tie the brackets together
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 0.25;
+  ctx.strokeRect(x, y, w, h);
+  ctx.globalAlpha = 1;
+
+  ctx.font = "600 12px system-ui, sans-serif";
+  const tw = ctx.measureText(label).width;
+  const chipY = y > 24 ? y - 22 : y + 4;
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.roundRect(x, chipY, tw + 14, 18, 6);
+  ctx.fill();
+  ctx.fillStyle = "#0b1220";
+  ctx.fillText(label, x + 7, chipY + 13);
 }
