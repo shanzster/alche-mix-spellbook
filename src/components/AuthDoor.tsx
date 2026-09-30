@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { FlaskConical, GraduationCap, Mail, Lock, Eye, EyeOff, LogIn } from "lucide-react";
+import { FlaskConical, GraduationCap, Mail, Lock, Eye, EyeOff, LogIn, School, ArrowRight } from "lucide-react";
 import { fetchRole, homeForRole, signInWithEmail, signInWithGoogle } from "../lib/auth";
 
 function GoogleIcon() {
@@ -109,6 +109,23 @@ export function AuthDoor({ educator = false }: { educator?: boolean }) {
             border: "1px solid color-mix(in oklab, var(--color-parchment) 20%, transparent)",
             boxShadow: `0 0 60px -20px color-mix(in oklab, ${accent} 35%, transparent)`,
           }}>
+
+          {/* School-code students have their own door (consultation feedback). */}
+          {!educator && (
+            <Link to="/school-login"
+              className="group mb-6 flex items-center gap-3 rounded-lg px-4 py-3 transition-all duration-200 hover:-translate-y-0.5"
+              style={{
+                background: "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent)",
+              }}>
+              <School className="h-5 w-5 flex-shrink-0 text-teal" />
+              <span className="flex-1 text-sm">
+                <span className="font-semibold text-teal">Have a School Code ready?</span>{" "}
+                <span className="text-parchment/70">Sign in through the School Door to join your class.</span>
+              </span>
+              <ArrowRight className="h-4 w-4 flex-shrink-0 text-teal transition-transform duration-200 group-hover:translate-x-0.5" />
+            </Link>
+          )}
 
           {/* Google button */}
           <button onClick={handleGoogle} disabled={loading}

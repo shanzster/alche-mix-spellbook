@@ -20,6 +20,8 @@ import { Route as SolutionsRouteImport } from './routes/solutions'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SchoolsRouteImport } from './routes/schools'
+import { Route as SchoolSignupRouteImport } from './routes/school-signup'
+import { Route as SchoolLoginRouteImport } from './routes/school-login'
 import { Route as ScavengerRouteImport } from './routes/scavenger'
 import { Route as ScannerRouteImport } from './routes/scanner'
 import { Route as ReactionsRouteImport } from './routes/reactions'
@@ -107,6 +109,16 @@ const ShopRoute = ShopRouteImport.update({
 const SchoolsRoute = SchoolsRouteImport.update({
   id: '/schools',
   path: '/schools',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SchoolSignupRoute = SchoolSignupRouteImport.update({
+  id: '/school-signup',
+  path: '/school-signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SchoolLoginRoute = SchoolLoginRouteImport.update({
+  id: '/school-login',
+  path: '/school-login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScavengerRoute = ScavengerRouteImport.update({
@@ -309,6 +321,8 @@ export interface FileRoutesByFullPath {
   '/reactions': typeof ReactionsRoute
   '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
+  '/school-login': typeof SchoolLoginRoute
+  '/school-signup': typeof SchoolSignupRoute
   '/schools': typeof SchoolsRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
@@ -355,6 +369,8 @@ export interface FileRoutesByTo {
   '/reactions': typeof ReactionsRoute
   '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
+  '/school-login': typeof SchoolLoginRoute
+  '/school-signup': typeof SchoolSignupRoute
   '/schools': typeof SchoolsRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
@@ -402,6 +418,8 @@ export interface FileRoutesById {
   '/reactions': typeof ReactionsRoute
   '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
+  '/school-login': typeof SchoolLoginRoute
+  '/school-signup': typeof SchoolSignupRoute
   '/schools': typeof SchoolsRoute
   '/shop': typeof ShopRoute
   '/signup': typeof SignupRoute
@@ -450,6 +468,8 @@ export interface FileRouteTypes {
     | '/reactions'
     | '/scanner'
     | '/scavenger'
+    | '/school-login'
+    | '/school-signup'
     | '/schools'
     | '/shop'
     | '/signup'
@@ -496,6 +516,8 @@ export interface FileRouteTypes {
     | '/reactions'
     | '/scanner'
     | '/scavenger'
+    | '/school-login'
+    | '/school-signup'
     | '/schools'
     | '/shop'
     | '/signup'
@@ -542,6 +564,8 @@ export interface FileRouteTypes {
     | '/reactions'
     | '/scanner'
     | '/scavenger'
+    | '/school-login'
+    | '/school-signup'
     | '/schools'
     | '/shop'
     | '/signup'
@@ -589,6 +613,8 @@ export interface RootRouteChildren {
   ReactionsRoute: typeof ReactionsRoute
   ScannerRoute: typeof ScannerRoute
   ScavengerRoute: typeof ScavengerRoute
+  SchoolLoginRoute: typeof SchoolLoginRoute
+  SchoolSignupRoute: typeof SchoolSignupRoute
   SchoolsRoute: typeof SchoolsRoute
   ShopRoute: typeof ShopRoute
   SignupRoute: typeof SignupRoute
@@ -679,6 +705,20 @@ declare module '@tanstack/react-router' {
       path: '/schools'
       fullPath: '/schools'
       preLoaderRoute: typeof SchoolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/school-signup': {
+      id: '/school-signup'
+      path: '/school-signup'
+      fullPath: '/school-signup'
+      preLoaderRoute: typeof SchoolSignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/school-login': {
+      id: '/school-login'
+      path: '/school-login'
+      fullPath: '/school-login'
+      preLoaderRoute: typeof SchoolLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scavenger': {
@@ -949,6 +989,8 @@ const rootRouteChildren: RootRouteChildren = {
   ReactionsRoute: ReactionsRoute,
   ScannerRoute: ScannerRoute,
   ScavengerRoute: ScavengerRoute,
+  SchoolLoginRoute: SchoolLoginRoute,
+  SchoolSignupRoute: SchoolSignupRoute,
   SchoolsRoute: SchoolsRoute,
   ShopRoute: ShopRoute,
   SignupRoute: SignupRoute,

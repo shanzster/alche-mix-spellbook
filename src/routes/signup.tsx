@@ -1,8 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { FlaskConical, Mail, Lock, Eye, EyeOff, UserPlus, Users } from "lucide-react";
-import { signUpWithEmail, signInWithGoogle, type User } from "../lib/auth";
-import { joinClass } from "../lib/teacher";
+import { FlaskConical, Mail, Lock, Eye, EyeOff, UserPlus, School, ArrowRight } from "lucide-react";
+import { signUpWithEmail, signInWithGoogle } from "../lib/auth";
 
 export const Route = createFileRoute("/signup")({
   component: SignupPage,
@@ -32,19 +31,8 @@ function SignupPage() {
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
   const [role, setRole]         = useState<"student" | "teacher">(roleParam === "teacher" ? "teacher" : "student");
-  const [classCode, setClassCode] = useState("");
 
   const destination = role === "teacher" ? "/teacher" : "/app";
-
-  // Best-effort: enrolment must never block account creation — an unmatched
-  // code just lands the student on the Bench, where the join card remains.
-  const joinWithCode = async (user: User) => {
-    if (role !== "student" || classCode.trim().length < 4) return;
-    await joinClass(
-      { uid: user.uid, name: user.displayName ?? null, email: user.email ?? null },
-      classCode,
-    );
-  };
 
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,8 +41,7 @@ function SignupPage() {
     if (password.length < 6)  { setError("Password must be at least 6 characters."); return; }
     setLoading(true);
     try {
-      const user = await signUpWithEmail(email, password, role);
-      await joinWithCode(user);
+      await signUpWithEmail(email, password, role);
       navigate({ to: destination });
     } catch (err: any) {
       setError(friendlyError(err.code));
@@ -64,8 +51,7 @@ function SignupPage() {
   const handleGoogle = async () => {
     setError(""); setLoading(true);
     try {
-      const user = await signInWithGoogle(role);
-      await joinWithCode(user);
+      await signInWithGoogle(role);
       navigate({ to: destination });
     } catch (err: any) {
       console.error("Google sign-in failed:", err);
@@ -134,31 +120,22 @@ function SignupPage() {
             )}
           </div>
 
-          {/* School / class code — entered at registration so the student lands
-              already enrolled. Optional: the Bench's join card remains the
-              fallback for codes handed out later. */}
+          {/* School-code students get their own door (consultation feedback):
+              the code entry lives on /school-signup, not inline here. */}
           {role === "student" && (
-            <div className="mb-6">
-              <label className="block text-xs tracking-[0.2em] uppercase text-parchment/60 mb-1.5">
-                School code <span className="normal-case tracking-normal text-parchment/40">(optional)</span>
-              </label>
-              <div className="relative">
-                <Users className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-parchment/40" />
-                <input
-                  value={classCode}
-                  onChange={e => setClassCode(e.target.value.toUpperCase())}
-                  placeholder="ABC123"
-                  maxLength={6}
-                  aria-label="School code"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-lg text-sm font-semibold tracking-[0.3em] uppercase text-spectral placeholder:font-normal placeholder:tracking-[0.2em] placeholder:text-parchment/30 outline-none transition-all"
-                  style={{ background: "color-mix(in oklab, var(--color-mist) 80%, transparent)", border: "1px solid color-mix(in oklab, var(--color-parchment) 22%, transparent)" }}
-                  onFocus={e => (e.currentTarget.style.borderColor = "color-mix(in oklab, var(--color-wraith) 60%, transparent)")}
-                  onBlur={e => (e.currentTarget.style.borderColor = "color-mix(in oklab, var(--color-parchment) 22%, transparent)")} />
-              </div>
-              <p className="text-[11px] text-parchment/50 mt-1.5">
-                Got a code from your teacher? Enter it to join their class right away.
-              </p>
-            </div>
+            <Link to="/school-signup"
+              className="group mb-6 flex items-center gap-3 rounded-lg px-4 py-3 transition-all duration-200 hover:-translate-y-0.5"
+              style={{
+                background: "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent)",
+              }}>
+              <School className="h-5 w-5 flex-shrink-0 text-teal" />
+              <span className="flex-1 text-sm">
+                <span className="font-semibold text-teal">Have a School Code ready?</span>{" "}
+                <span className="text-parchment/70">Sign up through the School Door and land in your class.</span>
+              </span>
+              <ArrowRight className="h-4 w-4 flex-shrink-0 text-teal transition-transform duration-200 group-hover:translate-x-0.5" />
+            </Link>
           )}
 
           {/* Google button */}

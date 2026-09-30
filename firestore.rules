@@ -53,7 +53,12 @@ service cloud.firestore {
 
     // ── Classes (doc id = the 6-char join code) ──
     match /classes/{classId} {
-      allow read: if signedIn();
+      // `get` is public so the School Door (/school-signup, /school-login) can
+      // confirm a code BEFORE the account exists. Knowing the code is the
+      // secret; the doc only exposes the class name + teacher name. Listing
+      // (enumeration) stays signed-in-only.
+      allow get: if true;
+      allow list: if signedIn();
       allow create: if signedIn() && request.resource.data.teacherId == request.auth.uid;
       allow update, delete: if signedIn() && resource.data.teacherId == request.auth.uid;
 
