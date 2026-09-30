@@ -17,6 +17,10 @@ const PLACEHOLDER_KEY = "__PLACEHOLDER_ADD_YOUR_GEMINI_KEY__";
 // "-latest" alias tracks the current stable Flash model, so retired-model 404s
 // (which killed gemini-2.0-flash) can't recur. Pin via GEMINI_MODEL if needed.
 const DEFAULT_MODEL = "gemini-flash-latest";
+// When the primary Flash pool is overloaded (HTTP 503 "high demand" / 429),
+// one retry plus a hop to the Lite pool usually still gets a real answer
+// before the rule-based fallback has to take over.
+const OVERLOAD_FALLBACK_MODEL = "gemini-flash-lite-latest";
 
 const endpoint = (model: string) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
@@ -75,8 +79,6 @@ export async function askGemini<T = unknown>({
     throw new AINotConfiguredError();
   }
 
-  const model = resolvedModel();
-
   const body: Record<string, unknown> = {
     contents: [{ role: "user", parts }],
     generationConfig: {
@@ -88,11 +90,25 @@ export async function askGemini<T = unknown>({
   };
   if (system) body.systemInstruction = { parts: [{ text: system }] };
 
-  const res = await fetch(`${endpoint(model)}?key=${apiKey}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const attempt = (m: string) =>
+    fetch(`${endpoint(m)}?key=${apiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  const overloaded = (r: Response) => r.status === 503 || r.status === 429;
+
+  let model = resolvedModel();
+  let res = await attempt(model);
+  if (overloaded(res)) {
+    await new Promise((r) => setTimeout(r, 1200));
+    res = await attempt(model);
+  }
+  if (overloaded(res) && model !== OVERLOAD_FALLBACK_MODEL) {
+    console.warn(`[AI] ⚠ ${model} overloaded (HTTP ${res.status}) — retrying on ${OVERLOAD_FALLBACK_MODEL}`);
+    model = OVERLOAD_FALLBACK_MODEL;
+    res = await attempt(model);
+  }
 
   if (!res.ok) {
     // Surface the status so callers can back off on 429 (tutorial §6).
