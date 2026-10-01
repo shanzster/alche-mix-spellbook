@@ -7,6 +7,7 @@ import { RequireRole } from "../components/RequireRole";
 import { Molecule3D } from "../components/Molecule3D";
 import { MOLECULES, elementStyle } from "../lib/molecules";
 import { useUserProfile, logPractice } from "../lib/profile";
+import { DropVessel } from "../components/DropVessel";
 
 export const Route = createFileRoute("/molecules")({
   component: () => (
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/molecules")({
 const ACCENT = "var(--color-emerald-elixir)";
 
 function MoleculeViewer() {
-  const { uid } = useUserProfile();
+  const { uid, profile } = useUserProfile();
   useEffect(() => {
     if (uid) void logPractice(uid, "molecules");
   }, [uid]);
@@ -36,6 +37,18 @@ function MoleculeViewer() {
         icon={Shapes}
         accent={ACCENT}
       />
+
+      {/* The Alembic — this module's daily drop vessel (one tap a day). */}
+      <div className="mb-6 max-w-sm">
+        <DropVessel
+          uid={uid}
+          profile={profile}
+          vesselId="molecules"
+          variant="alembic"
+          title="The Alembic"
+          accent={ACCENT}
+        />
+      </div>
 
       {/* Molecule picker */}
       <div className="flex flex-wrap gap-2 mb-6">

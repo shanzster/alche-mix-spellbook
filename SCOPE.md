@@ -104,7 +104,9 @@ Gemini (`GEMINI_API_KEY`, server-only via `createServerFn`) · Nitro/Cloudflare.
 persistent Trials (`profile.trials`, stars) · aurum currency with The Emporium
 as its sink · starter streaks · the Great Cauldron tap toy on the Bench
 (1 ladle per 10 stirs, 1000-stir cap → "send us your account details, the
-Alchemist has a surprise") · badges · offline service worker (public/sw.js,
+Alchemist has a surprise") · daily drop vessels on module pages (the Alembic
+on /molecules, the Phial on /atomic-builder — 1 drop/day, 300 cap, same
+surprise; `DropVessel`) · badges · offline service worker (public/sw.js,
 conservative caching) · periodic-table deep links (`?element=Fe`) with lore in
 the detail panel.
 

@@ -81,6 +81,8 @@ export interface StudentProfile {
   starterHistory?: StarterRunRecord[];
   /** The Great Cauldron on the Bench — lifetime stirs (capped at 1000). */
   cauldronTaps?: number;
+  /** Daily drop vessels on module pages (one drop/day, capped), by vessel id. */
+  dropVessels?: Record<string, { drops: number; lastDay: string }>;
   /** Shop item ids the student owns (bought with aurum). */
   inventory?: string[];
   /** Equipped cosmetics, keyed by slot (e.g. { frame: "frame-gilded" }). */
@@ -453,6 +455,26 @@ export async function addCauldronTaps(uid: string | null, n: number): Promise<vo
     await updateDoc(doc(db, "users", uid), { cauldronTaps: increment(n) });
   } catch (err) {
     console.error("addCauldronTaps failed:", err);
+  }
+}
+
+/**
+ * Banks today's drop into a module's vessel (one per day; the component
+ * enforces the daily gate and the cap). Best-effort; never thrown.
+ */
+export async function collectDailyDrop(
+  uid: string | null,
+  vesselId: string,
+  drops: number,
+  dayKey: string,
+): Promise<void> {
+  if (!uid) return;
+  try {
+    await updateDoc(doc(db, "users", uid), {
+      [`dropVessels.${vesselId}`]: { drops, lastDay: dayKey },
+    });
+  } catch (err) {
+    console.error("collectDailyDrop failed:", err);
   }
 }
 

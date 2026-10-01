@@ -103,6 +103,7 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 | Offline shell | `public/sw.js` | Cache Storage **D8** (`alchemix-{version}`, conservative precache) |
 | Badges | `src/lib/profile.ts` | `users/{uid}.badges[]` |
 | The Great Cauldron (Bench tap toy: 1 ladle per 10 stirs, 1000-stir cap → Alchemist's surprise; mood mirrors the Daily Starters streak) | `src/components/GreatCauldron.tsx` | `users/{uid}.cauldronTaps` **D2** via `addCauldronTaps()` (batched increments of 10) |
+| Daily drop vessels (the Alembic on /molecules, the Phial on /atomic-builder: 1 drop/day, 300-drop cap → same surprise) | `src/components/DropVessel.tsx` | `users/{uid}.dropVessels.{id}` **D2** via `collectDailyDrop()` |
 
 ---
 

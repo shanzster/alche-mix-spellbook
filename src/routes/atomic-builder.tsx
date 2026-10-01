@@ -6,6 +6,7 @@ import { RequireAuth } from "../components/RequireAuth";
 import { BohrModel3D } from "../components/BohrModel3D";
 import { ConceptCard, DidYouKnow } from "../components/Learn";
 import { useUserProfile, logPractice, recordTrial, type TrialResult } from "../lib/profile";
+import { DropVessel } from "../components/DropVessel";
 
 export const Route = createFileRoute("/atomic-builder")({
   component: () => (
@@ -480,6 +481,18 @@ function AtomicBuilder() {
       subtitle="Every atom in the universe is just three particles — protons, neutrons and electrons. Add or remove them here and watch which element you make, whether it's charged, and whether it's radioactive."
       right={TabToggle}
     >
+      {/* The Phial — this module's daily drop vessel (one tap a day). */}
+      <div className="mb-6 max-w-sm">
+        <DropVessel
+          uid={uid}
+          profile={profile}
+          vesselId="atomic"
+          variant="phial"
+          title="The Phial"
+          accent="var(--color-gold)"
+        />
+      </div>
+
       {tab === "trial" ? (
         <AtomTrial uid={uid} best={profile?.trials?.["atomic-builder"]} />
       ) : (
