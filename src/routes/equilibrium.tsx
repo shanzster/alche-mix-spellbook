@@ -50,13 +50,24 @@ const MAX_UNITS = 110; // cap on total N₂O₄ units (D + M/2) so the flask sta
 
 interface SimIn { T: number; V: number }
 interface SimCmd { inject: number; reset: boolean }
-interface SimStats { D: number; M: number; concD: number; concM: number; q: number; k: number }
+interface SimStats { D: number; M: number; concD: number; concM: number; q: number; k: number; strain: number }
+
+// ── Glassware limits — push too hard and the flask gives way ────────────────
+// Pressure proxy is honest ideal-gas reasoning: P ∝ n·T / V (particle count
+// times absolute temperature over volume). Baseline ≈ 48 units at rest.
+const pressureOf = (n: number, T: number, V: number) => (n * (T / 298)) / Math.max(0.2, V);
+const DANGER_P = 300;       // overpressure: crowded + squeezed + hot
+const DANGER_T = 388;       // flame nearly wide open scorches the glass
+const STRAIN_RISE = 0.006;  // ≈3 s of sustained abuse shatters it
+const STRAIN_FALL = 0.012;  // easing off lets the glass recover
 
 // ── Particle stage — dimers split, pairs recombine, the tint is the story ───
-function ParticleStage({ sim, cmd, stats }: {
+function ParticleStage({ sim, cmd, stats, onShatter }: {
   sim: MutableRefObject<SimIn>;
   cmd: MutableRefObject<SimCmd>;
   stats: MutableRefObject<SimStats>;
+  /** Ref'd callback so the sim effect never re-runs: fired once per shatter. */
+  onShatter: MutableRefObject<() => void>;
 }) {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -75,6 +86,9 @@ function ParticleStage({ sim, cmd, stats }: {
     let seeded = false;
     let acc = 0; // fractional recombination events carried between frames
     let raf = 0;
+    let strain = 0;          // 0..1 — how close the glass is to giving way
+    let shattered = false;
+    let jag: number[] = [];  // frozen randomness for the broken-glass shapes
 
     const spawnDimer = (x: number, y: number, vx?: number, vy?: number): P => {
       const a = Math.random() * Math.PI * 2;
@@ -117,7 +131,70 @@ function ParticleStage({ sim, cmd, stats }: {
           return spawnDimer(p.x, p.y);
         });
         acc = 0;
+        strain = 0;
+        shattered = false; // a fresh flask from the spares cupboard
+        jag = [];
         cmd.current.reset = false;
+      }
+
+      // ── A shattered flask: shards, a pilot flame, and a lesson ──
+      if (shattered) {
+        const glass = "color-mix(in oklab, var(--color-parchment) 45%, transparent)";
+        // Stand + burner, as ever.
+        ctx.strokeStyle = "color-mix(in oklab, var(--color-parchment) 28%, transparent)";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(cx - R * 0.7, bulbBottom - R * 0.26); ctx.lineTo(cx - R * 0.95, H - 8);
+        ctx.moveTo(cx + R * 0.7, bulbBottom - R * 0.26); ctx.lineTo(cx + R * 0.95, H - 8);
+        ctx.stroke();
+        const nozzleY = H - 16;
+        ctx.fillStyle = "rgba(245, 158, 11, 0.8)";
+        ctx.beginPath();
+        ctx.moveTo(cx - 5, nozzleY);
+        ctx.quadraticCurveTo(cx - 5, nozzleY - 7, cx, nozzleY - 12);
+        ctx.quadraticCurveTo(cx + 5, nozzleY - 7, cx + 5, nozzleY);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = "color-mix(in oklab, var(--color-parchment) 38%, transparent)";
+        ctx.fillRect(cx - 17, nozzleY, 34, 8);
+        // Escaped vapour, drifting off.
+        ctx.fillStyle = "rgba(146, 64, 14, 0.10)";
+        ctx.beginPath(); ctx.arc(cx, cy - R * 0.9, R * 0.55, 0, Math.PI * 2); ctx.fill();
+        // The surviving lower half of the bulb, with a jagged broken rim.
+        ctx.strokeStyle = glass;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, Math.PI * 0.15, Math.PI * 0.85);
+        const a0 = Math.PI * 0.85, a1 = Math.PI * 0.15;
+        const x0 = cx + R * Math.cos(a0), y0 = cy + R * Math.sin(a0);
+        const x1 = cx + R * Math.cos(a1), y1 = cy + R * Math.sin(a1);
+        ctx.moveTo(x0, y0);
+        const SEG = 9;
+        for (let i = 1; i < SEG; i++) {
+          const t = i / SEG;
+          ctx.lineTo(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t - (jag[i] ?? 0.5) * 16 - 3);
+        }
+        ctx.lineTo(x1, y1);
+        ctx.stroke();
+        // Shards on the bench.
+        for (let k = 0; k < 5; k++) {
+          const sx = cx + ((jag[k + 9] ?? 0.5) - 0.5) * R * 2.4;
+          const sy = H - 12 - (jag[k + 14] ?? 0.5) * 8;
+          const s = 5 + (jag[k + 19] ?? 0.5) * 6;
+          ctx.beginPath();
+          ctx.moveTo(sx, sy);
+          ctx.lineTo(sx + s, sy - s * 0.4);
+          ctx.lineTo(sx + s * 0.4, sy - s);
+          ctx.closePath();
+          ctx.fillStyle = "color-mix(in oklab, var(--color-parchment) 18%, transparent)";
+          ctx.fill();
+          ctx.strokeStyle = glass;
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+        }
+        stats.current = { D: 0, M: 0, concD: 0, concM: 0, q: 0, k: kForward(T) / kReverse(T), strain: 1 };
+        raf = requestAnimationFrame(draw);
+        return;
       }
       // Injection: the syringe squirts fresh N₂O₄ down through the neck.
       let squirt = 0;
@@ -188,11 +265,27 @@ function ParticleStage({ sim, cmd, stats }: {
         }
       }
 
+      // ── Glassware stress: honest ideal-gas pressure (n·T/V) + scorching ──
+      const press = pressureOf(parts.length, T, V);
+      const inDanger = press > DANGER_P || T >= DANGER_T;
+      strain = Math.max(0, Math.min(1, strain + (inDanger ? STRAIN_RISE : -STRAIN_FALL)));
+      if (strain >= 1) {
+        shattered = true;
+        jag = Array.from({ length: 26 }, () => Math.random());
+        parts = [];
+        onShatter.current();
+      }
+
       // Publish stats for the graphs / gauge.
       const D = parts.length - M;
       const concD = D / V, concM = M / V;
       const q = (M * M) / (Math.max(0.5, D) * V);
-      stats.current = { D, M, concD, concM, q, k: pf / pr };
+      stats.current = { D, M, concD, concM, q, k: pf / pr, strain };
+
+      // The glass rattles as the strain builds.
+      const shake = strain > 0.02 ? (Math.random() - 0.5) * strain * 6 : 0;
+      ctx.save();
+      ctx.translate(shake, 0);
 
       // ── Render the bench: stand → burner flame → vapour → glass ──
       // Retort-stand legs behind the flask.
@@ -284,12 +377,35 @@ function ParticleStage({ sim, cmd, stats }: {
       ctx.roundRect(cx - neckW / 2 - 5, neckTop - 9, neckW + 10, 13, 3);
       ctx.fill();
 
+      // Stress cracks crawl across the bulb as the strain builds.
+      if (strain > 0.22) {
+        ctx.strokeStyle = `rgba(248, 113, 113, ${(0.35 + strain * 0.55).toFixed(2)})`;
+        ctx.lineWidth = 1.8;
+        const cracks: [number, number][] = [[0.35, 1], [0.78, -1], [0.58, 1]];
+        cracks.forEach(([ang, dir], i) => {
+          if (strain < 0.22 + i * 0.26) return;
+          const len = R * (0.22 + strain * 0.4);
+          let px2 = cx + Math.cos(Math.PI * ang) * R * 0.92;
+          let py2 = cy + Math.sin(Math.PI * ang) * R * 0.92;
+          ctx.beginPath();
+          ctx.moveTo(px2, py2);
+          for (let s2 = 0; s2 < 4; s2++) {
+            px2 += dir * len * 0.25 * (0.6 + ((i + s2) % 3) * 0.3);
+            py2 += (s2 % 2 === 0 ? -1 : 1) * len * 0.18;
+            ctx.lineTo(px2, py2);
+          }
+          ctx.stroke();
+        });
+      }
+
+      ctx.restore();
+
       raf = requestAnimationFrame(draw);
     };
     raf = requestAnimationFrame(draw);
 
     return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
-  }, [sim, cmd, stats]);
+  }, [sim, cmd, stats, onShatter]);
 
   return <canvas ref={ref} className="w-full h-full" style={{ minHeight: 340 }} />;
 }
@@ -644,8 +760,9 @@ function Equilibrium() {
   const [T, setT] = useState(T_DEFAULT);
   const [V, setV] = useState(1.0);
   const [note, setNote] = useState<{ msg: string; n: number } | null>(null);
+  const [broken, setBroken] = useState(false);
   const [history, setHistory] = useState<Sample[]>([]);
-  const [gauge, setGauge] = useState<SimStats>({ D: SEED_DIMERS, M: 0, concD: SEED_DIMERS, concM: 0, q: 0, k: 16 });
+  const [gauge, setGauge] = useState<SimStats>({ D: SEED_DIMERS, M: 0, concD: SEED_DIMERS, concM: 0, q: 0, k: 16, strain: 0 });
 
   // Record a single practice visit (no scoring).
   useEffect(() => { if (uid) logPractice(uid, "equilibrium"); }, [uid]);
@@ -653,7 +770,7 @@ function Equilibrium() {
   const sim = useRef<SimIn>({ T, V });
   useEffect(() => { sim.current = { T, V }; }, [T, V]);
   const cmd = useRef<SimCmd>({ inject: 0, reset: false });
-  const stats = useRef<SimStats>({ D: SEED_DIMERS, M: 0, concD: SEED_DIMERS, concM: 0, q: 0, k: 16 });
+  const stats = useRef<SimStats>({ D: SEED_DIMERS, M: 0, concD: SEED_DIMERS, concM: 0, q: 0, k: 16, strain: 0 });
 
   // Sample the running sim for the graphs (rolling ~45 s window).
   useEffect(() => {
@@ -692,7 +809,23 @@ function Equilibrium() {
     cmd.current.inject += INJECT_DIMERS;
     counsel("You flooded the flask with N₂O₄ — Q dropped below K, so the system devours part of the excess, forging more NO₂ until Q climbs back to K.");
   };
-  const reset = () => { cmd.current.reset = true; setT(T_DEFAULT); setV(1.0); setNote(null); setHistory([]); };
+  const reset = () => {
+    cmd.current.reset = true;
+    setBroken(false);
+    setT(T_DEFAULT);
+    setV(1.0);
+    setNote(null);
+    setHistory([]);
+  };
+
+  // Fired from inside the sim the moment the glass gives way.
+  const onShatter = useRef<() => void>(() => {});
+  onShatter.current = () => {
+    setBroken(true);
+    counsel(
+      "CRACK — the flask gave way! Too much heat and pressure for the glass. Perfectly normal: every alchemist breaks a flask or two. Fit a fresh one and carry on.",
+    );
+  };
 
   const TabToggle = (
     <div className="inline-flex flex-wrap rounded-full p-1" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }}>
@@ -719,9 +852,29 @@ function Equilibrium() {
         <>
           <div className="grid gap-8 lg:grid-cols-2">
             {/* Reversible reaction stage */}
-            <div className="rounded-2xl overflow-hidden"
+            <div className="relative rounded-2xl overflow-hidden"
               style={{ background: "radial-gradient(ellipse at 50% 40%, color-mix(in oklab, var(--color-violet-deep) 22%, transparent), color-mix(in oklab, var(--color-slate-sunken) 82%, transparent))", border: "1px solid var(--color-border)" }}>
-              <ParticleStage sim={sim} cmd={cmd} stats={stats} />
+              {broken && (
+                <div
+                  className="absolute inset-0 z-10 flex items-center justify-center p-6 text-center"
+                  style={{ background: "rgba(11, 18, 32, 0.78)", backdropFilter: "blur(2px)" }}
+                >
+                  <div className="max-w-sm">
+                    <p className="font-display text-3xl mb-2 text-crimson">CRACK!</p>
+                    <p className="text-sm text-parchment mb-1.5">
+                      The flask gave way — too much heat and pressure for the glass to hold.
+                    </p>
+                    <p className="text-xs text-parchment/70 mb-5">
+                      Perfectly normal. Every alchemist breaks a flask or two — that's what the
+                      spares cupboard is for. Nothing is lost but the glass.
+                    </p>
+                    <button onClick={reset} className="btn-arcane btn-arcane-hover text-sm">
+                      <FlaskConical className="h-4 w-4" /> Fit a fresh flask
+                    </button>
+                  </div>
+                </div>
+              )}
+              <ParticleStage sim={sim} cmd={cmd} stats={stats} onShatter={onShatter} />
               <div className="px-5 py-4 border-t flex items-center justify-center gap-3" style={{ borderColor: "var(--color-border)" }}>
                 <span className="flex h-9 w-9 items-center justify-center rounded-lg"
                   style={{ background: "color-mix(in oklab, var(--color-amber-scry) 16%, transparent)", color: "var(--color-amber-scry)" }}>
@@ -734,12 +887,17 @@ function Equilibrium() {
                   <div className="text-xs text-parchment/70">
                     {gauge.D} colourless dimers · {gauge.M} brown NO₂ — the tint of the flask is your instrument.
                   </div>
+                  {!broken && gauge.strain > 0.22 && (
+                    <div className="mt-0.5 text-xs text-crimson animate-pulse">
+                      ⚠ The glass is straining — ease the flame or the pressure before it gives way.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Stress controls */}
-            <div className="space-y-4">
+            {/* Stress controls — inert while the flask is in pieces */}
+            <div className={broken ? "space-y-4 opacity-45 pointer-events-none" : "space-y-4"}>
               <div className="rounded-xl p-4" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid color-mix(in oklab, var(--color-amber-scry) 28%, transparent)" }}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="inline-flex items-center gap-1.5 text-[11px] tracking-[0.15em] uppercase" style={{ color: "var(--color-amber-scry)" }}>

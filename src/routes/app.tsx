@@ -36,7 +36,6 @@ import {
   Fingerprint,
 } from "lucide-react";
 import { ARCADE_HIDDEN, StudentShell } from "../components/StudentShell";
-import { GreatCauldron } from "../components/GreatCauldron";
 import { PageHeader } from "../components/PageHeader";
 import { RequireRole } from "../components/RequireRole";
 import { useUserProfile, type Mastery, type StudentProfile } from "../lib/profile";
@@ -754,9 +753,6 @@ function StudentHub() {
 
       {/* Class enrolment card — the row's quieter right half. */}
       <ClassRow uid={uid} profile={profile} />
-
-      {/* The Great Cauldron — tap to stir; its mood tracks the day streak. */}
-      <GreatCauldron uid={uid} profile={profile} />
       </div>
 
       {/* The Craft — tiered mastery ladder over the learning modules. */}

@@ -84,7 +84,7 @@ Gemini (`GEMINI_API_KEY`, server-only via `createServerFn`) · Nitro/Cloudflare.
 | /solutions | The Elixir Bench | Solutions & molarity: real solubility limits, particles view, commissions trial |
 | /thermo | Cauldron of Heat | Coffee-cup calorimetry, real ΔH data, guided q=mcΔT assay |
 | /rates | Reaction Rates | Collision theory sim: temp/concentration/surface/catalyst, quick check |
-| /equilibrium | Equilibrium | N₂O₄⇌NO₂ with emergent K in a drawn round-bottom flask over a burner (temperature = rotary burner-valve wheel, `ValveWheel`), Le Chatelier stresses, Haber tab |
+| /equilibrium | Equilibrium | N₂O₄⇌NO₂ with emergent K in a drawn round-bottom flask over a burner (temperature = rotary burner-valve wheel, `ValveWheel`), Le Chatelier stresses, Haber tab; sustained overpressure (n·T/V) or a near-max flame strains, cracks and SHATTERS the flask — warm "perfectly normal" reset to a fresh one |
 | /electro | The Voltaic Forge | Build galvanic cells from real potentials, animated e⁻ flow, trial |
 | /forces | Invisible Bonds | IMF sim + 5-substance boiling-point race, quick check |
 | /titration | Titration Lab | Strong + weak acid, 3 indicators, pour realism, unknown assay |
@@ -102,9 +102,7 @@ Gemini (`GEMINI_API_KEY`, server-only via `createServerFn`) · Nitro/Cloudflare.
 
 **Cross-cutting:** Ask the Alchemist mentor chat on every student page ·
 persistent Trials (`profile.trials`, stars) · aurum currency with The Emporium
-as its sink · starter streaks · the Great Cauldron tap toy on the Bench
-(1 ladle per 10 stirs, 1000-stir cap → "send us your account details, the
-Alchemist has a surprise") · daily drop vessels on module pages (the Alembic
+as its sink · starter streaks · daily drop vessels on module pages (the Alembic
 on /molecules, the Phial on /atomic-builder — 1 drop/day, 300 cap, same
 surprise; `DropVessel`) · badges · offline service worker (public/sw.js,
 conservative caching) · periodic-table deep links (`?element=Fe`) with lore in
