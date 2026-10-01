@@ -302,6 +302,7 @@ const MODULES: ModuleRow[] = [
     to: "/identifier",
     status: "live",
     group: "Prove Your Craft",
+    arOnly: true,
   },
   // ── Field Work ──
   {

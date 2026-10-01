@@ -61,7 +61,7 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 | /titration | Titration Lab | AI grading of the unknown assay (`aiGradeAnswer`, E3) |
 | /decay | Radioactive Decay | — |
 | /quiz | 3D Visual Quiz | persisted bests in `trials` |
-| /identifier | Element Identifier (live camera lens: every item in frame → its elements, via `aiIdentifyItems`; + the mystery-element clue game) | camera (E4); Gemini via `aiIdentifyItems` (E3) with on-device COCO-SSD fallback; persisted bests in `trials`; clues built from static periodic-table + lore data (**D9**); nothing new stored |
+| /identifier | Element Identifier (mobile-only, like /scanner: live camera lens, every item in frame → its elements via `aiIdentifyItems`; + the mystery-element clue game; desktop shows a QR handoff) | camera (E4); Gemini via `aiIdentifyItems` (E3) with on-device COCO-SSD fallback; persisted bests in `trials`; clues built from static periodic-table + lore data (**D9**); nothing new stored |
 | /elements | Element Explorer (public, no auth) | static data **D9** only |
 
 ### 1.3 Capture companion (mobile / PWA)

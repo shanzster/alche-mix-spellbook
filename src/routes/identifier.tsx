@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { ModuleShell } from "../components/ModuleShell";
+import { MobileHandoff } from "../components/MobileHandoff";
 import { RequireAuth } from "../components/RequireAuth";
 import { useUserProfile, logPractice, recordTrial } from "../lib/profile";
 import {
@@ -34,6 +35,7 @@ import {
   type ItemDetection,
 } from "../lib/element-vision";
 import type { IdentifiedItem } from "../lib/ai";
+import { usePlatform } from "../lib/platform";
 
 export const Route = createFileRoute("/identifier")({
   component: () => (
@@ -63,6 +65,9 @@ type Mode = "lens" | "trial";
 function Identifier() {
   const [mode, setMode] = useState<Mode>("lens");
   const ai = useAI();
+  // The lens is a capture-companion experience — phone / installed PWA only.
+  // On the website side the whole module hands off to the phone, like /scanner.
+  const platform = usePlatform();
 
   return (
     <ModuleShell
@@ -70,12 +75,14 @@ function Identifier() {
       eyebrow={mode === "lens" ? "The Assayer's Lens" : "The Assayer's Trial"}
       icon={Fingerprint}
       subtitle={
-        mode === "lens"
-          ? "Point the lens at anything. Every item in the frame is read for the chemical elements it truly contains."
-          : "Five mystery elements, five clues each — real data only. Name each one in as few clues as you can."
+        !platform.arCapable
+          ? "The lens lives on your phone — the deep study lives here on the website."
+          : mode === "lens"
+            ? "Point the lens at anything. Every item in the frame is read for the chemical elements it truly contains."
+            : "Five mystery elements, five clues each — real data only. Name each one in as few clues as you can."
       }
       right={
-        mode === "lens" ? (
+        platform.arCapable && mode === "lens" ? (
           ai.configured === false ? (
             <span
               className="text-[10px] tracking-[0.15em] uppercase rounded-full px-3 py-1.5 whitespace-nowrap"
@@ -102,39 +109,55 @@ function Identifier() {
         ) : undefined
       }
     >
-      {/* Mode switch — the two instruments */}
-      <div
-        className="mb-6 inline-flex rounded-full p-1"
-        style={{
-          background: "color-mix(in oklab, var(--color-mist) 60%, transparent)",
-          border: "1px solid var(--color-border)",
-        }}
-      >
-        {(
-          [
-            { key: "lens", label: "Live Lens", icon: ScanSearch },
-            { key: "trial", label: "Deduction Trial", icon: ScrollText },
-          ] as const
-        ).map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setMode(key)}
-            className="inline-flex items-center gap-2 rounded-full px-4 py-2 font-ui text-xs font-semibold transition"
-            style={
-              mode === key
-                ? {
-                    background: `color-mix(in oklab, ${ACCENT} 18%, transparent)`,
-                    color: ACCENT,
-                  }
-                : { color: "var(--color-parchment)" }
-            }
+      {/* Wait for platform detection so SSR/first paint never flashes the wrong side. */}
+      {!platform.ready ? null : !platform.arCapable ? (
+        <MobileHandoff
+          path="/identifier"
+          title="The Assayer's Lens needs a camera in your hand"
+          body="You're on the website — the in-depth side of AlcheMix. The Element Identifier unlocks on a phone or the installed app: open this page there, sweep the lens over everyday things, and every item in the frame is read for the chemical elements it truly contains."
+          steps={[
+            "Scan the QR code with your phone (or open the same address).",
+            "Sign in with the same account.",
+            "Point the lens at anything — a mouse, a spoon, your lunch — and assay the frame.",
+          ]}
+        />
+      ) : (
+        <>
+          {/* Mode switch — the two instruments */}
+          <div
+            className="mb-6 inline-flex rounded-full p-1"
+            style={{
+              background: "color-mix(in oklab, var(--color-mist) 60%, transparent)",
+              border: "1px solid var(--color-border)",
+            }}
           >
-            <Icon className="h-3.5 w-3.5" /> {label}
-          </button>
-        ))}
-      </div>
+            {(
+              [
+                { key: "lens", label: "Live Lens", icon: ScanSearch },
+                { key: "trial", label: "Deduction Trial", icon: ScrollText },
+              ] as const
+            ).map(({ key, label, icon: Icon }) => (
+              <button
+                key={key}
+                onClick={() => setMode(key)}
+                className="inline-flex items-center gap-2 rounded-full px-4 py-2 font-ui text-xs font-semibold transition"
+                style={
+                  mode === key
+                    ? {
+                        background: `color-mix(in oklab, ${ACCENT} 18%, transparent)`,
+                        color: ACCENT,
+                      }
+                    : { color: "var(--color-parchment)" }
+                }
+              >
+                <Icon className="h-3.5 w-3.5" /> {label}
+              </button>
+            ))}
+          </div>
 
-      {mode === "lens" ? <LiveLens ai={ai} /> : <AssayTrial />}
+          {mode === "lens" ? <LiveLens ai={ai} /> : <AssayTrial />}
+        </>
+      )}
     </ModuleShell>
   );
 }
