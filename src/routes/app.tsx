@@ -294,16 +294,6 @@ const MODULES: ModuleRow[] = [
     status: "live",
     group: "Prove Your Craft",
   },
-  {
-    icon: Fingerprint,
-    title: "Element Identifier",
-    desc: "Point the lens at anything — every item is read for its elements. Plus the clue-deduction trial.",
-    color: "var(--color-gold)",
-    to: "/identifier",
-    status: "live",
-    group: "Prove Your Craft",
-    arOnly: true,
-  },
   // ── Field Work ──
   {
     icon: ScanLine,
@@ -323,6 +313,16 @@ const MODULES: ModuleRow[] = [
     to: "/scavenger",
     status: "live",
     group: "Field Work",
+  },
+  {
+    icon: Fingerprint,
+    title: "Element Identifier",
+    desc: "Point the lens at anything — every item is read for its elements. Plus the clue-deduction trial.",
+    color: "var(--color-gold)",
+    to: "/identifier",
+    status: "live",
+    group: "Field Work",
+    arOnly: true,
   },
 ];
 

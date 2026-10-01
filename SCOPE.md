@@ -69,7 +69,7 @@ Gemini (`GEMINI_API_KEY`, server-only via `createServerFn`) · Nitro/Cloudflare.
 | Route | Module | Notes |
 |---|---|---|
 | /cards | Grimoire | Guide TOC + AR card collection, forged-card printing |
-| /starters | Daily Starters | Duolingo-style daily rite: 3 AI-written questions (bank fallback), wrong answers teach the correct one, streak + best + run Ledger, cauldron cracks when a streak lapses; feeds SM-2 |
+| /starters | Daily Starters | Duolingo-style daily rite: 3 AI-written questions (bank fallback), wrong answers teach the correct one, streak + best + run Ledger, cauldron cracks when a streak lapses; a lapsed streak (≥2 days, broken ≤7 days ago) is restored only by PASSING the Mending Trial (4/5 bank questions); feeds SM-2 |
 | /lab-safety | Lab Safety | GHS/apparatus study + 10 fail-safely scenario trials |
 | /atomic-builder | Atomic Builder | Bohr builder (Z ≤ 20), missions + 15-challenge trial |
 | /periodic-table | Periodic Table | 118 elements, 4 lenses: family / state-vs-temperature slider / trend heat-maps / discovery timeline |

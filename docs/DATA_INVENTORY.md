@@ -40,7 +40,7 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 |---|---|---|
 | /cards | Grimoire (card collection + Guide TOC) | reads `grimoire`, `grimoireScans`, `forged`, `forgedAt`, `equipped` |
 | /guide | Grimoire Guide (recommended path) | reads whole profile to compute step completion (`src/lib/guide.ts`) |
-| /starters | Daily Starters (3 AI-written questions/day via `aiStarterQuiz` (E3), bank fallback; Ledger of past runs; broken-cauldron streak state) | `recordStarterRun()` → `starterStreak` (+`best`), `starterHistory` (capped 60) on `users/{uid}` **D2**; feeds SM-2 `reviews`; same-day question cache in localStorage **D8** |
+| /starters | Daily Starters (3 AI-written questions/day via `aiStarterQuiz` (E3), bank fallback; Ledger of past runs; broken-cauldron streak state; Mending Trial restores a lapsed streak only after passing 4/5 bank questions) | `recordStarterRun()` → `starterStreak` (+`best`), `starterHistory` (capped 60); `restoreStarterStreak()` → `starterStreak` on `users/{uid}` **D2**; feeds SM-2 `reviews`; same-day question cache in localStorage **D8** |
 | /lab-safety | Lab Safety (GHS study + scenario trials) | — |
 | /atomic-builder | Atomic Builder (Bohr, Z ≤ 20) | — |
 | /periodic-table | Periodic Table (118 elements, 4 lenses) | deep links `?element=Fe`; static data **D9** |

@@ -118,7 +118,6 @@ export const NAV: NavItem[] = [
   { to: "/titration", label: "Titration Lab", icon: Beaker, chapter: CH_4 },
   { to: "/decay", label: "Radioactive Decay", icon: Radiation, chapter: CH_4 },
   { to: "/quiz", label: "3D Quiz", icon: ClipboardList, chapter: CH_5 },
-  { to: "/identifier", label: "Element Identifier", icon: Fingerprint, chapter: CH_5 },
   { to: "/duel", label: "Duel", icon: Swords, chapter: CH_ARCADE },
   { to: "/duels", label: "Class Duels", icon: Swords, chapter: CH_ARCADE },
   { to: "/table-game", label: "Placement Trials", icon: Crosshair, chapter: CH_ARCADE },
@@ -126,6 +125,7 @@ export const NAV: NavItem[] = [
   { to: "/shop", label: "The Emporium", icon: Store, chapter: CH_ARCADE },
   { to: "/scanner", label: "AR Scanner", icon: ScanLine, chapter: CH_FIELD, primary: true },
   { to: "/scavenger", label: "Scavenger Hunt", icon: ScanSearch, chapter: CH_FIELD, primary: true },
+  { to: "/identifier", label: "Element Identifier", icon: Fingerprint, chapter: CH_FIELD },
 ];
 
 export const CHAPTERS = [CH_BENCH, CH_1, CH_2, CH_3, CH_4, CH_5, CH_ARCADE, CH_FIELD];

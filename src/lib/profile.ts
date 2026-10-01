@@ -411,6 +411,35 @@ export async function recordStarterRun(
   }
 }
 
+/**
+ * Restores a lapsed Daily Starters streak after the student EARNS it by
+ * passing the Mending Trial (see /starters). Sets the chain back to `count`
+ * with `lastDay` = yesterday, so brewing today's Three continues it at
+ * count + 1. Best-effort; never thrown.
+ */
+export async function restoreStarterStreak(
+  uid: string | null,
+  count: number,
+  todayKey: string,
+): Promise<void> {
+  if (!uid || count < 1) return;
+  try {
+    const y = new Date(`${todayKey}T12:00:00`);
+    y.setDate(y.getDate() - 1);
+    const m = String(y.getMonth() + 1).padStart(2, "0");
+    const d = String(y.getDate()).padStart(2, "0");
+    const lastDay = `${y.getFullYear()}-${m}-${d}`;
+    const ref = doc(db, "users", uid);
+    const snap = await getDoc(ref);
+    const prev = (snap.data() as StudentProfile | undefined)?.starterStreak;
+    await updateDoc(ref, {
+      starterStreak: { count, lastDay, best: Math.max(prev?.best ?? 0, count) },
+    });
+  } catch (err) {
+    console.error("restoreStarterStreak failed:", err);
+  }
+}
+
 /** Add a scanned element card to the student's Grimoire (deduped). */
 export async function scanCard(uid: string | null, symbol: string): Promise<void> {
   if (!uid) return;

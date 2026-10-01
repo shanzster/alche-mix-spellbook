@@ -243,15 +243,6 @@ export const GUIDE: GuideStep[] = [
     done: (p) => practised(p, "quiz"),
   },
   {
-    id: "identifier",
-    chapter: CH5,
-    title: "Element Identifier",
-    to: "/identifier",
-    icon: Fingerprint,
-    why: "Aim the camera at everyday things and read the elements inside them — or deduce mystery elements from real clues.",
-    done: (p) => practised(p, "identifier"),
-  },
-  {
     id: "starters",
     chapter: CH5,
     title: "Daily Starters",
@@ -273,6 +264,16 @@ export const GUIDE: GuideStep[] = [
     why: "On your phone: summon element cards in AR and claim them into this Grimoire.",
     done: (p) => (p?.grimoire?.length ?? 0) > 0,
     detail: (p) => `${p?.grimoire?.length ?? 0} cards claimed`,
+    mobileSide: true,
+  },
+  {
+    id: "identifier",
+    chapter: CH5,
+    title: "Element Identifier",
+    to: "/identifier",
+    icon: Fingerprint,
+    why: "On your phone: aim the lens at everyday things and read the elements inside them.",
+    done: (p) => practised(p, "identifier"),
     mobileSide: true,
   },
 ];

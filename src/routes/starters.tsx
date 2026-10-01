@@ -1,14 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import {
-  Sunrise, Flame, Check, X, ArrowRight, Sparkles, Coins,
+  Sunrise, Flame, Check, X, ArrowRight, Coins,
   CalendarDays, RotateCcw, Play, Loader2, ScrollText, ChevronDown,
 } from "lucide-react";
 import { StudentShell } from "../components/StudentShell";
 import { PageHeader } from "../components/PageHeader";
 import { RequireRole } from "../components/RequireRole";
 import {
-  useUserProfile, recordStarterRun,
+  useUserProfile, recordStarterRun, restoreStarterStreak,
   type StudentProfile, type StarterRunRecord,
 } from "../lib/profile";
 import { ALL_CONCEPT_IDS, conceptById } from "../lib/curriculum";
@@ -26,6 +26,10 @@ export const Route = createFileRoute("/starters")({
 const ACCENT = "var(--color-gold)";
 /** Duolingo-style: a short daily rite — exactly three questions a day. */
 const RUN_LENGTH = 3;
+/** The Mending Trial — a lapsed streak must be EARNED back, not clicked back. */
+const MEND_LENGTH = 5;
+const MEND_PASS = 4; // at least 4 of 5 patches must hold
+const MEND_WINDOW_MS = 7 * 24 * 3600 * 1000; // older breaks are too cold to mend
 
 // ── Daily set building ────────────────────────────────────────────────────────
 /** Local date as YYYY-MM-DD — the streak day-key. */
@@ -130,12 +134,32 @@ type CauldronState = "warm" | "cold" | "broken";
 function cauldronState(
   prev: StudentProfile["starterStreak"],
   dayKey: string,
-): { state: CauldronState; lostStreak: number } {
-  if (!prev || prev.count === 0) return { state: "cold", lostStreak: 0 };
-  if (prev.lastDay === dayKey) return { state: "warm", lostStreak: 0 };
+): { state: CauldronState; lostStreak: number; mendable: boolean } {
+  if (!prev || prev.count === 0) return { state: "cold", lostStreak: 0, mendable: false };
+  if (prev.lastDay === dayKey) return { state: "warm", lostStreak: 0, mendable: false };
   const ms = Date.parse(dayKey) - Date.parse(prev.lastDay);
-  if (ms <= 36 * 3600 * 1000) return { state: "warm", lostStreak: 0 };
-  return { state: "broken", lostStreak: prev.count };
+  if (ms <= 36 * 3600 * 1000) return { state: "warm", lostStreak: 0, mendable: false };
+  // A 1-day streak isn't worth a trial — and a week-old break is too cold.
+  return {
+    state: "broken",
+    lostStreak: prev.count,
+    mendable: prev.count >= 2 && ms <= MEND_WINDOW_MS,
+  };
+}
+
+/** Five patch questions from the bank: due reviews first, then random fill. */
+function buildMendSet(reviews: StudentProfile["reviews"]): PlayQuestion[] {
+  const due = dueConceptIds(reviews, Date.now())
+    .filter((id) => conceptById(id))
+    .slice(0, MEND_LENGTH);
+  const taken = new Set(due);
+  const fill = [...ALL_CONCEPT_IDS.filter((id) => !taken.has(id))].sort(
+    () => Math.random() - 0.5,
+  );
+  return [...due, ...fill]
+    .slice(0, MEND_LENGTH)
+    .map(bankQuestion)
+    .filter((q): q is PlayQuestion => q !== null);
 }
 
 function prettyDate(dayKey: string): string {
@@ -226,7 +250,7 @@ function Cauldron({ state, size = 96 }: { state: CauldronState; size?: number })
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
-type Phase = "intro" | "loading" | "play" | "done";
+type Phase = "intro" | "loading" | "play" | "done" | "mend" | "mendResult";
 
 /** Same-day cache so a refresh (or practice replay) reuses today's questions. */
 function cacheKey(uid: string | null, dayKey: string): string {
@@ -266,6 +290,13 @@ function StartersPage() {
   /** Chosen choice index per answered question, in order. */
   const [picks, setPicks] = useState<number[]>([]);
   const [recorded, setRecorded] = useState(false);
+  // The Mending Trial — earn a lapsed streak back before it is restored.
+  const [mendSet, setMendSet] = useState<PlayQuestion[]>([]);
+  const [mendIdx, setMendIdx] = useState(0);
+  const [mendPicks, setMendPicks] = useState<number[]>([]);
+  const [mendPassed, setMendPassed] = useState(false);
+  /** The streak size at stake, frozen when the trial starts (profile updates live). */
+  const [mendStake, setMendStake] = useState(0);
 
   const alreadyToday = streak?.lastDay === dayKey;
   const mood = cauldronState(streak, dayKey);
@@ -332,6 +363,24 @@ function StartersPage() {
     setPhase("play");
   };
 
+  const startMend = () => {
+    setMendStake(mood.lostStreak || mendStake);
+    setMendSet(buildMendSet(reviews));
+    setMendIdx(0);
+    setMendPicks([]);
+    setMendPassed(false);
+    setPhase("mend");
+  };
+
+  const finishMend = (finalPicks: number[]) => {
+    const good = finalPicks.filter((p, i) => p === mendSet[i].answer).length;
+    const passed = good >= MEND_PASS;
+    setMendPassed(passed);
+    // Only a PASSED trial restores the chain — the work comes first.
+    if (passed && uid) void restoreStarterStreak(uid, mendStake || mood.lostStreak, dayKey);
+    setPhase("mendResult");
+  };
+
   const finish = (finalPicks: number[]) => {
     if (!practice && !recorded && uid && daily) {
       setRecorded(true);
@@ -360,31 +409,6 @@ function StartersPage() {
         subtitle="Three questions at dawn keep the cauldron warm — written fresh each day by the Alchemist, feeding your review schedule and your streak."
         icon={Sunrise}
         accent={ACCENT}
-        right={
-          ai.configured === false ? (
-            <span
-              className="text-[10px] tracking-[0.15em] uppercase rounded-full px-3 py-1.5 whitespace-nowrap"
-              style={{
-                color: ACCENT,
-                background: `color-mix(in oklab, ${ACCENT} 12%, transparent)`,
-                border: `1px solid color-mix(in oklab, ${ACCENT} 30%, transparent)`,
-              }}
-            >
-              Curated questions
-            </span>
-          ) : ai.configured ? (
-            <span
-              className="text-[10px] tracking-[0.15em] uppercase rounded-full px-3 py-1.5 whitespace-nowrap inline-flex items-center gap-1.5"
-              style={{
-                color: "var(--color-emerald-elixir)",
-                background: "color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent)",
-                border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 30%, transparent)",
-              }}
-            >
-              <Sparkles className="h-3 w-3" /> AI-written daily
-            </span>
-          ) : undefined
-        }
       />
 
       {phase === "intro" && (
@@ -395,9 +419,38 @@ function StartersPage() {
             mood={mood}
             alreadyToday={alreadyToday}
             onStart={() => void start(alreadyToday)}
+            onMend={startMend}
           />
           <Ledger history={profile?.starterHistory ?? []} />
         </>
+      )}
+
+      {phase === "mend" && mendSet.length > 0 && (
+        <MendScreen
+          uid={uid}
+          reviews={reviews}
+          mendSet={mendSet}
+          idx={mendIdx}
+          picks={mendPicks}
+          stake={mendStake}
+          onAnswered={(pick) => setMendPicks((p) => [...p, pick])}
+          onNext={() => {
+            if (mendIdx + 1 < mendSet.length) setMendIdx(mendIdx + 1);
+            else finishMend(mendPicks);
+          }}
+        />
+      )}
+
+      {phase === "mendResult" && (
+        <MendResultScreen
+          passed={mendPassed}
+          stake={mendStake}
+          score={mendPicks.filter((p, i) => p === mendSet[i]?.answer).length}
+          total={mendSet.length}
+          onBrew={() => void start(false)}
+          onRetry={startMend}
+          onGiveUp={() => void start(false)}
+        />
       )}
 
       {phase === "loading" && (
@@ -447,13 +500,14 @@ function StartersPage() {
 
 // ── Intro ─────────────────────────────────────────────────────────────────────
 function IntroScreen({
-  dayKey, streak, mood, alreadyToday, onStart,
+  dayKey, streak, mood, alreadyToday, onStart, onMend,
 }: {
   dayKey: string;
   streak: StudentProfile["starterStreak"];
-  mood: { state: CauldronState; lostStreak: number };
+  mood: { state: CauldronState; lostStreak: number; mendable: boolean };
   alreadyToday: boolean;
   onStart: () => void;
+  onMend: () => void;
 }) {
   const broken = mood.state === "broken";
   const streakCount = streak?.count ?? 0;
@@ -517,15 +571,35 @@ function IntroScreen({
               <RotateCcw className="h-4 w-4" /> Practice replay
             </button>
           </>
+        ) : broken && mood.mendable ? (
+          <>
+            <p className="text-xs text-parchment/50 mb-4">
+              The crack can still be sealed — but mending is earned, not given.
+              Pass the Mending Trial ({MEND_PASS} of {MEND_LENGTH} patch
+              questions right) and your {mood.lostStreak}-day streak is
+              restored; then brew today's Three to carry it on.
+            </p>
+            <div className="flex flex-col items-center gap-2.5">
+              <button onClick={onMend} className="btn-arcane btn-arcane-hover">
+                <Flame className="h-4 w-4" /> Face the Mending Trial
+              </button>
+              <button
+                onClick={onStart}
+                className="text-xs text-parchment/50 transition-colors hover:text-parchment"
+              >
+                Let it go — start a new streak instead
+              </button>
+            </div>
+          </>
         ) : (
           <>
             <p className="text-xs text-parchment/50 mb-4">
               {broken
-                ? "Brew today's Three and the cauldron mends — a new streak begins at day 1."
-                : "The Alchemist writes three fresh questions for you — anything due for spaced review comes first."}
+                ? "This crack has gone too cold to mend. Brew today's Three and a new streak begins at day 1."
+                : "Three fresh questions await — anything due for spaced review comes first."}
             </p>
             <button onClick={onStart} className="btn-arcane btn-arcane-hover">
-              <Play className="h-4 w-4" /> {broken ? "Mend the cauldron" : "Begin today's Three"}
+              <Play className="h-4 w-4" /> Begin today's Three
             </button>
           </>
         )}
@@ -564,9 +638,6 @@ function Ledger({ history }: { history: StarterRunRecord[] }) {
                 aria-expanded={open}
               >
                 <span className="flex-1 text-sm">{prettyDate(run.day)}</span>
-                {run.source === "gemini" && (
-                  <Sparkles className="h-3 w-3 flex-shrink-0 text-emerald-elixir" aria-label="AI-written day" />
-                )}
                 <span className="font-ui text-sm font-semibold flex-shrink-0" style={{ color: tone }}>
                   {run.score}/{run.outOf}
                 </span>
@@ -613,6 +684,134 @@ function Ledger({ history }: { history: StarterRunRecord[] }) {
   );
 }
 
+// ── The Mending Trial — earn a lapsed streak back ─────────────────────────────
+function MendScreen({
+  uid, reviews, mendSet, idx, picks, stake, onAnswered, onNext,
+}: {
+  uid: string | null;
+  reviews: StudentProfile["reviews"];
+  mendSet: PlayQuestion[];
+  idx: number;
+  picks: number[];
+  stake: number;
+  onAnswered: (pick: number) => void;
+  onNext: () => void;
+}) {
+  const q = mendSet[idx];
+  const last = idx === mendSet.length - 1;
+
+  const handleAnswered = async (pick: number) => {
+    onAnswered(pick);
+    // Mending is real practice — it feeds spaced review like everything else.
+    if (uid) await recordAnswer(uid, q.conceptId, pick === q.answer, reviews);
+  };
+
+  return (
+    <div className="max-w-2xl">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <span className="text-[10px] tracking-[0.2em] uppercase inline-flex items-center gap-1.5 text-crimson">
+          <Flame className="h-3.5 w-3.5" />
+          The Mending Trial · {stake}-day streak at stake
+        </span>
+        <span className="text-xs text-parchment/50 flex-shrink-0">{idx + 1} / {mendSet.length}</span>
+      </div>
+      <p className="mb-4 text-xs text-parchment/60">
+        Seal the crack with knowledge: get {MEND_PASS} of {mendSet.length} right and your
+        streak is restored.
+      </p>
+
+      {/* Progress dots */}
+      <div className="flex items-center gap-1.5 mb-4" aria-label="Progress">
+        {mendSet.map((qq, i) => {
+          const answered = i < picks.length;
+          const tone = answered
+            ? picks[i] === qq.answer ? "var(--color-emerald-elixir)" : "var(--color-crimson)"
+            : i === idx ? ACCENT : null;
+          return (
+            <span
+              key={i}
+              className="h-2 w-2 rounded-full transition-all duration-200"
+              style={{
+                background: tone ?? "color-mix(in oklab, var(--color-parchment) 20%, transparent)",
+                transform: i === idx ? "scale(1.35)" : undefined,
+                boxShadow: i === idx ? `0 0 8px -1px ${ACCENT}` : undefined,
+              }}
+            />
+          );
+        })}
+      </div>
+
+      <StarterQuestion
+        key={`mend-${q.conceptId}-${idx}`}
+        question={q}
+        onAnswered={handleAnswered}
+        onNext={onNext}
+        last={last}
+      />
+    </div>
+  );
+}
+
+function MendResultScreen({
+  passed, stake, score, total, onBrew, onRetry, onGiveUp,
+}: {
+  passed: boolean; stake: number; score: number; total: number;
+  onBrew: () => void; onRetry: () => void; onGiveUp: () => void;
+}) {
+  const tone = passed ? "var(--color-emerald-elixir)" : "var(--color-crimson)";
+  return (
+    <div className="max-w-md">
+      <div
+        className="rounded-2xl p-6 text-center"
+        style={{
+          background: `color-mix(in oklab, ${tone} 10%, transparent)`,
+          border: `1px solid color-mix(in oklab, ${tone} 40%, transparent)`,
+          boxShadow: `0 0 50px -24px ${tone}`,
+        }}
+      >
+        <div className="mx-auto mb-2 flex justify-center">
+          <Cauldron state={passed ? "warm" : "broken"} size={80} />
+        </div>
+        <div className="font-display text-3xl mb-1" style={{ color: tone }}>
+          {score} / {total}
+        </div>
+        {passed ? (
+          <>
+            <h2 className="font-display text-2xl mb-2">The cauldron is mended</h2>
+            <p className="text-sm text-parchment/70 mb-5">
+              You earned it back — your {stake}-day streak holds. Now brew
+              today's Three to carry it to day {stake + 1}.
+            </p>
+            <button onClick={onBrew} className="btn-arcane btn-arcane-hover">
+              <Play className="h-4 w-4" /> Brew today's Three
+            </button>
+          </>
+        ) : (
+          <>
+            <h2 className="font-display text-2xl mb-2">The patch didn't hold</h2>
+            <p className="text-sm text-parchment/70 mb-5">
+              You needed {MEND_PASS} of {total} — a miss is never wasted, those
+              questions join your review. Steady your hand and try another
+              patch, or let the old streak go and begin anew.
+            </p>
+            <div className="flex flex-col items-center gap-2.5">
+              <button onClick={onRetry} className="btn-arcane btn-arcane-hover">
+                <RotateCcw className="h-4 w-4" /> Try another patch
+              </button>
+              <button
+                onClick={onGiveUp}
+                className="text-xs text-parchment/50 transition-colors hover:text-parchment"
+              >
+                Start a new streak instead
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Play ──────────────────────────────────────────────────────────────────────
 function PlayScreen({
   uid, reviews, daily, idx, picks, practice, onAnswered, onNext,
@@ -641,7 +840,6 @@ function PlayScreen({
         <span className="text-[10px] tracking-[0.2em] uppercase inline-flex items-center gap-1.5" style={{ color: ACCENT }}>
           <Sunrise className="h-3.5 w-3.5" />
           {practice ? "Practice" : "Starters"} · {q.topicTitle}
-          {daily.source === "gemini" && <Sparkles className="h-3 w-3 text-emerald-elixir" />}
         </span>
         <span className="text-xs text-parchment/50 flex-shrink-0">{idx + 1} / {daily.questions.length}</span>
       </div>
