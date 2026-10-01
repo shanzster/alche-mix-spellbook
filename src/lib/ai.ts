@@ -67,6 +67,22 @@ export interface ScanResult {
   source: AISource;
 }
 
+/** One AI-written daily-starter question, tied to a curriculum concept. */
+export interface StarterQuizQuestion {
+  /** The curriculum concept this question teaches (feeds spaced review). */
+  conceptId: string;
+  prompt: string;
+  choices: string[]; // exactly 4
+  /** Index into `choices`. */
+  answer: number;
+  /** Shown on a miss: names the correct answer and teaches why, warmly. */
+  explanation: string;
+}
+export interface StarterQuizResult {
+  questions: StarterQuizQuestion[];
+  source: AISource;
+}
+
 /** One visible item and the real chemical elements inside it. */
 export interface IdentifiedElement {
   symbol: string;
@@ -100,6 +116,12 @@ interface ScanInput {
   examples: string[];
   /** Raw base64 (no `data:` prefix) of a small camera frame. */
   imageBase64: string;
+}
+interface StarterQuizInput {
+  /** The day's concepts: id + title + the Learn-stage teaching text. */
+  concepts: { id: string; topic: string; title: string; learn: string }[];
+  /** uid + dayKey — varies wording per student per day. */
+  seed: string;
 }
 interface IdentifyInput {
   /** Raw base64 (no `data:` prefix) of the captured frame. */
@@ -254,6 +276,83 @@ export const aiScanFrame = createServerFn({ method: "POST" })
       // Keyless / rate-limited / offline → the on-device COCO eye still runs.
       console.warn("[AI] aiScanFrame unavailable (using on-device eye only):", err);
       return { present: false, label: "", confidence: 0, reason: "", source: "fallback" };
+    }
+  });
+
+// ════════════════════════════════════════════════════════════════════════════
+//  1d. Daily Starters — Gemini writes the day's three questions, one per
+//  curriculum concept, so wording stays fresh while the chemistry stays
+//  anchored to the curated Learn text. Keyless, the caller falls back to the
+//  bank's own questions for the same concepts.
+// ════════════════════════════════════════════════════════════════════════════
+export const aiStarterQuiz = createServerFn({ method: "POST" })
+  .validator((d: StarterQuizInput) => d)
+  .handler(async ({ data }): Promise<StarterQuizResult> => {
+    try {
+      const { askGemini } = await import("./server/gemini");
+      const out = await askGemini<{ questions: StarterQuizQuestion[] }>({
+        system:
+          "You write short daily chemistry questions for a high-school app. " +
+          "You are given concepts, each with its taught text. For EACH concept, " +
+          "in the given order, write ONE fresh multiple-choice question that " +
+          "tests exactly that concept — reworded, never copied. Exactly 4 " +
+          "choices, one correct (set `answer` to its index), plausible " +
+          "distractors, real chemistry only — never contradict the taught " +
+          "text. `conceptId` must echo the concept's id. `explanation` is 1–2 " +
+          "warm sentences that name the correct answer and teach why it is " +
+          "right (shown to a student who missed it).",
+        temperature: 0.8,
+        jsonSchema: {
+          type: "object",
+          properties: {
+            questions: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  conceptId: { type: "string" },
+                  prompt: { type: "string" },
+                  choices: { type: "array", items: { type: "string" } },
+                  answer: { type: "number" },
+                  explanation: { type: "string" },
+                },
+                required: ["conceptId", "prompt", "choices", "answer", "explanation"],
+              },
+            },
+          },
+          required: ["questions"],
+        },
+        parts: [
+          {
+            text:
+              `Nonce ${data.seed}. Write one question per concept, in order:\n\n` +
+              data.concepts
+                .map(
+                  (c, i) =>
+                    `${i + 1}. id: ${c.id} · topic: ${c.topic} · concept: ${c.title}\n   Taught: ${c.learn}`,
+                )
+                .join("\n\n"),
+          },
+        ],
+      });
+      // Shape guard: every question valid and aligned to a requested concept.
+      const wanted = new Set(data.concepts.map((c) => c.id));
+      const questions = out.questions.filter(
+        (q) =>
+          wanted.has(q.conceptId) &&
+          Array.isArray(q.choices) &&
+          q.choices.length === 4 &&
+          Number.isInteger(q.answer) &&
+          q.answer >= 0 &&
+          q.answer < 4,
+      );
+      if (questions.length !== data.concepts.length) {
+        throw new Error(`Gemini returned ${questions.length}/${data.concepts.length} usable questions`);
+      }
+      return { questions, source: "gemini" };
+    } catch (err) {
+      console.error("[AI] aiStarterQuiz fell back to the curated bank:", err);
+      return { questions: [], source: "fallback" };
     }
   });
 

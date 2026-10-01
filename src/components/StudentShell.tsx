@@ -97,7 +97,7 @@ export const NAV: NavItem[] = [
   { to: "/app", label: "Home", icon: Home, chapter: CH_BENCH, primary: true },
   { to: "/cards", label: "Grimoire", icon: BookMarked, chapter: CH_BENCH, primary: true },
   { to: "/guide", label: "The Guide", icon: Compass, chapter: CH_BENCH },
-  { to: "/starters", label: "Starters for Ten", icon: Flame, chapter: CH_BENCH },
+  { to: "/starters", label: "Daily Starters", icon: Flame, chapter: CH_BENCH },
   { to: "/assignments", label: "Assignments", icon: ListChecks, chapter: CH_BENCH },
   { to: "/lab-safety", label: "Lab Safety", icon: ShieldAlert, chapter: CH_1 },
   { to: "/atomic-builder", label: "Atomic Builder", icon: Atom, chapter: CH_1 },

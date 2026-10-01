@@ -254,10 +254,10 @@ export const GUIDE: GuideStep[] = [
   {
     id: "starters",
     chapter: CH5,
-    title: "Starters for Ten",
+    title: "Daily Starters",
     to: "/starters",
     icon: Flame,
-    why: "Make it a habit — ten questions a day keeps every topic warm.",
+    why: "Make it a habit — three fresh questions a day keep the cauldron warm.",
     done: (p) => practised(p, "starters"),
     detail: (p) => {
       const s = p?.starterStreak?.count ?? 0;

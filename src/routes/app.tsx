@@ -102,8 +102,8 @@ const MODULES: ModuleRow[] = [
   },
   {
     icon: Flame,
-    title: "Starters for Ten",
-    desc: "The daily ritual — ten quick questions, keep your streak alight.",
+    title: "Daily Starters",
+    desc: "The daily ritual — three AI-written questions, keep your streak alight.",
     color: "var(--color-gold)",
     to: "/starters",
     status: "live",
@@ -599,7 +599,7 @@ function StudentHub() {
       node: (
         <span
           className="inline-flex items-center gap-1"
-          title="Consecutive days of Starters for Ten"
+          title="Consecutive days of Daily Starters"
         >
           <Flame className="h-3.5 w-3.5" />
           {streak}-day streak

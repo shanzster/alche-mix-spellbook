@@ -40,7 +40,7 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 |---|---|---|
 | /cards | Grimoire (card collection + Guide TOC) | reads `grimoire`, `grimoireScans`, `forged`, `forgedAt`, `equipped` |
 | /guide | Grimoire Guide (recommended path) | reads whole profile to compute step completion (`src/lib/guide.ts`) |
-| /starters | Starters for Ten (daily 10-question ritual) | `recordStarterRun()` → `starterStreak`, feeds SM-2 `reviews` |
+| /starters | Daily Starters (3 AI-written questions/day via `aiStarterQuiz` (E3), bank fallback; Ledger of past runs; broken-cauldron streak state) | `recordStarterRun()` → `starterStreak` (+`best`), `starterHistory` (capped 60) on `users/{uid}` **D2**; feeds SM-2 `reviews`; same-day question cache in localStorage **D8** |
 | /lab-safety | Lab Safety (GHS study + scenario trials) | — |
 | /atomic-builder | Atomic Builder (Bohr, Z ≤ 20) | — |
 | /periodic-table | Periodic Table (118 elements, 4 lenses) | deep links `?element=Fe`; static data **D9** |
@@ -98,7 +98,7 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 | Feature | File | Data touchpoints |
 |---|---|---|
 | Ask the Alchemist (mentor chat, every student page) | `src/lib/ai.ts` → `aiAskAlchemist` | Gemini (E3) with keyless fallback; no persistence |
-| AI plumbing (5 capabilities + status/ping) | `src/lib/ai.ts`, `useAI.ts` | server-only `createServerFn`; `GEMINI_API_KEY` env; every result tagged `source: "gemini" \| "fallback"` |
+| AI plumbing (7 capabilities + status/ping) | `src/lib/ai.ts`, `useAI.ts` | server-only `createServerFn`; `GEMINI_API_KEY` env; every result tagged `source: "gemini" \| "fallback"` |
 | Theme (dark/light) | `src/lib/theme.ts` | localStorage `theme` **D8** |
 | Offline shell | `public/sw.js` | Cache Storage **D8** (`alchemix-{version}`, conservative precache) |
 | Badges | `src/lib/profile.ts` | `users/{uid}.badges[]` |

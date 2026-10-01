@@ -16,12 +16,14 @@ import {
   aiGradeAnswer,
   aiIdentifyItems,
   aiScanFrame,
+  aiStarterQuiz,
   aiStatus,
   aiVerifyMission,
   type GeneratedProblem,
   type GradeResult,
   type IdentifyResult,
   type ScanResult,
+  type StarterQuizResult,
   type TutorResult,
   type VerifyResult,
 } from "./ai";
@@ -74,6 +76,10 @@ export function useAI() {
       ScanResult
     >(aiScanFrame),
     identifyItems: run<{ imageBase64: string }, IdentifyResult>(aiIdentifyItems),
+    starterQuiz: run<
+      { concepts: { id: string; topic: string; title: string; learn: string }[]; seed: string },
+      StarterQuizResult
+    >(aiStarterQuiz),
     generateProblem: run<{ topic?: string; seed?: string }, GeneratedProblem>(
       aiGenerateProblem,
     ),

@@ -17,6 +17,27 @@ export type Role = "student" | "teacher" | "admin";
 /** Teachers start as "pending" and must be approved by an admin. */
 export type TeacherStatus = "pending" | "approved" | "rejected";
 
+/** One question inside a recorded daily-starter run (for the Ledger). */
+export interface StarterRunQuestion {
+  prompt: string;
+  /** Text of the correct choice. */
+  correct: string;
+  /** Text of the choice the student picked. */
+  picked: string;
+  wasCorrect: boolean;
+}
+
+/** One completed (tracked) daily-starter run. */
+export interface StarterRunRecord {
+  /** Local YYYY-MM-DD day key. */
+  day: string;
+  score: number;
+  outOf: number;
+  /** Who wrote the questions that day. */
+  source: "gemini" | "fallback";
+  questions: StarterRunQuestion[];
+}
+
 export interface StudentProfile {
   uid: string;
   email?: string | null;
@@ -54,8 +75,10 @@ export interface StudentProfile {
   trials?: Record<string, TrialResult>;
   /** Aurum — the reward currency earned from Trials and daily Starters. */
   aurum?: number;
-  /** Daily "Starters for Ten" streak. `lastDay` is a YYYY-MM-DD key. */
-  starterStreak?: { count: number; lastDay: string };
+  /** Daily Starters streak. `lastDay` is a YYYY-MM-DD key; `best` ever held. */
+  starterStreak?: { count: number; lastDay: string; best?: number };
+  /** The Ledger — past daily-starter runs, newest first (capped). */
+  starterHistory?: StarterRunRecord[];
   /** Shop item ids the student owns (bought with aurum). */
   inventory?: string[];
   /** Equipped cosmetics, keyed by slot (e.g. { frame: "frame-gilded" }). */
@@ -346,31 +369,40 @@ export async function earnAurum(uid: string | null, amount: number): Promise<voi
   }
 }
 
+/** How many past runs the Ledger keeps per student. */
+const STARTER_HISTORY_CAP = 60;
+
 /**
- * Records a completed daily "Starters for Ten" run and advances the streak:
- * same day → unchanged; consecutive day → +1; otherwise reset to 1.
- * `dayKey` is local YYYY-MM-DD. Best-effort; never thrown.
+ * Records a completed Daily Starters run: advances the streak (same day →
+ * unchanged; consecutive day → +1; otherwise reset to 1), tracks the best
+ * streak ever held, and files the run into the Ledger (`starterHistory`,
+ * newest first, capped). Best-effort; never thrown.
  */
 export async function recordStarterRun(
   uid: string | null,
-  dayKey: string,
-  score: number,
+  run: StarterRunRecord,
 ): Promise<void> {
   if (!uid) return;
   try {
     const ref = doc(db, "users", uid);
     const snap = await getDoc(ref);
-    const prev = (snap.data() as StudentProfile | undefined)?.starterStreak;
+    const data = snap.data() as StudentProfile | undefined;
+    const prev = data?.starterStreak;
     let count = 1;
-    if (prev?.lastDay === dayKey) {
+    if (prev?.lastDay === run.day) {
       count = prev.count; // already played today — streak unchanged
     } else if (prev) {
-      const ms = Date.parse(dayKey) - Date.parse(prev.lastDay);
+      const ms = Date.parse(run.day) - Date.parse(prev.lastDay);
       if (ms > 0 && ms <= 36 * 3600 * 1000) count = prev.count + 1;
     }
+    const best = Math.max(prev?.best ?? 0, count);
+    // One Ledger entry per day — a re-record of the same day replaces it.
+    const history = [run, ...(data?.starterHistory ?? []).filter((h) => h.day !== run.day)]
+      .slice(0, STARTER_HISTORY_CAP);
     await updateDoc(ref, {
-      starterStreak: { count, lastDay: dayKey },
-      aurum: increment(Math.max(1, score)),
+      starterStreak: { count, lastDay: run.day, best },
+      starterHistory: history,
+      aurum: increment(Math.max(1, run.score)),
       "practice.starters": increment(1),
       "practice.lastActiveAt": serverTimestamp(),
     });
