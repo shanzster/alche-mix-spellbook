@@ -8,7 +8,6 @@ import {
   Gauge,
   ClipboardList,
   LogOut,
-  MoreHorizontal,
   ScanSearch,
   Brain,
   Shapes,
@@ -502,7 +501,8 @@ export function StudentShell({ title, children }: { title?: string; children: Re
   const navigate = useNavigate();
   const isActive = useActive();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [moreOpen, setMoreOpen] = useState(false);
+  // Mobile home-bar: which chapter's flyout sheet is open (null = closed).
+  const [sheetChapter, setSheetChapter] = useState<string | null>(null);
   const [tocOpen, setTocOpen] = useState(false);
   // Live module visibility — the curator's config/modules doc filters every
   // nav surface (rail, contents, pager, mobile sheet) in real time.
@@ -534,9 +534,11 @@ export function StudentShell({ title, children }: { title?: string; children: Re
     await signOut();
     navigate({ to: "/" });
   };
-  const primary = nav.filter((n) => n.primary);
-  const moreItems = nav.filter((n) => !n.primary);
-  const moreActive = moreItems.some((n) => !n.disabled && isActive(n.to));
+  // The mobile home-bar mirrors the desktop rail: one orb per chapter, and
+  // tapping a chapter opens the SAME flyout — as a bottom sheet of its pages.
+  const mobileChapters = CHAPTERS.filter((ch) => nav.some((n) => n.chapter === ch));
+  const chapterTag = (ch: string) =>
+    ch === CH_BENCH ? "Bench" : ch === CH_FIELD ? "Field" : ch === CH_ARCADE ? "Arcade" : ch.split(" ")[0];
 
   return (
     <div className="bg-arcane min-h-screen text-spectral">
@@ -618,123 +620,117 @@ export function StudentShell({ title, children }: { title?: string; children: Re
       {/* ── Ask the Alchemist — the mentor, on every student page ── */}
       <AskAlchemist context={title} />
 
-      {/* ── Mobile chapter sheet — the whole book, chapters of orbs ── */}
-      {moreOpen && (
+      {/* ── Mobile chapter flyout — the tapped chapter's pages, as a sheet ── */}
+      {sheetChapter && (
         <div className="md:hidden">
           <div
             className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
-            onClick={() => setMoreOpen(false)}
+            onClick={() => setSheetChapter(null)}
           />
           <div className="glass-strong scroll-slim sheet-up fixed bottom-[5rem] inset-x-3 z-50 max-h-[70vh] overflow-y-auto rounded-2xl p-2.5 pb-3">
-            {CHAPTERS.map((chapter) => {
-              const pages = nav.filter((n) => n.chapter === chapter);
-              if (pages.length === 0) return null;
-              return (
-                <div key={chapter} className="mb-1.5">
-                  <p className="px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-[0.16em] text-parchment/55">
-                    {chapter}
-                  </p>
-                  <ul className="grid grid-cols-2 gap-x-1 gap-y-0.5">
-                    {pages.map((item, i) => {
-                      const active = !item.disabled && isActive(item.to);
-                      const inner = (
-                        <span
-                          className="group flex items-center gap-2.5 rounded-xl px-2 py-1.5"
-                          style={{
-                            color: item.disabled
-                              ? "color-mix(in oklab, var(--color-parchment) 55%, transparent)"
-                              : active
-                                ? "var(--color-emerald-elixir)"
-                                : "var(--color-spectral)",
-                            background: active
-                              ? "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)"
-                              : undefined,
-                          }}
-                        >
-                          <span className={`orb-rune h-8 w-8 ${active ? "orb-rune-active" : ""}`}>
-                            <item.icon className="h-3.5 w-3.5" />
-                          </span>
-                          <span className="min-w-0 truncate text-[12px] font-medium">
-                            {item.label}
-                          </span>
-                        </span>
-                      );
-                      return (
-                        <li
-                          key={item.to}
-                          className="orb-in"
-                          style={{ animationDelay: `${i * 18}ms` }}
-                        >
-                          {item.disabled ? (
-                            <div className="opacity-70" title="Needs AI setup">
-                              {inner}
-                            </div>
-                          ) : (
-                            <Link to={item.to as any} onClick={() => setMoreOpen(false)}>
-                              {inner}
-                            </Link>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              );
-            })}
+            <p className="px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-[0.16em] text-parchment/55">
+              {sheetChapter}
+            </p>
+            {/* Key on the chapter so switching re-runs the materialise stagger */}
+            <ul key={sheetChapter} className="grid grid-cols-2 gap-x-1 gap-y-0.5">
+              {nav
+                .filter((n) => n.chapter === sheetChapter)
+                .map((item, i) => {
+                  const active = !item.disabled && isActive(item.to);
+                  const inner = (
+                    <span
+                      className="group flex items-center gap-2.5 rounded-xl px-2 py-1.5"
+                      style={{
+                        color: item.disabled
+                          ? "color-mix(in oklab, var(--color-parchment) 55%, transparent)"
+                          : active
+                            ? "var(--color-emerald-elixir)"
+                            : "var(--color-spectral)",
+                        background: active
+                          ? "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)"
+                          : undefined,
+                      }}
+                    >
+                      <span className={`orb-rune h-8 w-8 ${active ? "orb-rune-active" : ""}`}>
+                        <item.icon className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="min-w-0 truncate text-[12px] font-medium">
+                        {item.label}
+                      </span>
+                    </span>
+                  );
+                  return (
+                    <li
+                      key={item.to}
+                      className="orb-in"
+                      style={{ animationDelay: `${i * 18}ms` }}
+                    >
+                      {item.disabled ? (
+                        <div className="opacity-70" title="Needs AI setup">
+                          {inner}
+                        </div>
+                      ) : (
+                        <Link to={item.to as any} onClick={() => setSheetChapter(null)}>
+                          {inner}
+                        </Link>
+                      )}
+                    </li>
+                  );
+                })}
+            </ul>
           </div>
         </div>
       )}
 
-      {/* ── Mobile bottom nav — floating glass ── */}
+      {/* ── Mobile home-bar — the desktop rail, laid flat: crest + chapters ── */}
       <nav
         data-tour="tabs"
-        className="glass-strong md:hidden fixed bottom-2 inset-x-2 z-50 flex items-stretch justify-around h-16 rounded-2xl overflow-hidden"
+        aria-label="Chapters"
+        className="glass-strong md:hidden fixed bottom-2 inset-x-2 z-50 flex h-16 items-stretch justify-around overflow-hidden rounded-2xl"
       >
-        {primary.map((item) => {
-          const active = isActive(item.to);
+        <Link
+          to="/app"
+          onClick={() => setSheetChapter(null)}
+          aria-label="AlcheMix — home"
+          className="relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors"
+          style={{ color: pathname === "/app" ? "var(--color-emerald-elixir)" : "var(--color-parchment)" }}
+        >
+          {pathname === "/app" && (
+            <span
+              className="absolute top-0 h-0.5 w-8 rounded-full"
+              style={{ background: "var(--color-emerald-elixir)" }}
+            />
+          )}
+          <img src="/images/logo-outline.png" alt="" className="h-5 w-5 object-contain" />
+          <span className="text-[10px] font-medium">Home</span>
+        </Link>
+        {mobileChapters.map((chapter) => {
+          const meta = CHAPTER_META[chapter];
+          const chapterActive = nav.some((n) => n.chapter === chapter && !n.disabled && isActive(n.to));
+          const open = sheetChapter === chapter;
           return (
-            <Link
-              key={item.label}
-              to={item.to as any}
-              onClick={() => setMoreOpen(false)}
+            <button
+              key={chapter}
+              onClick={() => setSheetChapter(open ? null : chapter)}
+              aria-label={chapter}
+              aria-haspopup="menu"
+              aria-expanded={open}
               className="relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors"
-              style={{ color: active ? "var(--color-emerald-elixir)" : "var(--color-parchment)" }}
+              style={{
+                color: open || chapterActive ? "var(--color-emerald-elixir)" : "var(--color-parchment)",
+              }}
             >
-              {active && (
+              {chapterActive && (
                 <span
                   className="absolute top-0 h-0.5 w-8 rounded-full"
                   style={{ background: "var(--color-emerald-elixir)" }}
                 />
               )}
-              <item.icon className="h-5 w-5" />
-              <span className="text-[10px] font-medium">
-                {item.label.split(" ")[0]}
-              </span>
-            </Link>
+              <meta.icon className="h-5 w-5" />
+              <span className="text-[10px] font-medium">{chapterTag(chapter)}</span>
+            </button>
           );
         })}
-        {/* More — opens the overflow sheet (only when something overflows) */}
-        {moreItems.length > 0 && (
-          <button
-            onClick={() => setMoreOpen((o) => !o)}
-            className="relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors"
-            style={{
-              color:
-                moreOpen || moreActive ? "var(--color-emerald-elixir)" : "var(--color-parchment)",
-            }}
-            aria-label="More modules"
-            aria-expanded={moreOpen}
-          >
-            {moreActive && (
-              <span
-                className="absolute top-0 h-0.5 w-8 rounded-full"
-                style={{ background: "var(--color-emerald-elixir)" }}
-              />
-            )}
-            <MoreHorizontal className="h-5 w-5" />
-            <span className="text-[10px] font-medium">More</span>
-          </button>
-        )}
       </nav>
     </div>
   );

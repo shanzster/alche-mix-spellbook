@@ -123,6 +123,14 @@ stress cracks, pulsing warning); ~3 s of sustained abuse shatters the flask
 "Perfectly normal. Every alchemist breaks a flask or two." — with a
 one-button fresh-flask reset. Easing off in time lets the glass recover.
 
+### 11 · Mobile home-bar — the rail laid flat
+
+The phone bottom bar no longer shows four hand-picked tabs + "More": it now
+mirrors the desktop rail one-to-one — a Home crest plus one orb per chapter
+(Bench, I–V, Field), and tapping a chapter opens the SAME flyout as desktop,
+rendered as a bottom sheet of that chapter's pages. Same chapter set, same
+curation (config/modules + ARCADE_HIDDEN), same active-chapter highlight.
+
 ### Decisions & reminders
 
 - CMS: deferred by owner — do not start.

@@ -35,9 +35,10 @@ client-only — nothing platform-specific is rendered until `ready`.
 `RequireRole`; teacher/admin consoles live at `/teacher`, `/admin`.
 
 **Student shell.** `StudentShell.tsx` renders the whole student chrome: a
-floating chapter rail (desktop), ⌘K Table of Contents, bottom pager, mobile
-tab bar + sheet, the Ask-the-Alchemist chat, and the first-login
-walkthrough. One `NAV` array is the single source of module order/chapters;
+floating chapter rail (desktop), ⌘K Table of Contents, bottom pager, the
+mobile home-bar (the rail laid flat: Home crest + one orb per chapter, each
+opening that chapter's flyout as a bottom sheet), the Ask-the-Alchemist
+chat, and the first-login walkthrough. One `NAV` array is the single source of module order/chapters;
 `config/modules` (Firestore, live) curates visibility; `ARCADE_HIDDEN`
 benches the Arcade chapter wholesale. New modules register in THREE places:
 `app.tsx` (`MODULES`), `StudentShell.tsx` (`NAV`), `guide.ts` (`GUIDE`).
