@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
-import { Check, Factory, FlaskConical, Gauge, Scale, ScrollText, Sparkles, Syringe, Thermometer, X as XIcon } from "lucide-react";
+import { Check, Factory, Flame, FlaskConical, Gauge, Scale, ScrollText, Sparkles, Syringe, Thermometer, X as XIcon } from "lucide-react";
 import { ModuleShell } from "../components/ModuleShell";
+import { ValveWheel } from "../components/ValveWheel";
 import { RequireAuth } from "../components/RequireAuth";
 import { ConceptCard, DidYouKnow } from "../components/Learn";
 import { useUserProfile, logPractice, recordTrial } from "../lib/profile";
@@ -22,9 +23,9 @@ export const Route = createFileRoute("/equilibrium")({
   The engine is a well-mixed stochastic model: every dimer may split each frame
   (probability rises with T — the forward direction is endothermic, real
   ΔH ≈ +57 kJ/mol) and monomer pairs recombine at a rate ∝ [NO₂]²/V. With
-  those rules K = k_f/k_r emerges naturally and the box genuinely re-settles
+  those rules K = k_f/k_r emerges naturally and the flask genuinely re-settles
   after every stress. The particles are the visualisation of those counts, and
-  the box's brown tint tracks [NO₂] — the colour IS the readout.
+  the flask's brown tint tracks [NO₂] — the colour IS the readout.
 
   Scenario 2: the Haber process in bar-chart form, using the curated
   Larson–Dodge equilibrium %NH₃ table (real data, interpolated).
@@ -84,24 +85,49 @@ function ParticleStage({ sim, cmd, stats }: {
       const { T, V } = sim.current;
       const W = canvas.width, H = canvas.height;
       ctx.clearRect(0, 0, W, H);
-      const full = { x: 16, y: 16, w: W - 32, h: H - 32 };
-      const box = { ...full, w: Math.max(60, full.w * V) };
 
-      if (!seeded && box.w > 60) {
-        parts = Array.from({ length: SEED_DIMERS }, () =>
-          spawnDimer(box.x + 8 + Math.random() * (box.w - 16), box.y + 8 + Math.random() * (box.h - 16)));
+      // ── Apparatus geometry: a sealed round-bottom flask over a burner ──
+      // Bulb AREA scales with V, so compression visibly crowds the vapour.
+      const baseR = Math.min(W * 0.3, H * 0.27);
+      const R = Math.max(26, baseR * Math.sqrt(V));
+      const cx = W / 2;
+      const bulbBottom = H - 86; // room below for the stand + flame
+      const cy = bulbBottom - R;
+      const neckW = Math.max(24, R * 0.38);
+      const neckTop = 14;
+      // Where the neck walls meet the bulb's circle.
+      const th = Math.asin(Math.min(0.9, neckW / 2 / R));
+      const neckBottomY = cy - R * Math.cos(th);
+
+      const randomInBulb = () => {
+        const r = (R - 10) * Math.sqrt(Math.random());
+        const a = Math.random() * Math.PI * 2;
+        return { x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r };
+      };
+      if (!seeded && R > 26) {
+        parts = Array.from({ length: SEED_DIMERS }, () => {
+          const p = randomInBulb();
+          return spawnDimer(p.x, p.y);
+        });
         seeded = true;
       }
       if (cmd.current.reset) {
-        parts = Array.from({ length: SEED_DIMERS }, () =>
-          spawnDimer(box.x + 8 + Math.random() * (box.w - 16), box.y + 8 + Math.random() * (box.h - 16)));
+        parts = Array.from({ length: SEED_DIMERS }, () => {
+          const p = randomInBulb();
+          return spawnDimer(p.x, p.y);
+        });
         acc = 0;
         cmd.current.reset = false;
       }
-      // Injection port squirts fresh N₂O₄ in from the left wall.
+      // Injection: the syringe squirts fresh N₂O₄ down through the neck.
       let squirt = 0;
       while (cmd.current.inject > 0 && squirt < 2) {
-        parts.push(spawnDimer(box.x + 10, box.y + box.h * (0.25 + Math.random() * 0.5), 2.6 + Math.random(), (Math.random() - 0.5) * 1.2));
+        parts.push(spawnDimer(
+          cx + (Math.random() - 0.5) * neckW * 0.4,
+          cy - R + 12,
+          (Math.random() - 0.5) * 1.2,
+          2.4 + Math.random(),
+        ));
         cmd.current.inject -= 1;
         squirt += 1;
       }
@@ -140,10 +166,10 @@ function ParticleStage({ sim, cmd, stats }: {
         M -= 2;
       }
 
-      // Motion: relax every particle toward its thermal speed, bounce off walls
-      // (the right wall is the piston — compressing visibly herds the crowd).
+      // Motion: relax every particle toward its thermal speed and bounce off
+      // the inside of the bulb (the glass is the wall now).
       const thermal = 0.9 + 1.5 * Math.sqrt(T / 298);
-      const px = box.x + box.w;
+      const wall = R - 6;
       for (const p of parts) {
         const target = p.kind === "D" ? thermal * 0.75 : thermal;
         let mag = Math.hypot(p.vx, p.vy);
@@ -151,10 +177,15 @@ function ParticleStage({ sim, cmd, stats }: {
         const f = 1 + (target / mag - 1) * 0.05;
         p.vx *= f; p.vy *= f;
         p.x += p.vx; p.y += p.vy;
-        if (p.x <= box.x + 4) { p.x = box.x + 4; p.vx = Math.abs(p.vx); }
-        if (p.x >= px - 4) { p.x = px - 4; p.vx = -Math.abs(p.vx); }
-        if (p.y <= box.y + 4) { p.y = box.y + 4; p.vy = Math.abs(p.vy); }
-        if (p.y >= box.y + box.h - 4) { p.y = box.y + box.h - 4; p.vy = -Math.abs(p.vy); }
+        const dx = p.x - cx, dy = p.y - cy;
+        const d = Math.hypot(dx, dy) || 1;
+        if (d > wall) {
+          const nx = dx / d, ny = dy / d;
+          const dot = p.vx * nx + p.vy * ny;
+          if (dot > 0) { p.vx -= 2 * dot * nx; p.vy -= 2 * dot * ny; }
+          p.x = cx + nx * wall;
+          p.y = cy + ny * wall;
+        }
       }
 
       // Publish stats for the graphs / gauge.
@@ -163,28 +194,59 @@ function ParticleStage({ sim, cmd, stats }: {
       const q = (M * M) / (Math.max(0.5, D) * V);
       stats.current = { D, M, concD, concM, q, k: pf / pr };
 
-      // The colour IS the readout: brown tint deepens with [NO₂].
+      // ── Render the bench: stand → burner flame → vapour → glass ──
+      // Retort-stand legs behind the flask.
+      ctx.strokeStyle = "color-mix(in oklab, var(--color-parchment) 28%, transparent)";
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(cx - R * 0.7, bulbBottom - R * 0.26); ctx.lineTo(cx - R * 0.95, H - 8);
+      ctx.moveTo(cx + R * 0.7, bulbBottom - R * 0.26); ctx.lineTo(cx + R * 0.95, H - 8);
+      ctx.stroke();
+
+      // The burner — its flame grows with the valve (temperature) and licks
+      // the round bottom; even at the minimum a pilot flame survives.
+      const nozzleY = H - 16;
+      const heat = (T - T_MIN) / (T_MAX - T_MIN);
+      const flick = 1 + Math.sin(performance.now() / 90) * 0.06 + Math.sin(performance.now() / 41) * 0.03;
+      const maxH = nozzleY - bulbBottom + R * 0.18; // tall flames hug the bulb
+      const flameH = (10 + heat * (maxH - 10)) * flick;
+      const flame = (wMul: number, hMul: number, fill: string) => {
+        const fh = flameH * hMul;
+        const fw = (9 + heat * 15) * wMul;
+        ctx.fillStyle = fill;
+        ctx.beginPath();
+        ctx.moveTo(cx - fw, nozzleY);
+        ctx.quadraticCurveTo(cx - fw, nozzleY - fh * 0.55, cx, nozzleY - fh);
+        ctx.quadraticCurveTo(cx + fw, nozzleY - fh * 0.55, cx + fw, nozzleY);
+        ctx.closePath();
+        ctx.fill();
+      };
+      flame(1, 1, "rgba(217, 119, 6, 0.72)");
+      flame(0.62, 0.8, "rgba(245, 158, 11, 0.85)");
+      flame(0.34, 0.55, "rgba(253, 230, 138, 0.95)");
+      // Burner base.
+      ctx.fillStyle = "color-mix(in oklab, var(--color-parchment) 38%, transparent)";
+      ctx.fillRect(cx - 17, nozzleY, 34, 8);
+
+      // The glass interior (bulb + sealed neck) — tint and particles clip to it.
+      const glassPath = () => {
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.rect(cx - neckW / 2, neckTop, neckW, Math.max(0, neckBottomY - neckTop + 2));
+      };
+
+      // The colour IS the readout: brown vapour deepens with [NO₂].
+      glassPath();
+      ctx.save();
+      ctx.clip();
       ctx.fillStyle = `rgba(146, 64, 14, ${Math.min(0.55, concM / 90).toFixed(3)})`;
-      ctx.fillRect(box.x, box.y, box.w, box.h);
-
-      // Dead space behind the piston.
-      if (box.w < full.w - 4) {
-        ctx.fillStyle = "color-mix(in oklab, var(--color-parchment) 7%, transparent)";
-        ctx.fillRect(px, full.y, full.x + full.w - px, full.h);
-      }
-
-      // Walls + piston face.
-      ctx.strokeStyle = "color-mix(in oklab, var(--color-parchment) 40%, transparent)";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(box.x, box.y, box.w, box.h);
-      ctx.strokeStyle = "color-mix(in oklab, var(--color-parchment) 70%, transparent)";
-      ctx.lineWidth = 5;
-      ctx.beginPath(); ctx.moveTo(px, box.y); ctx.lineTo(px, box.y + box.h); ctx.stroke();
-      // Piston handle
-      ctx.lineWidth = 3;
-      ctx.beginPath(); ctx.moveTo(px, box.y + box.h / 2); ctx.lineTo(full.x + full.w + 6, box.y + box.h / 2); ctx.stroke();
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
 
       // Particles: N₂O₄ = fused pale pair (colourless), NO₂ = single brown dot.
+      glassPath();
+      ctx.save();
+      ctx.clip();
       for (const p of parts) {
         if (p.kind === "D") {
           ctx.fillStyle = "rgba(154, 167, 189, 0.9)";
@@ -198,6 +260,29 @@ function ParticleStage({ sim, cmd, stats }: {
           ctx.shadowBlur = 0;
         }
       }
+      ctx.restore();
+
+      // The glass itself: bulb (skipping the neck notch), neck walls, stopper.
+      ctx.strokeStyle = "color-mix(in oklab, var(--color-parchment) 45%, transparent)";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, -Math.PI / 2 + th, -Math.PI / 2 - th + Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - neckW / 2, neckTop); ctx.lineTo(cx - neckW / 2, neckBottomY);
+      ctx.moveTo(cx + neckW / 2, neckTop); ctx.lineTo(cx + neckW / 2, neckBottomY);
+      ctx.stroke();
+      // A soft highlight so the bulb reads as glass.
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.13)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R - 8, Math.PI * 1.1, Math.PI * 1.38);
+      ctx.stroke();
+      // Sealed stopper on top — this demo tube is closed.
+      ctx.fillStyle = "color-mix(in oklab, var(--color-parchment) 42%, transparent)";
+      ctx.beginPath();
+      ctx.roundRect(cx - neckW / 2 - 5, neckTop - 9, neckW + 10, 13, 3);
+      ctx.fill();
 
       raf = requestAnimationFrame(draw);
     };
@@ -647,7 +732,7 @@ function Equilibrium() {
                     N₂O₄ <span className="text-parchment/60">⇌</span> 2 NO₂ · {shade(gauge.concM)}
                   </div>
                   <div className="text-xs text-parchment/70">
-                    {gauge.D} colourless dimers · {gauge.M} brown NO₂ — the tint of the box is your instrument.
+                    {gauge.D} colourless dimers · {gauge.M} brown NO₂ — the tint of the flask is your instrument.
                   </div>
                 </div>
               </div>
@@ -658,20 +743,36 @@ function Equilibrium() {
               <div className="rounded-xl p-4" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid color-mix(in oklab, var(--color-amber-scry) 28%, transparent)" }}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="inline-flex items-center gap-1.5 text-[11px] tracking-[0.15em] uppercase" style={{ color: "var(--color-amber-scry)" }}>
-                    <Thermometer className="h-3.5 w-3.5" /> Temperature
+                    <Flame className="h-3.5 w-3.5" /> The burner valve
                   </span>
                   <span className="font-ui font-medium text-lg" style={{ color: "var(--color-amber-scry)" }}>
                     {T} <span className="text-xs text-parchment/60">K</span>
                     <span className="text-xs text-parchment/60 ml-2">({(T - 273.15).toFixed(0)} °C)</span>
                   </span>
                 </div>
-                <input type="range" min={T_MIN} max={T_MAX} step={1} value={T}
-                  onChange={(e) => onTemp(parseInt(e.target.value, 10))}
-                  aria-label="Flask temperature in kelvin" className="w-full" style={{ accentColor: "var(--color-amber-scry)" }} />
-                <p className="text-xs text-parchment/70 mt-1.5 leading-snug">
-                  N₂O₄ + heat ⇌ 2 NO₂ — the <span style={{ color: "var(--color-amber-scry)" }}>forward direction is endothermic</span>{" "}
-                  (ΔH = +57 kJ/mol), so heating feeds the split and the flask browns.
-                </p>
+                <div className="mt-1 flex items-center gap-4">
+                  <ValveWheel
+                    value={T}
+                    min={T_MIN}
+                    max={T_MAX}
+                    step={1}
+                    onChange={onTemp}
+                    color="var(--color-amber-scry)"
+                    label="Burner valve — flask temperature in kelvin"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-parchment/70 leading-snug">
+                      Turn the wheel to open the gas — the flame beneath the flask grows and
+                      the glass warms. N₂O₄ + heat ⇌ 2 NO₂: the{" "}
+                      <span style={{ color: "var(--color-amber-scry)" }}>forward direction is endothermic</span>{" "}
+                      (ΔH = +57 kJ/mol), so a taller flame browns the vapour.
+                    </p>
+                    <div className="mt-2 flex justify-between text-[10px] text-parchment/50">
+                      <span>closed · {T_MIN} K</span>
+                      <span>wide open · {T_MAX} K</span>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <div className="rounded-xl p-4" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
@@ -742,7 +843,7 @@ function Equilibrium() {
             </ConceptCard>
             <ConceptCard title="Equilibrium is busy, not still">
               At Q = K nothing has stopped — dimers keep splitting and NO₂ pairs keep fusing at{" "}
-              <span className="text-gold">equal rates</span>, which is why the concentrations flat-line while the box
+              <span className="text-gold">equal rates</span>, which is why the concentrations flat-line while the flask
               still seethes. Only temperature changes K itself; volume and injections change Q and let the reactions
               chase K back down.
             </ConceptCard>

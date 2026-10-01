@@ -84,7 +84,7 @@ Gemini (`GEMINI_API_KEY`, server-only via `createServerFn`) · Nitro/Cloudflare.
 | /solutions | The Elixir Bench | Solutions & molarity: real solubility limits, particles view, commissions trial |
 | /thermo | Cauldron of Heat | Coffee-cup calorimetry, real ΔH data, guided q=mcΔT assay |
 | /rates | Reaction Rates | Collision theory sim: temp/concentration/surface/catalyst, quick check |
-| /equilibrium | Equilibrium | N₂O₄⇌NO₂ with emergent K, Le Chatelier stresses, Haber tab |
+| /equilibrium | Equilibrium | N₂O₄⇌NO₂ with emergent K in a drawn round-bottom flask over a burner (temperature = rotary burner-valve wheel, `ValveWheel`), Le Chatelier stresses, Haber tab |
 | /electro | The Voltaic Forge | Build galvanic cells from real potentials, animated e⁻ flow, trial |
 | /forces | Invisible Bonds | IMF sim + 5-substance boiling-point race, quick check |
 | /titration | Titration Lab | Strong + weak acid, 3 indicators, pour realism, unknown assay |
