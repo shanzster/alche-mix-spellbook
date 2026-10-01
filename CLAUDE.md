@@ -21,3 +21,8 @@ chem-ed platforms) and `docs/brainstorm/` (research pack).
 (store IDs D1–D9) used for the owner's DFD and ERD work — consult it for any
 diagramming task, and update it in the same commit whenever a feature or
 storage shape changes.
+
+More living docs in `docs/`: `LOGS.md` (dated dev log — append a dated entry
+for each working day's changes), `SYSTEM_TECHNICALITIES.md` (architecture
+reference), `ALGORITHM_OF_THE_SYSTEM.md` (how the core mechanics work).
+Keep all three current when features change.
