@@ -35,7 +35,7 @@ import {
   Compass,
   Fingerprint,
 } from "lucide-react";
-import { StudentShell } from "../components/StudentShell";
+import { ARCADE_HIDDEN, StudentShell } from "../components/StudentShell";
 import { PageHeader } from "../components/PageHeader";
 import { RequireRole } from "../components/RequireRole";
 import { useUserProfile, type Mastery, type StudentProfile } from "../lib/profile";
@@ -784,8 +784,10 @@ function StudentHub() {
       </section>
 
       {/* The Arcade — games & rewards, kept apart from the learning path.
-          Hidden entirely while the curator has its modules curated out. */}
+          Hidden entirely while the curator has its modules curated out, or
+          while the Arcade is benched (ARCADE_HIDDEN in StudentShell). */}
       {(() => {
+        if (ARCADE_HIDDEN) return null;
         const rows = ARCADE.filter((m) => !hiddenModules.has(m.to));
         if (rows.length === 0) return null;
         return (

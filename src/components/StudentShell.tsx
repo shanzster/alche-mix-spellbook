@@ -130,6 +130,12 @@ export const NAV: NavItem[] = [
 
 export const CHAPTERS = [CH_BENCH, CH_1, CH_2, CH_3, CH_4, CH_5, CH_ARCADE, CH_FIELD];
 
+// TEMP (owner, 2026-10-01): the Arcade is benched — hidden from every nav
+// surface (rail, contents, pager, mobile sheet) and the hub's Arcade section.
+// Flip to false to bring it back. Routes stay reachable by direct URL, and
+// the /modules curator still lists the Arcade pages (NAV itself is untouched).
+export const ARCADE_HIDDEN = true;
+
 /** Rail icon + short name for each chapter of the book. */
 const CHAPTER_META: Record<string, { icon: ComponentType<{ className?: string }>; short: string }> = {
   [CH_BENCH]: { icon: Home, short: "The Bench" },
@@ -502,7 +508,11 @@ export function StudentShell({ title, children }: { title?: string; children: Re
   // nav surface (rail, contents, pager, mobile sheet) in real time.
   const { hidden } = useHiddenModules();
   // Home stays no matter what the config doc says — the shell needs an anchor.
-  const nav = NAV.filter((n) => n.to === "/app" || !hidden.has(n.to));
+  const nav = NAV.filter(
+    (n) =>
+      (n.to === "/app" || !hidden.has(n.to)) &&
+      !(ARCADE_HIDDEN && n.chapter === CH_ARCADE),
+  );
   const pageIndex = pageIndexOf(pathname, nav);
   const prevPage = pageIndex > 0 ? nav[pageIndex - 1] : null;
   const nextPage = pageIndex >= 0 && pageIndex < nav.length - 1 ? nav[pageIndex + 1] : null;

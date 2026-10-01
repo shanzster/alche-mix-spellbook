@@ -49,6 +49,9 @@ Gemini (`GEMINI_API_KEY`, server-only via `createServerFn`) · Nitro/Cloudflare.
    separate Arcade section — never mixed into the learning-module list, the
    Guide's steps, or module pages. The Grimoire (/cards) is the card
    collection only; the learning path lives at /guide.
+   **Benched (owner, 2026-10-01):** the whole Arcade is temporarily hidden
+   from navigation via `ARCADE_HIDDEN` in `src/components/StudentShell.tsx`
+   — flip the flag to bring it back; routes remain reachable by direct URL.
 7. **Both themes, mobile-friendly, token-based styling.** Every surface must
    work in dark and light mode using the existing CSS tokens; wide content
    scrolls horizontally in its own container.
