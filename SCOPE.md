@@ -102,7 +102,9 @@ Gemini (`GEMINI_API_KEY`, server-only via `createServerFn`) · Nitro/Cloudflare.
 
 **Cross-cutting:** Ask the Alchemist mentor chat on every student page ·
 persistent Trials (`profile.trials`, stars) · aurum currency with The Emporium
-as its sink · starter streaks · badges · offline service worker (public/sw.js,
+as its sink · starter streaks · the Great Cauldron tap toy on the Bench
+(1 ladle per 10 stirs, 1000-stir cap → "send us your account details, the
+Alchemist has a surprise") · badges · offline service worker (public/sw.js,
 conservative caching) · periodic-table deep links (`?element=Fe`) with lore in
 the detail panel.
 

@@ -79,6 +79,8 @@ export interface StudentProfile {
   starterStreak?: { count: number; lastDay: string; best?: number };
   /** The Ledger — past daily-starter runs, newest first (capped). */
   starterHistory?: StarterRunRecord[];
+  /** The Great Cauldron on the Bench — lifetime stirs (capped at 1000). */
+  cauldronTaps?: number;
   /** Shop item ids the student owns (bought with aurum). */
   inventory?: string[];
   /** Equipped cosmetics, keyed by slot (e.g. { frame: "frame-gilded" }). */
@@ -437,6 +439,20 @@ export async function restoreStarterStreak(
     });
   } catch (err) {
     console.error("restoreStarterStreak failed:", err);
+  }
+}
+
+/**
+ * Banks a batch of Great Cauldron stirs (the Bench's tap toy). The client
+ * flushes in multiples of 10 and stops at the 1000 cap; the increment keeps
+ * concurrent sessions from clobbering each other. Best-effort; never thrown.
+ */
+export async function addCauldronTaps(uid: string | null, n: number): Promise<void> {
+  if (!uid || n <= 0) return;
+  try {
+    await updateDoc(doc(db, "users", uid), { cauldronTaps: increment(n) });
+  } catch (err) {
+    console.error("addCauldronTaps failed:", err);
   }
 }
 
