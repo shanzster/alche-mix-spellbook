@@ -5,6 +5,7 @@ import {
   getVerification, submitVerification, fileToDataUrl, downscale, type Verification,
 } from "../lib/admin";
 import { matchFaces, type FaceMatchResult } from "../lib/facematch";
+import { FlaskMark } from "./AlcheLoader";
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -108,7 +109,7 @@ export function TeacherVerification({ uid, name, email, onSignOut }: { uid: stri
   };
 
   if (loading) {
-    return <Shell><div className="flex flex-col items-center gap-4 py-6 text-parchment"><FlaskConical className="h-8 w-8 text-teal animate-spin" /><p className="text-xs tracking-[0.3em] uppercase">Loading…</p></div></Shell>;
+    return <Shell><div className="flex flex-col items-center gap-4 py-6 text-parchment"><FlaskMark size={56} /><p className="text-xs tracking-[0.3em] uppercase">Loading…</p></div></Shell>;
   }
 
   // Submitted & awaiting review

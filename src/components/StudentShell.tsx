@@ -413,14 +413,8 @@ function CategoryRail({
           <BookOpen className="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
         </button>
 
-        {/* Day / night */}
-        <div
-          className="group relative flex-shrink-0"
-          onMouseEnter={(e) => showHint(e, "Theme")}
-          onMouseLeave={clearHint}
-        >
-          <ThemeToggle className="!h-10 !w-10 !rounded-xl !border-0 !bg-transparent" />
-        </div>
+        {/* Theme toggle moved back to the top-right of the screen (adviser
+            item 10) — it no longer lives in this rail. */}
 
         {/* Leave the workshop */}
         <button
@@ -541,7 +535,7 @@ export function StudentShell({ title, children }: { title?: string; children: Re
     ch === CH_BENCH ? "Bench" : ch === CH_FIELD ? "Field" : ch === CH_ARCADE ? "Arcade" : ch.split(" ")[0];
 
   return (
-    <div className="bg-arcane min-h-screen text-spectral">
+    <div className="grimoire-display bg-arcane min-h-screen text-spectral">
       {/* Ambient colour under the glass */}
       <div className="bg-aurora pointer-events-none fixed inset-0 z-0" />
 
@@ -558,6 +552,12 @@ export function StudentShell({ title, children }: { title?: string; children: Re
         </Link>
         <ThemeToggle className="!h-8 !w-8" />
       </header>
+
+      {/* Theme toggle in its original top-right position (adviser item 10).
+          Mobile keeps the one in its top bar; this is the desktop control. */}
+      <div className="fixed right-4 top-4 z-40 hidden md:block">
+        <ThemeToggle />
+      </div>
 
       {/* ── Content ── */}
       <main className="relative z-10">

@@ -10,9 +10,13 @@ import { BohrModel3D } from "../components/BohrModel3D";
 import { ConceptCard, DidYouKnow } from "../components/Learn";
 import { useUserProfile, logPractice } from "../lib/profile";
 import { loreFor } from "../lib/element-lore";
+import { electronConfig } from "../lib/electron-config";
 import {
-  PERIODIC_ELEMENTS, FBLOCK_MARKERS, type TableElement, type ElementCategory,
+  PERIODIC_ELEMENTS, type TableElement,
 } from "../lib/periodic-table-data";
+import {
+  PeriodicGrid, CATEGORY_COLORS, CATEGORY_LEGEND, type CellLook,
+} from "../components/PeriodicGrid";
 
 interface PeriodicTableSearch {
   /** Deep link: element symbol, e.g. ?element=Fe (case-insensitive). */
@@ -37,25 +41,9 @@ function numberForSymbol(symbol: string | undefined): number | undefined {
   return PERIODIC_ELEMENTS.find((e) => e.symbol.toLowerCase() === q)?.number;
 }
 
-// ── Category colours (family key, as on the classic wall chart) ─────────────
-const CATEGORY_COLORS: Record<ElementCategory, string> = {
-  "Alkali Metal": "#f87171",
-  "Alkaline Earth Metal": "#fb923c",
-  "Transition Metal": "#a78bfa",
-  "Post-transition Metal": "#60a5fa",
-  "Metalloid": "#4ade80",
-  "Nonmetal": "#facc15",
-  "Halogen": "#34d399",
-  "Noble Gas": "#38bdf8",
-  "Lanthanide": "#f0abfc",
-  "Actinide": "#fda4af",
-};
-
-// Order the legend the way the chart groups them.
-const LEGEND: ElementCategory[] = [
-  "Alkali Metal", "Alkaline Earth Metal", "Transition Metal", "Post-transition Metal",
-  "Metalloid", "Nonmetal", "Halogen", "Noble Gas", "Lanthanide", "Actinide",
-];
+// Category colours + legend order live in the shared grid component now
+// (adviser item 19: one table everywhere).
+const LEGEND = CATEGORY_LEGEND;
 
 // ── Data lenses (Ptable-style: same grid, different colour stories) ──────────
 type Lens = "family" | "state" | "trend" | "timeline";
@@ -222,42 +210,6 @@ function BohrSVG({ shells, color, symbol, name }: { shells: string; color: strin
   );
 }
 
-// ── One cell in the grid ────────────────────────────────────────────────────
-interface CellLook {
-  color: string;
-  opacity: number;
-  /** Small always-visible value line (trend lens); falls back to the name on lg. */
-  value?: string;
-}
-
-function Cell({ el, active, look, onClick }: { el: TableElement; active: boolean; look: CellLook; onClick: () => void }) {
-  const { color, opacity, value } = look;
-  return (
-    <button
-      onClick={onClick}
-      title={`${el.number} · ${el.name}`}
-      style={{
-        gridColumn: el.xpos,
-        gridRow: el.ypos,
-        background: `color-mix(in oklab, ${color} ${active ? 30 : 15}%, transparent)`,
-        border: `1px solid color-mix(in oklab, ${color} ${active ? 90 : 45}%, transparent)`,
-        boxShadow: active ? `0 0 0 2px ${color}, 0 0 18px -4px ${color}` : "none",
-        opacity,
-        color,
-      }}
-      className="group relative flex aspect-square min-w-[30px] flex-col items-center justify-center rounded-[5px] leading-none transition-all duration-150 hover:z-10 hover:brightness-125"
-    >
-      <span className="absolute left-[3px] top-[2px] text-[7px] font-medium text-parchment/60 sm:text-[8px]">{el.number}</span>
-      <span className="font-sans text-[11px] font-semibold sm:text-sm">{el.symbol}</span>
-      {value !== undefined ? (
-        <span className="max-w-full truncate px-0.5 text-[6px] tabular-nums text-parchment/70 sm:text-[7px]">{value}</span>
-      ) : (
-        <span className="hidden max-w-full truncate px-0.5 text-[6px] text-parchment/55 lg:block">{el.name}</span>
-      )}
-    </button>
-  );
-}
-
 function PeriodicTable() {
   const { uid } = useUserProfile();
   const { element: elementParam } = Route.useSearch();
@@ -270,7 +222,11 @@ function PeriodicTable() {
   const [search, setSearch] = useState("");
   const [copied, setCopied] = useState(false);
 
-  // Lens state.
+  // Traditional (the familiar classroom chart, default) vs Interactive (the
+  // lensed exploration) — adviser P0 item 3: "Pwede siyang pagpiliin."
+  const [mode, setMode] = useState<"traditional" | "interactive">("traditional");
+
+  // Lens state (Interactive mode only).
   const [lens, setLens] = useState<Lens>("family");
   const [tempK, setTempK] = useState(293); // ~room temperature
   const [trendKey, setTrendKey] = useState<TrendKey>("electronegativity");
@@ -358,8 +314,12 @@ function PeriodicTable() {
   );
 
   // How the active lens paints one tile (search dimming applies in every lens).
+  // Traditional mode always paints by family — the chart students recognise.
   const look = (el: TableElement): CellLook => {
     const searchDim = matches(el) ? 1 : 0.2;
+    if (mode === "traditional") {
+      return { color: CATEGORY_COLORS[el.category], opacity: searchDim };
+    }
     switch (lens) {
       case "state":
         return { color: STATE_COLORS[matterAt(el, tempK)], opacity: searchDim };
@@ -387,7 +347,26 @@ function PeriodicTable() {
       accent="var(--color-wraith)"
       subtitle="The Modern Periodic Table of the Elements. Tap any element to study it — see it in 3D or as a Bohr diagram."
     >
+      {/* Traditional ⇄ Interactive — defaults to the chart students know */}
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <div className="inline-flex rounded-full p-1" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }}>
+          {([["traditional", "Traditional"], ["interactive", "Interactive"]] as const).map(([key, label]) => (
+            <button key={key} onClick={() => setMode(key)}
+              className="rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] transition sm:px-5"
+              style={mode === key ? { background: "color-mix(in oklab, var(--color-wraith) 25%, transparent)", color: "var(--color-wraith)" } : { color: "var(--color-parchment)" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-parchment/60">
+          {mode === "traditional"
+            ? "The standard IUPAC arrangement, exactly as in class."
+            : "Lenses: colour the same chart by family, state, trends or discovery."}
+        </span>
+      </div>
+
       {/* Lens control bar — four ways to colour the same chart */}
+      {mode === "interactive" && (
       <div className="mb-4 space-y-3">
         <div className="inline-flex max-w-full flex-wrap rounded-full p-1" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }}>
           {LENSES.map(([key, label, Icon]) => (
@@ -457,6 +436,7 @@ function PeriodicTable() {
           </div>
         )}
       </div>
+      )}
 
       {/* Search + family legend */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -466,11 +446,11 @@ function PeriodicTable() {
             className="w-full rounded-lg py-2 pl-9 pr-3 text-sm text-spectral outline-none placeholder:text-parchment/40"
             style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }} />
         </div>
-        {lens === "family" && (
-          <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+        {(mode === "traditional" || lens === "family") && (
+          <div className="flex flex-wrap gap-x-4 gap-y-2">
             {LEGEND.map((cat) => (
-              <span key={cat} className="inline-flex items-center gap-1.5 text-[10px] text-parchment/70">
-                <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: CATEGORY_COLORS[cat], boxShadow: `0 0 6px -1px ${CATEGORY_COLORS[cat]}` }} />
+              <span key={cat} className="inline-flex items-center gap-1.5 text-xs text-parchment/80">
+                <span className="h-3 w-3 rounded-[3px]" style={{ background: CATEGORY_COLORS[cat], boxShadow: `0 0 6px -1px ${CATEGORY_COLORS[cat]}` }} />
                 {cat}
               </span>
             ))}
@@ -478,37 +458,13 @@ function PeriodicTable() {
         )}
       </div>
 
-      {/* ── The grid (scrolls horizontally on small screens, like a wall chart) ── */}
-      <div className="-mx-2 overflow-x-auto px-2 pb-2">
-        <div
-          className="grid min-w-[640px] gap-[3px]"
-          style={{ gridTemplateColumns: "repeat(18, minmax(30px, 1fr))" }}
-        >
-          {PERIODIC_ELEMENTS.map((el) => (
-            <Cell
-              key={el.number}
-              el={el}
-              active={el.number === selectedNum}
-              look={look(el)}
-              onClick={() => selectElement(el)}
-            />
-          ))}
-
-          {/* Group-3 markers pointing to the f-block rows below. */}
-          {FBLOCK_MARKERS.map((m) => (
-            <div
-              key={m.label}
-              style={{ gridColumn: m.xpos, gridRow: m.ypos, border: `1px dashed color-mix(in oklab, ${CATEGORY_COLORS[m.category]} 55%, transparent)` }}
-              className="flex aspect-square items-center justify-center rounded-[5px] text-[7px] text-parchment/60 sm:text-[9px]"
-            >
-              {m.label}
-            </div>
-          ))}
-
-          {/* Spacer between the main block and the f-block rows. */}
-          <div style={{ gridColumn: "1 / span 18", gridRow: 8, height: 10 }} />
-        </div>
-      </div>
+      {/* ── The grid — the one shared chart (scrolls sideways on phones) ── */}
+      <PeriodicGrid
+        selectedNum={selectedNum}
+        onSelect={selectElement}
+        detailed={mode === "traditional"}
+        look={look}
+      />
 
       {/* ── Element detail — a modal over the table ── */}
       {selected && (
@@ -604,6 +560,24 @@ function PeriodicTable() {
 
         {/* Educational content */}
         <div className="space-y-4">
+          {/* The standard data card — EVERY element, no exceptions (adviser
+              P0 item 4: "kulang ng information"). */}
+          <div className="rounded-xl p-5" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <Stat label="Atomic number" value={String(selected.number)} />
+              <Stat label="Atomic mass" value={`${selected.mass} u`} />
+              <Stat label="Family" value={selected.category} />
+              <Stat label="Electron shells" value={selected.shells} />
+              <Stat label="Melting point" value={selected.meltK !== undefined ? `${Math.round(selected.meltK)} K · ${Math.round(selected.meltK - 273.15)} °C` : "Not established"} />
+              <Stat label="Boiling point" value={selected.boilK !== undefined ? `${Math.round(selected.boilK)} K · ${Math.round(selected.boilK - 273.15)} °C` : "Not established"} />
+              <Stat label="Electronegativity" value={selected.electronegativity !== undefined ? selected.electronegativity.toFixed(2) : "No accepted value"} />
+              <Stat label="Discovered" value={selected.ancient ? "Known since antiquity" : String(selected.discoveryYear ?? "—")} />
+              <div className="col-span-2">
+                <Stat label="Electron configuration" value={electronConfig(selected.number)} />
+              </div>
+            </div>
+          </div>
+
           {rich ? (
             <>
               <div className="rounded-xl p-4" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
@@ -623,22 +597,9 @@ function PeriodicTable() {
               <ConceptCard title={selected.name}>{rich.note}</ConceptCard>
             </>
           ) : (
-            <div className="rounded-xl p-5" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-              <div className="mb-3 grid grid-cols-2 gap-3 text-sm">
-                <Stat label="Atomic number" value={String(selected.number)} />
-                <Stat label="Atomic mass" value={`${selected.mass} u`} />
-                <Stat label="Family" value={selected.category} />
-                <Stat label="Electron shells" value={selected.shells} />
-                <Stat label="Melting point" value={selected.meltK !== undefined ? `${Math.round(selected.meltK)} K` : "Unknown"} />
-                <Stat label="Boiling point" value={selected.boilK !== undefined ? `${Math.round(selected.boilK)} K` : "Unknown"} />
-                <Stat label="Electronegativity" value={selected.electronegativity !== undefined ? selected.electronegativity.toFixed(2) : "—"} />
-                <Stat label="Discovered" value={selected.ancient ? "Antiquity" : String(selected.discoveryYear ?? "—")} />
-              </div>
-              <p className="text-sm leading-relaxed text-parchment/70">
-                Spin the model to explore {selected.name}'s {selected.shells.split(",").length} electron shells.
-                A full study page for {selected.name} is on its way.
-              </p>
-            </div>
+            <ConceptCard title={`About ${selected.name}`}>
+              {`${selected.name} (${selected.symbol}) is a ${selected.category.toLowerCase()} — element ${selected.number} of the periodic table${selected.ypos <= 7 ? `, in period ${selected.ypos}` : ""}, with an atomic mass of ${selected.mass} u.`}
+            </ConceptCard>
           )}
 
           {/* ── Lore: etymology, history, and the alchemist's tradition ── */}

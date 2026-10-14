@@ -22,6 +22,7 @@ import { Route as ShopRouteImport } from './routes/shop'
 import { Route as SchoolsRouteImport } from './routes/schools'
 import { Route as SchoolSignupRouteImport } from './routes/school-signup'
 import { Route as SchoolLoginRouteImport } from './routes/school-login'
+import { Route as SchoolRouteImport } from './routes/school'
 import { Route as ScavengerRouteImport } from './routes/scavenger'
 import { Route as ScannerRouteImport } from './routes/scanner'
 import { Route as ReactionsRouteImport } from './routes/reactions'
@@ -31,6 +32,7 @@ import { Route as PeriodicTableRouteImport } from './routes/periodic-table'
 import { Route as MoleculesRouteImport } from './routes/molecules'
 import { Route as ModulesRouteImport } from './routes/modules'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as LexiconRouteImport } from './routes/lexicon'
 import { Route as LearnRouteImport } from './routes/learn'
 import { Route as LeaderboardRouteImport } from './routes/leaderboard'
 import { Route as LabSafetyRouteImport } from './routes/lab-safety'
@@ -55,6 +57,9 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TeacherLoginRouteImport } from './routes/teacher_.login'
+import { Route as SchoolSigninRouteImport } from './routes/school_.signin'
+import { Route as AdminLoginRouteImport } from './routes/admin_.login'
 
 const TitrationRoute = TitrationRouteImport.update({
   id: '/titration',
@@ -121,6 +126,11 @@ const SchoolLoginRoute = SchoolLoginRouteImport.update({
   path: '/school-login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SchoolRoute = SchoolRouteImport.update({
+  id: '/school',
+  path: '/school',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScavengerRoute = ScavengerRouteImport.update({
   id: '/scavenger',
   path: '/scavenger',
@@ -164,6 +174,11 @@ const ModulesRoute = ModulesRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LexiconRoute = LexiconRouteImport.update({
+  id: '/lexicon',
+  path: '/lexicon',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LearnRoute = LearnRouteImport.update({
@@ -286,6 +301,21 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TeacherLoginRoute = TeacherLoginRouteImport.update({
+  id: '/teacher_/login',
+  path: '/teacher/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SchoolSigninRoute = SchoolSigninRouteImport.update({
+  id: '/school_/signin',
+  path: '/school/signin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/admin_/login',
+  path: '/admin/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -312,6 +342,7 @@ export interface FileRoutesByFullPath {
   '/lab-safety': typeof LabSafetyRoute
   '/leaderboard': typeof LeaderboardRoute
   '/learn': typeof LearnRoute
+  '/lexicon': typeof LexiconRoute
   '/login': typeof LoginRoute
   '/modules': typeof ModulesRoute
   '/molecules': typeof MoleculesRoute
@@ -321,6 +352,7 @@ export interface FileRoutesByFullPath {
   '/reactions': typeof ReactionsRoute
   '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
+  '/school': typeof SchoolRoute
   '/school-login': typeof SchoolLoginRoute
   '/school-signup': typeof SchoolSignupRoute
   '/schools': typeof SchoolsRoute
@@ -334,6 +366,9 @@ export interface FileRoutesByFullPath {
   '/teacher': typeof TeacherRoute
   '/thermo': typeof ThermoRoute
   '/titration': typeof TitrationRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/school/signin': typeof SchoolSigninRoute
+  '/teacher/login': typeof TeacherLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -360,6 +395,7 @@ export interface FileRoutesByTo {
   '/lab-safety': typeof LabSafetyRoute
   '/leaderboard': typeof LeaderboardRoute
   '/learn': typeof LearnRoute
+  '/lexicon': typeof LexiconRoute
   '/login': typeof LoginRoute
   '/modules': typeof ModulesRoute
   '/molecules': typeof MoleculesRoute
@@ -369,6 +405,7 @@ export interface FileRoutesByTo {
   '/reactions': typeof ReactionsRoute
   '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
+  '/school': typeof SchoolRoute
   '/school-login': typeof SchoolLoginRoute
   '/school-signup': typeof SchoolSignupRoute
   '/schools': typeof SchoolsRoute
@@ -382,6 +419,9 @@ export interface FileRoutesByTo {
   '/teacher': typeof TeacherRoute
   '/thermo': typeof ThermoRoute
   '/titration': typeof TitrationRoute
+  '/admin/login': typeof AdminLoginRoute
+  '/school/signin': typeof SchoolSigninRoute
+  '/teacher/login': typeof TeacherLoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -409,6 +449,7 @@ export interface FileRoutesById {
   '/lab-safety': typeof LabSafetyRoute
   '/leaderboard': typeof LeaderboardRoute
   '/learn': typeof LearnRoute
+  '/lexicon': typeof LexiconRoute
   '/login': typeof LoginRoute
   '/modules': typeof ModulesRoute
   '/molecules': typeof MoleculesRoute
@@ -418,6 +459,7 @@ export interface FileRoutesById {
   '/reactions': typeof ReactionsRoute
   '/scanner': typeof ScannerRoute
   '/scavenger': typeof ScavengerRoute
+  '/school': typeof SchoolRoute
   '/school-login': typeof SchoolLoginRoute
   '/school-signup': typeof SchoolSignupRoute
   '/schools': typeof SchoolsRoute
@@ -431,6 +473,9 @@ export interface FileRoutesById {
   '/teacher': typeof TeacherRoute
   '/thermo': typeof ThermoRoute
   '/titration': typeof TitrationRoute
+  '/admin_/login': typeof AdminLoginRoute
+  '/school_/signin': typeof SchoolSigninRoute
+  '/teacher_/login': typeof TeacherLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -459,6 +504,7 @@ export interface FileRouteTypes {
     | '/lab-safety'
     | '/leaderboard'
     | '/learn'
+    | '/lexicon'
     | '/login'
     | '/modules'
     | '/molecules'
@@ -468,6 +514,7 @@ export interface FileRouteTypes {
     | '/reactions'
     | '/scanner'
     | '/scavenger'
+    | '/school'
     | '/school-login'
     | '/school-signup'
     | '/schools'
@@ -481,6 +528,9 @@ export interface FileRouteTypes {
     | '/teacher'
     | '/thermo'
     | '/titration'
+    | '/admin/login'
+    | '/school/signin'
+    | '/teacher/login'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -507,6 +557,7 @@ export interface FileRouteTypes {
     | '/lab-safety'
     | '/leaderboard'
     | '/learn'
+    | '/lexicon'
     | '/login'
     | '/modules'
     | '/molecules'
@@ -516,6 +567,7 @@ export interface FileRouteTypes {
     | '/reactions'
     | '/scanner'
     | '/scavenger'
+    | '/school'
     | '/school-login'
     | '/school-signup'
     | '/schools'
@@ -529,6 +581,9 @@ export interface FileRouteTypes {
     | '/teacher'
     | '/thermo'
     | '/titration'
+    | '/admin/login'
+    | '/school/signin'
+    | '/teacher/login'
   id:
     | '__root__'
     | '/'
@@ -555,6 +610,7 @@ export interface FileRouteTypes {
     | '/lab-safety'
     | '/leaderboard'
     | '/learn'
+    | '/lexicon'
     | '/login'
     | '/modules'
     | '/molecules'
@@ -564,6 +620,7 @@ export interface FileRouteTypes {
     | '/reactions'
     | '/scanner'
     | '/scavenger'
+    | '/school'
     | '/school-login'
     | '/school-signup'
     | '/schools'
@@ -577,6 +634,9 @@ export interface FileRouteTypes {
     | '/teacher'
     | '/thermo'
     | '/titration'
+    | '/admin_/login'
+    | '/school_/signin'
+    | '/teacher_/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -604,6 +664,7 @@ export interface RootRouteChildren {
   LabSafetyRoute: typeof LabSafetyRoute
   LeaderboardRoute: typeof LeaderboardRoute
   LearnRoute: typeof LearnRoute
+  LexiconRoute: typeof LexiconRoute
   LoginRoute: typeof LoginRoute
   ModulesRoute: typeof ModulesRoute
   MoleculesRoute: typeof MoleculesRoute
@@ -613,6 +674,7 @@ export interface RootRouteChildren {
   ReactionsRoute: typeof ReactionsRoute
   ScannerRoute: typeof ScannerRoute
   ScavengerRoute: typeof ScavengerRoute
+  SchoolRoute: typeof SchoolRoute
   SchoolLoginRoute: typeof SchoolLoginRoute
   SchoolSignupRoute: typeof SchoolSignupRoute
   SchoolsRoute: typeof SchoolsRoute
@@ -626,6 +688,9 @@ export interface RootRouteChildren {
   TeacherRoute: typeof TeacherRoute
   ThermoRoute: typeof ThermoRoute
   TitrationRoute: typeof TitrationRoute
+  AdminLoginRoute: typeof AdminLoginRoute
+  SchoolSigninRoute: typeof SchoolSigninRoute
+  TeacherLoginRoute: typeof TeacherLoginRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -721,6 +786,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SchoolLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/school': {
+      id: '/school'
+      path: '/school'
+      fullPath: '/school'
+      preLoaderRoute: typeof SchoolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scavenger': {
       id: '/scavenger'
       path: '/scavenger'
@@ -782,6 +854,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lexicon': {
+      id: '/lexicon'
+      path: '/lexicon'
+      fullPath: '/lexicon'
+      preLoaderRoute: typeof LexiconRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/learn': {
@@ -952,6 +1031,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/teacher_/login': {
+      id: '/teacher_/login'
+      path: '/teacher/login'
+      fullPath: '/teacher/login'
+      preLoaderRoute: typeof TeacherLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/school_/signin': {
+      id: '/school_/signin'
+      path: '/school/signin'
+      fullPath: '/school/signin'
+      preLoaderRoute: typeof SchoolSigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin_/login': {
+      id: '/admin_/login'
+      path: '/admin/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -980,6 +1080,7 @@ const rootRouteChildren: RootRouteChildren = {
   LabSafetyRoute: LabSafetyRoute,
   LeaderboardRoute: LeaderboardRoute,
   LearnRoute: LearnRoute,
+  LexiconRoute: LexiconRoute,
   LoginRoute: LoginRoute,
   ModulesRoute: ModulesRoute,
   MoleculesRoute: MoleculesRoute,
@@ -989,6 +1090,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReactionsRoute: ReactionsRoute,
   ScannerRoute: ScannerRoute,
   ScavengerRoute: ScavengerRoute,
+  SchoolRoute: SchoolRoute,
   SchoolLoginRoute: SchoolLoginRoute,
   SchoolSignupRoute: SchoolSignupRoute,
   SchoolsRoute: SchoolsRoute,
@@ -1002,6 +1104,9 @@ const rootRouteChildren: RootRouteChildren = {
   TeacherRoute: TeacherRoute,
   ThermoRoute: ThermoRoute,
   TitrationRoute: TitrationRoute,
+  AdminLoginRoute: AdminLoginRoute,
+  SchoolSigninRoute: SchoolSigninRoute,
+  TeacherLoginRoute: TeacherLoginRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -13,7 +13,7 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
   return (
     <button
       type="button"
-      onClick={toggle}
+      onClick={(e) => toggle({ x: e.clientX, y: e.clientY })}
       aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       title={isDark ? "Light mode" : "Dark mode"}
       className={`group flex h-10 w-10 items-center justify-center rounded-full backdrop-blur-xl transition-all duration-200 hover:scale-105 ${className}`}

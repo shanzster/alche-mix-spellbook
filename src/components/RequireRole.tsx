@@ -1,21 +1,19 @@
 import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { FlaskConical } from "lucide-react";
 import { onAuthChange, signOut, type User } from "../lib/auth";
 import { useUserProfile, type Role } from "../lib/profile";
 import { TeacherVerification } from "./TeacherVerification";
+import { AlcheLoader } from "./AlcheLoader";
 
 function Loader() {
-  return (
-    <div className="bg-arcane min-h-screen flex flex-col items-center justify-center gap-4 text-parchment">
-      <FlaskConical className="h-8 w-8 text-teal animate-spin" />
-      <p className="text-xs tracking-[0.3em] uppercase">Preparing…</p>
-    </div>
-  );
+  return <AlcheLoader label="Preparing…" />;
 }
 
 function homeFor(role: Role): string {
-  return role === "admin" ? "/admin" : role === "teacher" ? "/teacher" : "/app";
+  return role === "admin" ? "/admin"
+    : role === "school_admin" ? "/school"
+    : role === "teacher" ? "/teacher"
+    : "/app";
 }
 
 /**

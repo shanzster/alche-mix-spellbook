@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { BookOpen, Camera, Sparkles, Star, Zap, FlaskConical, CheckCircle, ShoppingCart } from "lucide-react";
 import { FloatingNav } from "../components/FloatingNav";
 
 export const Route = createFileRoute("/grimoire")({
@@ -36,7 +35,7 @@ function ElementCard({ element, name, atomic, category, color, rarity }: typeof 
         {/* Rarity */}
         <div className="flex items-center justify-between mb-4">
           <span className="text-[10px] tracking-[0.3em] uppercase" style={{ color: RARITY_COLORS[rarity] }}>{rarity}</span>
-          <Star className="h-3 w-3" style={{ color: RARITY_COLORS[rarity] }} />
+          <span className="text-xs leading-none" style={{ color: RARITY_COLORS[rarity] }}>✦</span>
         </div>
         {/* Symbol */}
         <div className="text-center mb-4">
@@ -50,7 +49,7 @@ function ElementCard({ element, name, atomic, category, color, rarity }: typeof 
         </div>
         {/* AR indicator */}
         <div className="mt-4 flex items-center justify-center gap-1.5 text-[9px] tracking-[0.25em] text-wraith uppercase opacity-0 group-hover:opacity-100 transition-opacity">
-          <Sparkles className="h-2.5 w-2.5" /> AR Scannable
+          <span aria-hidden>✦</span> AR Scannable
         </div>
       </div>
     </div>
@@ -59,7 +58,7 @@ function ElementCard({ element, name, atomic, category, color, rarity }: typeof 
 
 function GrimoirePage() {
   return (
-    <div className="bg-arcane min-h-screen overflow-x-hidden text-spectral">
+    <div className="grimoire-skin bg-arcane min-h-screen overflow-x-hidden text-spectral">
       <div className="bg-arcane-stars pointer-events-none fixed inset-0 z-0 opacity-60" />
 
       <FloatingNav />
@@ -68,9 +67,7 @@ function GrimoirePage() {
 
         {/* Hero */}
         <div className="text-center mb-20">
-          <div className="inline-flex items-center gap-2 rounded-full border border-wraith/30 bg-wraith/10 px-4 py-1.5 text-xs tracking-[0.3em] text-wraith uppercase mb-6">
-            <BookOpen className="h-3 w-3" /> Physical Card Collection
-          </div>
+          <p className="text-xs tracking-[0.3em] uppercase text-gold/80 mb-3">Physical Card Collection</p>
           <h1 className="font-display text-5xl md:text-6xl mb-6">
             The AlcheMix<br />
             <span className="aurora-gradient animate-aurora">Grimoire Cards.</span>
@@ -89,14 +86,14 @@ function GrimoirePage() {
             <h2 className="font-display text-3xl mb-6">Everything in the collection.</h2>
             <ul className="space-y-4">
               {[
-                { icon: <CheckCircle className="h-5 w-5 text-wraith" />, text: "12 physical base element cards — the essential building blocks of chemistry" },
-                { icon: <CheckCircle className="h-5 w-5 text-wraith" />, text: "Each card has a unique AR marker that triggers a 3D model when scanned" },
-                { icon: <CheckCircle className="h-5 w-5 text-wraith" />, text: "The remaining 106 elements must be forged by combining base elements in the platform" },
-                { icon: <CheckCircle className="h-5 w-5 text-wraith" />, text: "Printed element data: atomic number, mass, group, period, and electron config" },
-                { icon: <CheckCircle className="h-5 w-5 text-wraith" />, text: "Companion app access included — scan, experiment, and build your digital journal" },
-              ].map(({ icon, text }) => (
+                "12 physical base element cards — the essential building blocks of chemistry",
+                "Each card has a unique AR marker that triggers a 3D model when scanned",
+                "The remaining 106 elements must be forged by combining base elements in the platform",
+                "Printed element data: atomic number, mass, group, period, and electron config",
+                "Companion app access included — scan, experiment, and build your digital journal",
+              ].map((text) => (
                 <li key={text} className="flex items-start gap-3">
-                  <span className="flex-shrink-0 mt-0.5">{icon}</span>
+                  <span aria-hidden className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-gold" />
                   <span className="text-parchment leading-relaxed">{text}</span>
                 </li>
               ))}
@@ -109,7 +106,13 @@ function GrimoirePage() {
                 style={{ background: "radial-gradient(ellipse at 50% 50%, color-mix(in oklab, var(--color-wraith) 30%, transparent), transparent 70%)" }} />
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="parchment-border rounded-2xl w-56 h-64 flex flex-col items-center justify-center gap-4 glow-wraith-soft">
-                  <BookOpen className="h-12 w-12 text-wraith animate-float-slow" />
+                  <img
+                    src="/dark-alchemy-vibe/plate-grimoire-book.webp"
+                    alt=""
+                    aria-hidden
+                    className="h-20 w-20 rounded-full object-cover animate-float-slow"
+                    style={{ border: "1px solid color-mix(in oklab, var(--color-gold) 40%, transparent)", boxShadow: "0 0 24px -6px color-mix(in oklab, var(--color-wraith) 60%, transparent)" }}
+                  />
                   <div className="text-center">
                     <div className="font-display text-xl text-spectral">Grimoire</div>
                     <div className="text-[10px] tracking-[0.3em] text-gold uppercase mt-1">12 Base Elements</div>
@@ -146,26 +149,26 @@ function GrimoirePage() {
             {[
               {
                 step: "01",
-                icon: <BookOpen className="h-6 w-6" />,
+                numeral: "I",
                 title: "Pick a card",
                 body: "Choose any element card from the Grimoire box. Each one has a unique AR marker embedded in the design.",
               },
               {
                 step: "02",
-                icon: <Camera className="h-6 w-6" />,
+                numeral: "II",
                 title: "Scan with the app",
                 body: "Open AlcheMix AR on your device and point the camera at the card. The app recognises the marker instantly.",
               },
               {
                 step: "03",
-                icon: <Sparkles className="h-6 w-6" />,
+                numeral: "III",
                 title: "Explore in 3D",
                 body: "A 3D molecular model appears above the card. Rotate it, inspect electron shells, and tap for detailed element data.",
               },
-            ].map(({ step, icon, title, body }) => (
+            ].map(({ step, numeral, title, body }) => (
               <div key={step} className="parchment-border rounded-xl p-6 relative overflow-hidden">
                 <div className="absolute top-4 right-4 font-display text-4xl text-spectral/10">{step}</div>
-                <span className="text-wraith mb-4 block">{icon}</span>
+                <p className="mg-num">{numeral}</p>
                 <h3 className="font-display text-lg mb-3">{title}</h3>
                 <p className="text-parchment text-sm leading-relaxed">{body}</p>
               </div>
@@ -217,7 +220,13 @@ function GrimoirePage() {
 
         {/* CTA */}
         <section className="text-center parchment-border rounded-2xl p-12">
-          <FlaskConical className="mx-auto h-10 w-10 text-wraith animate-float-slow mb-6" />
+          <img
+            src="/dark-alchemy-vibe/seal-compass.webp"
+            alt=""
+            aria-hidden
+            className="mx-auto mb-6 h-16 w-16 rounded-full object-cover animate-float-slow"
+            style={{ border: "1px solid color-mix(in oklab, var(--color-gold) 45%, transparent)", boxShadow: "0 0 24px -6px color-mix(in oklab, var(--color-gold) 55%, transparent)" }}
+          />
           <h2 className="font-display text-3xl mb-4">Get the Grimoire</h2>
           <p className="text-parchment mb-8 max-w-md mx-auto">
             The base card set is available now. Order yours and start forging
@@ -237,7 +246,6 @@ function GrimoirePage() {
               boxShadow: "0 0 32px -6px color-mix(in oklab, var(--color-gold) 65%, transparent), inset 0 1px 0 rgba(255,255,255,0.3)",
             }}
           >
-            <ShoppingCart className="h-5 w-5" />
             Buy on Shopee
           </a>
 
@@ -250,10 +258,16 @@ function GrimoirePage() {
               Explore All Elements
             </Link>
             <Link to="/app" className="btn-ghost-arcane">
-              <Zap className="h-4 w-4" /> Open Platform
+              Open Platform
             </Link>
           </div>
         </section>
+      </div>
+
+      <div className="relative z-10" aria-hidden>
+        <img src="/dark-alchemy-vibe/band-workbench.webp" alt=""
+          className="h-44 w-full object-cover md:h-56"
+          style={{ maskImage: "linear-gradient(180deg, transparent, black 38%)", WebkitMaskImage: "linear-gradient(180deg, transparent, black 38%)" }} />
       </div>
 
       <footer className="border-t border-parchment/20 py-8 text-center text-xs tracking-[0.25em] text-parchment/60 uppercase relative z-10">

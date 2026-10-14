@@ -13,7 +13,9 @@ export interface TopicGrade {
 
 export type Mastery = "not-started" | "developing" | "proficient" | "mastered";
 
-export type Role = "student" | "teacher" | "admin";
+// "admin" is the global SUPER admin (hardcoded `ADMIN_EMAILS`). "school_admin"
+// runs a single school (multi-tenant — see docs/SCHOOL_MULTITENANCY.md).
+export type Role = "student" | "teacher" | "school_admin" | "admin";
 /** Teachers start as "pending" and must be approved by an admin. */
 export type TeacherStatus = "pending" | "approved" | "rejected";
 
@@ -42,13 +44,24 @@ export interface StudentProfile {
   uid: string;
   email?: string | null;
   displayName?: string | null;
+  /** Atomic name parts collected at signup. */
+  firstName?: string | null;
+  middleName?: string | null;
+  lastName?: string | null;
+  /** Free-text school name for non-tenant signups (optional). Distinct from schoolId. */
+  schoolName?: string | null;
   photoURL?: string | null;
   role?: Role;
   /** Only meaningful for teachers. */
   status?: TeacherStatus;
+  /** The school this user belongs to (school_admin, teacher, student). */
+  schoolId?: string;
   /** For students who have joined a class (the class join code). */
   classId?: string;
   className?: string;
+  /** A pending join request awaiting the teacher's acceptance (Phase 4). */
+  pendingClassId?: string | null;
+  pendingClassName?: string | null;
   /** Scores entered by the teacher, keyed by topic id. */
   grades?: Record<string, TopicGrade>;
   /** Mastery level per topic, set by the teacher. */

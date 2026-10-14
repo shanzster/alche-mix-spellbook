@@ -1,6 +1,4 @@
 import {
-  GoogleAuthProvider,
-  signInWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
@@ -10,9 +8,7 @@ import {
 import { doc, getDoc, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "./firebase";
 import { isAdminEmail } from "./admin";
-
-const googleProvider = new GoogleAuthProvider();
-googleProvider.setCustomParameters({ prompt: "select_account" });
+import { resolveSchoolAdminInvite, resolveTeacherInvite } from "./schools";
 
 /**
  * Ensure a Firestore student profile exists for the given user.
@@ -23,24 +19,41 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
  * Writes are best-effort: a Firestore hiccup must not block authentication, so
  * failures are logged and swallowed rather than thrown.
  */
-type Role = "student" | "teacher" | "admin";
+type Role = "student" | "teacher" | "school_admin" | "admin";
 
-export async function ensureUserProfile(user: User, opts?: { role?: Role }): Promise<void> {
+type NameParts = { firstName?: string; middleName?: string; lastName?: string; schoolName?: string };
+
+export async function ensureUserProfile(user: User, opts?: { role?: Role; schoolId?: string; names?: NameParts }): Promise<void> {
   try {
     const admin = isAdminEmail(user.email);
+    // Designations set by a super admin (school admin) or a school admin (teacher).
+    const invitedSchoolId = admin ? null : await resolveSchoolAdminInvite(user.email);
+    const invitedTeacherSchoolId = admin || invitedSchoolId ? null : await resolveTeacherInvite(user.email);
     const ref = doc(db, "users", user.uid);
     const snap = await getDoc(ref);
 
     if (!snap.exists()) {
-      const role: Role = admin ? "admin" : (opts?.role ?? "student");
+      const role: Role = admin ? "admin"
+        : invitedSchoolId ? "school_admin"
+        : invitedTeacherSchoolId ? "teacher"
+        : (opts?.role ?? "student");
+      const schoolId = invitedSchoolId ?? invitedTeacherSchoolId ?? opts?.schoolId ?? null;
+      const n = opts?.names;
+      const composed = n ? [n.firstName, n.lastName].map((s) => s?.trim()).filter(Boolean).join(" ") : "";
       await setDoc(ref, {
         uid: user.uid,
         email: user.email ?? null,
-        displayName: user.displayName ?? null,
+        displayName: composed || user.displayName || null,
+        ...(n?.firstName ? { firstName: n.firstName.trim() } : {}),
+        ...(n?.middleName ? { middleName: n.middleName.trim() } : {}),
+        ...(n?.lastName ? { lastName: n.lastName.trim() } : {}),
+        ...(n?.schoolName ? { schoolName: n.schoolName.trim() } : {}),
         photoURL: user.photoURL ?? null,
         role,
-        // Teachers must be approved by an admin before they can teach.
-        ...(role === "teacher" ? { status: "pending" } : {}),
+        ...(schoolId ? { schoolId } : {}),
+        // A teacher provisioned by their school admin is approved outright; any
+        // legacy self-signup teacher stays pending.
+        ...(role === "teacher" ? { status: invitedTeacherSchoolId ? "approved" : "pending" } : {}),
         createdAt: serverTimestamp(),
         lastLoginAt: serverTimestamp(),
         // ── Learning progress (§5) — grades & mastery are entered by the
@@ -51,11 +64,16 @@ export async function ensureUserProfile(user: User, opts?: { role?: Role }): Pro
         practice: {},
       });
     } else {
-      // Promote the seeded admin email if it isn't marked admin yet.
-      const isAdminRole = (snap.data() as { role?: string }).role === "admin";
+      const data = snap.data() as { role?: string; schoolId?: string };
+      const promoteAdmin = admin && data.role !== "admin";
+      const promoteSchoolAdmin = !admin && !!invitedSchoolId && data.role !== "admin" && data.role !== "school_admin";
+      const promoteTeacher = !admin && !invitedSchoolId && !!invitedTeacherSchoolId
+        && (data.role == null || data.role === "student");
       await updateDoc(ref, {
         lastLoginAt: serverTimestamp(),
-        ...(admin && !isAdminRole ? { role: "admin" } : {}),
+        ...(promoteAdmin ? { role: "admin" } : {}),
+        ...(promoteSchoolAdmin ? { role: "school_admin", schoolId: invitedSchoolId } : {}),
+        ...(promoteTeacher ? { role: "teacher", schoolId: invitedTeacherSchoolId, status: "approved" } : {}),
       });
     }
   } catch (err) {
@@ -63,16 +81,12 @@ export async function ensureUserProfile(user: User, opts?: { role?: Role }): Pro
   }
 }
 
-export async function signInWithGoogle(role?: Role) {
-  const result = await signInWithPopup(auth, googleProvider);
-  // Google sign-in doubles as sign-up, so ensure the profile either way.
-  await ensureUserProfile(result.user, role ? { role } : undefined);
-  return result.user;
-}
-
-export async function signUpWithEmail(email: string, password: string, role: Role = "student") {
+export async function signUpWithEmail(
+  email: string, password: string, role: Role = "student",
+  extra?: { schoolId?: string; names?: NameParts },
+) {
   const result = await createUserWithEmailAndPassword(auth, email, password);
-  await ensureUserProfile(result.user, { role });
+  await ensureUserProfile(result.user, { role, schoolId: extra?.schoolId, names: extra?.names });
   return result.user;
 }
 
@@ -94,8 +108,11 @@ export async function fetchRole(uid: string): Promise<Role | undefined> {
 }
 
 /** Where each role lands after signing in. */
-export function homeForRole(role?: Role): "/admin" | "/teacher" | "/app" {
-  return role === "admin" ? "/admin" : role === "teacher" ? "/teacher" : "/app";
+export function homeForRole(role?: Role): "/admin" | "/school" | "/teacher" | "/app" {
+  return role === "admin" ? "/admin"
+    : role === "school_admin" ? "/school"
+    : role === "teacher" ? "/teacher"
+    : "/app";
 }
 
 export async function signOut() {

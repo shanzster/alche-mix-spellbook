@@ -85,7 +85,7 @@
   --mist: #f6f3ec;            /* background — soft warm daylight (not stark white) */
   --slate-sunken: #e8e1d1;   /* warm parchment surface — clearly reads as a card */
   --wraith: #7c3aed;         /* violet — secondary accent */
-  --parchment: #4d5766;      /* muted foreground — readable slate, a touch deeper */
+  --parchment: #45505f;      /* muted foreground — readable slate, a touch deeper */
   --gold: #9a6207;           /* candle gold — tertiary accent (dark enough for white) */
   --spectral: #111826;       /* high-contrast foreground — deep ink */
   --crimson: #dc2626;
@@ -183,6 +183,30 @@
   letter-spacing: 0;
 }
 
+/* ── Theme ripple ───────────────────────────────────────────────────────────
+   Switching themes FILLS the page with the new mode — a circle growing from
+   the toggle (View Transitions API; browsers without it switch instantly,
+   and lib/theme.ts skips it entirely under prefers-reduced-motion). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 2;
+  clip-path: circle(0px at var(--theme-fill-x, 90vw) var(--theme-fill-y, 5vh));
+  will-change: clip-path;
+  animation: theme-fill 0.55s ease-out forwards;
+}
+@keyframes theme-fill {
+  to {
+    clip-path: circle(150vmax at var(--theme-fill-x, 90vw) var(--theme-fill-y, 5vh));
+  }
+}
+
 /* Respect users who prefer reduced motion — neutralise every decorative loop. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -216,14 +240,14 @@
    chrome that floats over content (rails, bars, sheets). Requires something
    colorful behind it — pair with bg-arcane / bg-aurora. */
 @utility glass {
-  background: color-mix(in oklab, white 55%, transparent);
+  background: color-mix(in oklab, white 62%, transparent);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   backdrop-filter: blur(20px) saturate(150%);
-  border: 1px solid color-mix(in oklab, var(--color-spectral) 9%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-spectral) 16%, transparent);
   box-shadow:
     inset 0 1px 0 color-mix(in oklab, white 85%, transparent),
-    0 1px 2px color-mix(in oklab, var(--color-spectral) 6%, transparent),
-    0 12px 28px -18px color-mix(in oklab, var(--color-spectral) 16%, transparent);
+    0 2px 4px color-mix(in oklab, var(--color-spectral) 8%, transparent),
+    0 14px 32px -16px color-mix(in oklab, var(--color-spectral) 24%, transparent);
 }
 .dark .glass {
   background: color-mix(in oklab, var(--color-mist) 36%, transparent);
@@ -233,14 +257,14 @@
     0 10px 32px -18px rgb(0 0 0 / 0.55);
 }
 @utility glass-strong {
-  background: color-mix(in oklab, white 74%, transparent);
+  background: color-mix(in oklab, white 80%, transparent);
   -webkit-backdrop-filter: blur(28px) saturate(160%);
   backdrop-filter: blur(28px) saturate(160%);
-  border: 1px solid color-mix(in oklab, var(--color-spectral) 10%, transparent);
+  border: 1px solid color-mix(in oklab, var(--color-spectral) 17%, transparent);
   box-shadow:
     inset 0 1px 0 color-mix(in oklab, white 90%, transparent),
-    0 1px 2px color-mix(in oklab, var(--color-spectral) 7%, transparent),
-    0 16px 40px -20px color-mix(in oklab, var(--color-spectral) 20%, transparent);
+    0 2px 4px color-mix(in oklab, var(--color-spectral) 9%, transparent),
+    0 18px 44px -18px color-mix(in oklab, var(--color-spectral) 26%, transparent);
 }
 .dark .glass-strong {
   background: color-mix(in oklab, var(--color-mist) 55%, transparent);
@@ -261,6 +285,43 @@
     radial-gradient(42rem 30rem at 8% -8%, color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent), transparent 62%),
     radial-gradient(34rem 26rem at 92% 14%, color-mix(in oklab, var(--color-violet-deep) 22%, transparent), transparent 58%),
     radial-gradient(46rem 34rem at 45% 110%, color-mix(in oklab, var(--color-wraith) 20%, transparent), transparent 65%);
+}
+
+/* ── Arcane field — large gradient orbs orbiting in slow circles, behind the
+   glass. A premium, non-generic moving background (the "circular moving
+   gradient" look). Each .arcane-orbit is a zero-size pivot at screen centre
+   that rotates; its child orb is offset by a radius, so it traces a circle.
+   Blurred + low-opacity so content stays legible; frozen under reduced motion. */
+@keyframes arcane-spin { to { transform: rotate(360deg); } }
+.arcane-field {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.arcane-orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 0;
+  width: 0;
+  will-change: transform;
+}
+.arcane-orb {
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, -50%);
+  border-radius: 9999px;
+  filter: blur(64px);
+  opacity: 0.45;
+}
+.dark .arcane-orb {
+  opacity: 0.58;
+  filter: blur(72px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .arcane-orbit { animation: none !important; }
 }
 
 /* The crest emblem — a rotated-diamond badge holding an icon, worn top-centre
@@ -386,6 +447,17 @@
   }
   &::-webkit-scrollbar-thumb:hover {
     background: color-mix(in oklab, var(--color-parchment) 35%, transparent);
+  }
+}
+
+/* Fully hidden scrollbar — still scrollable, just no visible bar. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 }
 
@@ -601,6 +673,238 @@ html:not(.dark) .text-glow-teal {
   color: transparent;
 }
 
+/* ── Inked landing (guest page) ──────────────────────────────────────────────
+   The landing hero is a fixed piece of inked artwork (dusk sky, cliff, wizard)
+   so its own colours are constant; everything below it returns to the theme
+   tokens. These utilities carry the "vintage ink" voice. */
+
+/* ── AlcheLoader (the app's loading state) ───────────────────────────────────
+   A round-bottom flask whose teal elixir breathes while bubbles rise. Gold
+   outline, teal glow — no spin. See src/components/AlcheLoader.tsx. */
+.alche-loader-halo {
+  position: absolute;
+  inset: -22%;
+  border-radius: 9999px;
+  background: radial-gradient(circle, var(--color-teal) 0%, transparent 65%);
+  opacity: 0.18;
+  filter: blur(6px);
+  animation: alche-breathe 2.6s ease-in-out infinite;
+}
+.alche-loader-fill { animation: alche-swell 2.6s ease-in-out infinite; transform-origin: center bottom; }
+.alche-bubble { animation: alche-bubble-rise 2.4s ease-in infinite; }
+.alche-bubble-2 { animation-delay: 0.8s; }
+.alche-bubble-3 { animation-delay: 1.5s; }
+
+@keyframes alche-breathe {
+  0%, 100% { opacity: 0.12; transform: scale(0.94); }
+  50%      { opacity: 0.30; transform: scale(1.04); }
+}
+@keyframes alche-swell {
+  0%, 100% { transform: translateY(1px) scaleY(0.98); }
+  50%      { transform: translateY(-1px) scaleY(1.02); }
+}
+@keyframes alche-bubble-rise {
+  0%   { transform: translateY(6px);   opacity: 0; }
+  20%  {                               opacity: 0.9; }
+  80%  {                               opacity: 0.6; }
+  100% { transform: translateY(-26px); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .alche-loader-halo,
+  .alche-loader-fill,
+  .alche-bubble { animation: none; }
+  .alche-loader-halo { opacity: 0.2; }
+  .alche-bubble { opacity: 0; }
+}
+
+/* The transmutation ring revolves like clockwork — barely perceptible. */
+@keyframes spin-slow { to { transform: rotate(360deg); } }
+@utility animate-spin-slower { animation: spin-slow 80s linear infinite; }
+
+/* The wizard's wand arm — a slow conjuring sway around the shoulder. */
+@keyframes arm-conjure {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-5deg); }
+}
+.wizard-arm { transform-origin: 62% 36%; animation: arm-conjure 5.5s ease-in-out infinite; }
+
+/* Wand-tip ember — swells and dims with the arm's sway. */
+@keyframes wand-ember {
+  0%, 100% { opacity: 0.45; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.25); }
+}
+.wand-ember { animation: wand-ember 5.5s ease-in-out infinite; }
+
+/* Cloud sea drifts sideways a few paces and back. */
+@keyframes cloud-drift {
+  0%, 100% { transform: translateX(-1.5%); }
+  50% { transform: translateX(1.5%); }
+}
+.cloud-drift { animation: cloud-drift 26s ease-in-out infinite; }
+
+/* Double-ruled ink panel — an engraving plate. Theme-aware. */
+@utility ink-panel {
+  position: relative;
+  border: 1.5px solid color-mix(in oklab, var(--color-spectral) 45%, transparent);
+  background: color-mix(in oklab, var(--color-slate-sunken) 70%, transparent);
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    pointer-events: none;
+    border: 1px solid color-mix(in oklab, var(--color-spectral) 18%, transparent);
+    border-radius: inherit;
+  }
+}
+
+/* Faint halftone dots — the vintage print grain. Keep opacity low. */
+@utility ink-halftone {
+  background-image: radial-gradient(
+    color-mix(in oklab, var(--color-spectral) 14%, transparent) 1px,
+    transparent 1px);
+  background-size: 9px 9px;
+}
+
+/* The unrolled scroll — fixed parchment artwork, so its ink is fixed too
+   (dark sepia text in BOTH themes; the parchment is always light). */
+.scroll-parchment {
+  background-image: url("/Modal-Texture/parchment.png");
+  background-size: 512px;
+  color: #43301a;
+  border: 1px solid #8a6a3f;
+  box-shadow:
+    inset 0 0 60px rgb(122 88 42 / 0.25),
+    0 18px 50px -24px rgb(0 0 0 / 0.55);
+}
+.scroll-parchment .scroll-ink-strong { color: #2c1f0e; }
+.scroll-parchment .scroll-ink-soft { color: #6b5231; }
+
+/* ── The grimoire page backdrop — generated art, one per theme ─────────────
+   Light: aged parchment with ghosted compass marginalia at the edges.
+   Dark: engraved night sky with gold dust and a faint transmutation circle.
+   A theme-toned gradient keeps the lower page quiet so text always wins.
+   (Generated 2026-10-12; sources in public/backdrops/*.png, served WebP.) */
+/* Apply on a dedicated empty div (first child of the page root), NOT on the
+   scrolling container: position:fixed composites on the GPU, where the old
+   background-attachment:fixed forced a repaint on every scroll frame. */
+@utility bg-grimoire-fixed {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-color: var(--color-background);
+  background-image:
+    linear-gradient(180deg,
+      color-mix(in oklab, var(--color-mist) 10%, transparent),
+      color-mix(in oklab, var(--color-mist) 62%, transparent) 88%),
+    url("/backdrops/parchment-day.webp");
+  background-size: cover;
+  background-position: center top;
+}
+.dark .bg-grimoire-fixed {
+  background-image:
+    linear-gradient(180deg,
+      rgb(11 18 32 / 0.2),
+      rgb(11 18 32 / 0.68) 88%),
+    url("/backdrops/night-ink.webp");
+}
+/* ── Grimoire skin — the guest landing wears the "dark alchemy" study ──────
+   Owner-approved look from public/design-implementation/index.html, applied
+   through the tokens so dark AND light mode both hold. Scoped to
+   `.grimoire-skin` so the rest of the app keeps the standard font system.
+   Blackletter is title-case only — never all-caps. */
+.grimoire-skin {
+  font-family: "Crimson Pro", "EB Garamond", Georgia, serif;
+  font-size: 1.0625rem;
+}
+.grimoire-skin :is(h1, .font-display) {
+  font-family: "UnifrakturMaguntia", "Cyberjunkies", serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+/* Buttons and small UI chrome join the serif voice of the study */
+.grimoire-skin :is(.btn-arcane, .btn-ghost-arcane, .font-ui) {
+  font-family: "Crimson Pro", "EB Garamond", serif;
+}
+.grimoire-skin :is(.btn-arcane, .btn-ghost-arcane) {
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+  border-radius: 0;
+}
+/* Engraving plates rule themselves in gold instead of ink */
+.grimoire-skin .ink-panel {
+  border-color: color-mix(in oklab, var(--color-gold) 42%, transparent);
+  background: linear-gradient(180deg,
+    color-mix(in oklab, var(--color-slate-sunken) 88%, transparent),
+    color-mix(in oklab, var(--color-mist) 65%, transparent));
+}
+.grimoire-skin .ink-panel::after {
+  border-color: color-mix(in oklab, var(--color-gold) 16%, transparent);
+}
+/* Marginalia numeral — typography in place of icons */
+.grimoire-skin .mg-num {
+  font: 600 15px "Crimson Pro", serif;
+  letter-spacing: 0.26em;
+  color: var(--color-emerald-elixir);
+  margin-bottom: 14px;
+}
+.grimoire-skin .mg-num::after {
+  content: "";
+  display: block;
+  width: 34px;
+  height: 1px;
+  margin-top: 10px;
+  background: color-mix(in oklab, var(--color-gold) 50%, transparent);
+}
+/* Hex element stones for the forge game, in the art's language */
+.hex-stone {
+  clip-path: polygon(50% 0%, 94% 25%, 94% 75%, 50% 100%, 6% 75%, 6% 25%);
+}
+
+/* Lighter variant for the app interior: ONLY the display voice changes
+   (page titles go blackletter); body text stays the interface sans so dense
+   module UIs keep their readability. elements-readable still outranks this
+   for element symbols. */
+.grimoire-display :is(h1, .font-display) {
+  font-family: "UnifrakturMaguntia", "Cyberjunkies", serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* Blackletter is for BIG display text only. Small headings that carry
+   .font-display fall back to the serif at semibold — tiny blackletter is
+   unreadable (adviser item 13). */
+.grimoire-skin :is(h3, h4, h5, h6).font-display,
+.grimoire-display :is(h3, h4, h5, h6).font-display,
+.grimoire-skin :is(h3, h4, h5, h6) :is(.font-display),
+.grimoire-display :is(h3, h4, h5, h6) :is(.font-display) {
+  font-family: "Crimson Pro", "EB Garamond", serif;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* ── The Alchemist's ceremony (layered hero scene) ──────────────────────────
+   Keyframes for the layered parallax hero (AlchemistHero.tsx). The global
+   prefers-reduced-motion block above neutralises all of these. */
+@keyframes ceremony-drift {
+  from { transform: translateY(0); }
+  to { transform: translateY(-8px); }
+}
+.ceremony-drift { animation: ceremony-drift 6s ease-in-out infinite alternate; }
+
+@keyframes ceremony-sway {
+  from { transform: rotate(-1.5deg); }
+  to { transform: rotate(1.5deg); }
+}
+.ceremony-sway-a { animation: ceremony-sway 5s ease-in-out infinite alternate; }
+.ceremony-sway-b { animation: ceremony-sway 5s ease-in-out infinite alternate; animation-delay: -2.5s; }
+
+/* PNG-fallback halo: ring revolves, each gem counter-revolves to stay upright */
+@keyframes ceremony-ring { to { transform: rotate(360deg); } }
+@keyframes ceremony-ring-counter { to { transform: rotate(-360deg); } }
+.ceremony-ring { animation: ceremony-ring 90s linear infinite; }
+.ceremony-ring-counter { animation: ceremony-ring-counter 90s linear infinite; }
+
 /* Primary CTA — solid teal, interface font. Quiet at rest; on hover a single
    sheen sweeps across (polished metal under candlelight). */
 @utility btn-arcane {
@@ -673,3 +977,30 @@ html:not(.dark) .text-glow-teal {
   &:hover { color: var(--color-emerald-elixir); border-color: color-mix(in oklab, var(--color-emerald-elixir) 55%, transparent); transform: translateY(-1px); }
   &:active { transform: translateY(0); }
 }
+
+/* ── About page backdrops — theme-aware pairs (public/about-us-page/) ────────
+   Light/dark versions of the same scene swap on the root `.dark` class. Used as
+   a fixed atmosphere layer + the hero art on /about. */
+.about-page-backdrop {
+  background-image: url("/about-us-page/about-page-light.jpg");
+  background-size: cover;
+  background-position: top center;
+}
+.dark .about-page-backdrop { background-image: url("/about-us-page/about-page-dark.jpg"); }
+
+.about-hero-art {
+  background-image: url("/about-us-page/about-hero-light.jpg");
+  background-size: cover;
+  background-position: center 28%;
+}
+.dark .about-hero-art { background-image: url("/about-us-page/about-hero-dark.jpg"); }
+
+/* ── Auth screens (login / signup / educator) — cinematic full-bleed art ────
+   Reuses the theme-aware alchemy-hall pair; a scrim in the component keeps the
+   form legible. */
+.auth-backdrop {
+  background-image: url("/about-us-page/about-hero-light.jpg");
+  background-size: cover;
+  background-position: center;
+}
+.dark .auth-backdrop { background-image: url("/about-us-page/about-hero-dark.jpg"); }

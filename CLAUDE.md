@@ -24,5 +24,7 @@ storage shape changes.
 
 More living docs in `docs/`: `LOGS.md` (dated dev log — append a dated entry
 for each working day's changes), `SYSTEM_TECHNICALITIES.md` (architecture
-reference), `ALGORITHM_OF_THE_SYSTEM.md` (how the core mechanics work).
-Keep all three current when features change.
+reference), `ALGORITHM_OF_THE_SYSTEM.md` (how the core mechanics work), and
+`DESIGN_DIRECTION.md` (the approved visual direction — fonts, art recipes,
+motion rules; consult it before ANY visual work, update it when a new visual
+precedent is set). Keep all four current when features change.

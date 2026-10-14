@@ -41,7 +41,7 @@ import { RequireRole } from "../components/RequireRole";
 import { useUserProfile, type Mastery, type StudentProfile } from "../lib/profile";
 import { CRAFTS, TIERS, computeCraft, syncCraft } from "../lib/craft";
 import { useHiddenModules } from "../lib/moduleVisibility";
-import { joinClass } from "../lib/teacher";
+import { requestToJoinClass, cancelJoinRequest } from "../lib/teacher";
 import { nextGuideStep } from "../lib/guide";
 import { usePlatform } from "../lib/platform";
 
@@ -440,15 +440,41 @@ function ClassRow({
     );
   }
 
+  // Awaiting the teacher's acceptance.
+  if (profile?.pendingClassId) {
+    const cancel = async () => {
+      if (!uid || !profile.pendingClassId) return;
+      await cancelJoinRequest(uid, profile.pendingClassId);
+    };
+    return (
+      <div className="glass flex flex-col gap-2 rounded-2xl p-5 lg:w-80 lg:flex-shrink-0">
+        <div className="flex items-center gap-3.5">
+          <span className="orb-rune h-11 w-11 text-gold">
+            <Users className="h-4.5 w-4.5" />
+          </span>
+          <div className="min-w-0">
+            <p className={LABEL}>Request sent</p>
+            <p className="mt-0.5 truncate font-ui text-base font-semibold text-spectral">{profile.pendingClassName}</p>
+          </div>
+        </div>
+        <p className="font-serif text-sm text-parchment/70">Waiting for your teacher to accept you into the class.</p>
+        <button onClick={cancel} className="self-start text-[11px] font-semibold uppercase tracking-[0.1em] text-crimson/75 transition hover:text-crimson">
+          Cancel request
+        </button>
+      </div>
+    );
+  }
+
   const join = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setJoining(true);
-    const cls = await joinClass(
+    const res = await requestToJoinClass(
       { uid: uid ?? "", name: profile?.displayName ?? null, email: profile?.email ?? null },
       code,
     );
-    if (!cls) setError("That code doesn't match any class.");
+    if (res.status === "invalid") setError("That code doesn't match any class.");
+    else if (res.status === "expired") setError("That code has expired — ask your teacher for a fresh one.");
     else setCode("");
     setJoining(false);
   };
@@ -483,7 +509,7 @@ function ClassRow({
           disabled={joining || code.length < 4}
           className="btn-arcane btn-arcane-hover flex-shrink-0 text-xs disabled:opacity-60"
         >
-          Join
+          Request
         </button>
       </form>
       {error && <span className="text-xs text-crimson">{error}</span>}
@@ -495,6 +521,16 @@ function ClassRow({
  * The Craft — tiered mastery ladder. Fills only on real proof (trial ≥2★,
  * Study topics done, compounds forged); gold diamonds mark each rank.
  */
+// Rank emblems (public/ui) — one medal per craft tier, ascending in prestige.
+const TIER_MEDALS = [
+  "/ui/medal-ore.png",          // Novice
+  "/ui/badge-silver.png",       // Initiate
+  "/ui/medal-crystals.png",     // Apprentice
+  "/ui/medal-crystal-ball.png", // Adept
+  "/ui/medal-potion.png",       // Magister
+  "/ui/emblem-atom.png",        // Archalchemist
+];
+
 function CraftBar({ profile }: { profile: StudentProfile }) {
   const { mastered, count, tier } = computeCraft(profile);
   const total = CRAFTS.length;
@@ -505,11 +541,11 @@ function CraftBar({ profile }: { profile: StudentProfile }) {
   return (
     <div className="glass mb-6 rounded-2xl p-5" data-tour="craft">
       <div className="flex flex-wrap items-center gap-3.5">
-        <span className="orb-rune h-11 w-11 flex-shrink-0 text-gold">
-          <FlaskConical className="h-4.5 w-4.5" />
-        </span>
+        <img src={TIER_MEDALS[tier] ?? TIER_MEDALS[0]} alt={cur.name}
+          className="h-14 w-14 flex-shrink-0 object-contain"
+          style={{ filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.4))" }} />
         <div className="min-w-0 flex-1">
-          <p className={LABEL}>Your craft</p>
+          <p className={LABEL}>Your craft · rank</p>
           <p className="mt-0.5 font-ui text-base font-semibold text-gold">{cur.name}</p>
         </div>
         <span

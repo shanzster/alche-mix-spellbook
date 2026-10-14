@@ -122,16 +122,26 @@ export function Molecule3D({
     };
     window.addEventListener("resize", onResize);
 
+    // Only run the render loop while the viewer is on-screen — a three.js loop
+    // that renders every frame off-screen is a constant GPU/CPU drain.
     let raf = 0;
-    const animate = () => {
-      raf = requestAnimationFrame(animate);
+    let visible = true;
+    const loop = () => {
+      if (!visible) { raf = 0; return; }
+      raf = requestAnimationFrame(loop);
       if (!dragging) root.rotation.y += 0.004;
       renderer.render(scene, camera);
     };
-    animate();
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { if (!visible) { visible = true; if (!raf) loop(); } }
+      else visible = false;
+    }, { threshold: 0 });
+    io.observe(mount);
+    loop();
 
     return () => {
       cancelAnimationFrame(raf);
+      io.disconnect();
       window.removeEventListener("resize", onResize);
       renderer.domElement.removeEventListener("pointerdown", down);
       window.removeEventListener("pointermove", move);

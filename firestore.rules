@@ -8,9 +8,22 @@ service cloud.firestore {
     function isApprovedTeacher() {
       return signedIn() && me().role == 'teacher' && me().status == 'approved';
     }
-    // The seeded admin(s) — keep this list in sync with src/lib/admin.ts.
+    // The seeded SUPER admin(s) — keep this list in sync with src/lib/admin.ts.
     function isAdmin() {
-      return signedIn() && request.auth.token.email in ['ramalusubov@gmail.com'];
+      return signedIn() && request.auth.token.email in ['ramalusubov@gmail.com', 'superadmin@gmail.com'];
+    }
+    function isSchoolAdmin() {
+      return signedIn() && me().role == 'school_admin';
+    }
+    // A super admin designated this email as a school admin (see schools.ts).
+    function hasSchoolAdminInvite() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/schoolAdminInvites/$(request.auth.token.email));
+    }
+    // A school admin provisioned this email as a teacher.
+    function hasTeacherInvite() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/teacherInvites/$(request.auth.token.email));
     }
     function changedKeys() {
       return request.resource.data.diff(resource.data).affectedKeys();
@@ -18,20 +31,40 @@ service cloud.firestore {
 
     // ── User profiles ──
     match /users/{userId} {
-      allow read: if signedIn() && (request.auth.uid == userId || isApprovedTeacher() || isAdmin());
+      allow read: if signedIn() && (request.auth.uid == userId || isApprovedTeacher() || isAdmin()
+                    || (isSchoolAdmin() && resource.data.schoolId == me().schoolId));
 
-      // Only the seeded admin may create an admin profile.
+      // Only the seeded super admin may create an admin profile; a
+      // school_admin profile only with a matching designation.
       allow create: if request.auth.uid == userId
-                    && (request.resource.data.role != 'admin' || isAdmin());
+                    && (request.resource.data.role != 'admin' || isAdmin())
+                    && (request.resource.data.role != 'school_admin' || hasSchoolAdminInvite())
+                    && (request.resource.data.role != 'teacher' || hasTeacherInvite());
 
       // - Admin: may change anything (e.g. approve a teacher's status).
+      // - Owner: may self-promote to school_admin ONLY with a valid designation.
       // - Owner: may edit their profile but NOT their grades/mastery/role/status.
-      // - Approved teacher: may edit ONLY grades/mastery (on any student).
+      // - Approved teacher: may edit grades/mastery, and may clear a student's
+      //   class stamp when removing them from a class (adviser item 6).
       allow update: if isAdmin()
+                    || (request.auth.uid == userId
+                        && changedKeys().hasOnly(['role', 'schoolId', 'lastLoginAt'])
+                        && request.resource.data.role == 'school_admin'
+                        && hasSchoolAdminInvite())
+                    // Owner self-promotes to a provisioned teacher on first sign-in.
+                    || (request.auth.uid == userId
+                        && changedKeys().hasOnly(['role', 'schoolId', 'status', 'lastLoginAt'])
+                        && request.resource.data.role == 'teacher'
+                        && request.resource.data.status == 'approved'
+                        && hasTeacherInvite())
+                    // A school admin may approve/reject teachers in their own school.
+                    || (isSchoolAdmin() && resource.data.schoolId == me().schoolId
+                        && changedKeys().hasOnly(['status']))
                     || (request.auth.uid == userId && !changedKeys().hasAny(['grades', 'mastery', 'role', 'status']))
-                    || (isApprovedTeacher() && changedKeys().hasOnly(['grades', 'mastery']));
+                    || (isApprovedTeacher() && changedKeys().hasOnly(['grades', 'mastery', 'classId', 'className', 'pendingClassId', 'pendingClassName']));
 
-      allow delete: if false;
+      // Super admin may delete a user's profile doc (user management).
+      allow delete: if isAdmin();
 
       // ── AI Scavenger-Hunt evidence (users/{uid}/evidence/{autoId}) ──
       // Students write their own finds; teachers/admins read them and may set a
@@ -45,9 +78,16 @@ service cloud.firestore {
     }
 
     // ── Teacher identity verifications ──
+    // Reviewed by the super admin OR the teacher's own school admin (Phase 3).
     match /verifications/{uid} {
-      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
-      allow create, update: if request.auth.uid == uid || isAdmin();
+      function teacherSchoolId() {
+        return get(/databases/$(database)/documents/users/$(uid)).data.schoolId;
+      }
+      function ownSchoolAdmin() {
+        return isSchoolAdmin() && teacherSchoolId() == me().schoolId;
+      }
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin() || ownSchoolAdmin());
+      allow create, update: if request.auth.uid == uid || isAdmin() || ownSchoolAdmin();
       allow delete: if isAdmin();
     }
 
@@ -60,7 +100,9 @@ service cloud.firestore {
       allow get: if true;
       allow list: if signedIn();
       allow create: if signedIn() && request.resource.data.teacherId == request.auth.uid;
-      allow update, delete: if signedIn() && resource.data.teacherId == request.auth.uid;
+      // The owning teacher manages the class; the super admin may stamp schoolId
+      // during migration and oversee (Phase 5).
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.teacherId == request.auth.uid);
 
       match /roster/{studentId} {
         function classTeacher() {
@@ -72,8 +114,20 @@ service cloud.firestore {
         // Classmates may read each other's roster entries (name + leaderboard
         // stats only — never the full user profile, which stays owner/teacher).
         allow read: if signedIn() && (request.auth.uid == studentId || classTeacher() == request.auth.uid || isClassmate());
-        allow create, update: if request.auth.uid == studentId;
+        // Student may write their own entry; the class teacher may create one on
+        // accepting a join request (Phase 4).
+        allow create, update: if request.auth.uid == studentId || classTeacher() == request.auth.uid;
         allow delete: if request.auth.uid == studentId || classTeacher() == request.auth.uid;
+      }
+
+      // ── Join requests (student requests → teacher accepts, Phase 4) ──
+      match /requests/{studentId} {
+        function reqClassTeacher() {
+          return get(/databases/$(database)/documents/classes/$(classId)).data.teacherId;
+        }
+        allow read: if signedIn() && (request.auth.uid == studentId || reqClassTeacher() == request.auth.uid);
+        allow create: if request.auth.uid == studentId;
+        allow delete: if request.auth.uid == studentId || reqClassTeacher() == request.auth.uid;
       }
     }
 
@@ -95,6 +149,42 @@ service cloud.firestore {
     match /config/{docId} {
       allow read: if true;
       allow write: if true;
+    }
+
+    // ── Schools (multi-tenant) ──
+    match /schools/{schoolId} {
+      allow read: if signedIn();
+      allow create, delete: if isAdmin();
+      // Super admin edits anything; a school admin may edit ONLY their own
+      // school's branding + code (never adminEmails/createdBy/active).
+      allow update: if isAdmin()
+        || (isSchoolAdmin() && me().schoolId == schoolId
+            && request.resource.data.diff(resource.data).affectedKeys()
+                 .hasOnly(['name', 'logoUrl', 'brandColor', 'code', 'teacherEmails']));
+    }
+
+    // ── School-admin designations (super admin → email → schoolId) ──
+    match /schoolAdminInvites/{email} {
+      allow read: if signedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ── Teacher provisioning (school admin → email → schoolId) ──
+    match /teacherInvites/{email} {
+      allow read: if signedIn();
+      allow create, update: if isAdmin()
+        || (isSchoolAdmin() && request.resource.data.schoolId == me().schoolId);
+      allow delete: if isAdmin()
+        || (isSchoolAdmin() && resource.data.schoolId == me().schoolId);
+    }
+
+    // ── Audit log (append-only; written by privileged mutations) ──
+    // Readable only by the super admin. Any admin/school-admin may append.
+    // Never updated or deleted — tamper-evident.
+    match /auditLog/{entryId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin() || isSchoolAdmin();
+      allow update, delete: if false;
     }
 
     // Everything else denied by default.

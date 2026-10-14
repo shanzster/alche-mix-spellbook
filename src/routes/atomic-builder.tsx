@@ -7,6 +7,7 @@ import { BohrModel3D } from "../components/BohrModel3D";
 import { ConceptCard, DidYouKnow } from "../components/Learn";
 import { useUserProfile, logPractice, recordTrial, type TrialResult } from "../lib/profile";
 import { DropVessel } from "../components/DropVessel";
+import { Term } from "../components/Term";
 
 export const Route = createFileRoute("/atomic-builder")({
   component: () => (
@@ -65,12 +66,25 @@ function Stepper({
   return (
     <div className="rounded-xl p-4"
       style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: `1px solid color-mix(in oklab, ${color} 30%, transparent)` }}>
-      <div className="mb-3 flex items-start justify-between">
+      <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <div className="text-[11px] uppercase tracking-[0.2em]" style={{ color }}>{label}</div>
           <div className="mt-0.5 text-[11px] text-parchment/55">{hint}</div>
         </div>
-        <span className="font-display text-2xl leading-none" style={{ color }}>{value}</span>
+        {/* Direct number entry (adviser item 17) — typing beats 17 clicks. */}
+        <input
+          type="number"
+          value={value}
+          min={min}
+          max={max}
+          onChange={(e) => {
+            const v = parseInt(e.target.value, 10);
+            if (!Number.isNaN(v)) set(v);
+          }}
+          className="w-16 rounded-lg bg-transparent px-1.5 py-0.5 text-right font-sans text-xl font-bold leading-none outline-none"
+          style={{ color, border: `1px solid color-mix(in oklab, ${color} 30%, transparent)` }}
+          aria-label={`${label} count (type a number)`}
+        />
       </div>
       <div className="flex items-center gap-3">
         <button onClick={() => set(value - 1)} disabled={value <= min}
@@ -404,6 +418,7 @@ function AtomicBuilder() {
   const [protons, setProtons]     = useState(6); // Carbon by default
   const [neutrons, setNeutrons]   = useState(6);
   const [electrons, setElectrons] = useState(6);
+  const [showLegend, setShowLegend] = useState(false);
   const [missionIdx, setMissionIdx] = useState(0);
   const [done, setDone] = useState<Set<number>>(new Set());
 
@@ -543,7 +558,41 @@ function AtomicBuilder() {
             }}>
             <BohrModel3D key={shellString || "empty"} interactive electrons={shellString} color={atomColor} nucleusColor="#a855f7" label={el?.symbol ?? "?"} />
             <div className="pointer-events-none absolute right-3 top-3 text-[9px] uppercase tracking-[0.2em] text-parchment/50">drag to spin ⟳</div>
+            {/* Legends control (adviser item 14): what each colour means. */}
+            <button
+              onClick={() => setShowLegend((v) => !v)}
+              className="absolute left-3 top-3 rounded-full px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.15em] transition hover:-translate-y-0.5"
+              style={{ background: "color-mix(in oklab, var(--color-mist) 75%, transparent)", border: "1px solid var(--color-border)", color: "var(--color-spectral)" }}
+              aria-expanded={showLegend}
+            >
+              {showLegend ? "Hide legends" : "Legends"}
+            </button>
           </div>
+
+          {showLegend && (
+            <div className="mt-3 rounded-2xl p-4"
+              style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
+              <div className="mb-2 text-[10px] uppercase tracking-[0.25em] text-parchment/60">Legends — what each colour is</div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {[
+                  { dot: "#e0b457", name: "Proton", desc: "positive (+) · lives in the nucleus" },
+                  { dot: "#9aa7bd", name: "Neutron", desc: "no charge · lives in the nucleus" },
+                  { dot: "#2dd4bf", name: "Electron", desc: "negative (−) · orbits in the shells" },
+                ].map((l) => (
+                  <div key={l.name} className="flex items-start gap-2.5">
+                    <span className="mt-1 h-3 w-3 flex-shrink-0 rounded-full" style={{ background: l.dot, boxShadow: `0 0 8px -1px ${l.dot}` }} />
+                    <div>
+                      <div className="text-sm font-semibold text-spectral">{l.name}</div>
+                      <div className="text-xs text-parchment/70">{l.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-parchment/60">
+                The violet core in the model is the <span className="text-wraith">nucleus</span> — protons and neutrons packed together; the moving dots on the rings are the electrons.
+              </p>
+            </div>
+          )}
 
           {/* Identity banner */}
           <div className="mt-4 flex items-center gap-5 rounded-2xl p-5"
@@ -630,10 +679,10 @@ function AtomicBuilder() {
       {/* Teaching layer */}
       <div className="mt-8 grid gap-4 md:grid-cols-2">
         <ConceptCard title="What each particle does">
-          <span className="text-spectral">Protons</span> decide which element it is (the atomic number).{" "}
-          <span className="text-spectral">Neutrons</span> change the mass — same element, different mass is an{" "}
-          <span className="text-wraith">isotope</span>. <span className="text-spectral">Electrons</span> balance the charge —
-          add or remove one and you get an <span className="text-gold">ion</span>.
+          <Term id="proton">Protons</Term> decide which element it is (the <Term id="atomic-number">atomic number</Term>).{" "}
+          <Term id="neutron">Neutrons</Term> change the mass — same element, different mass is an{" "}
+          <Term id="isotope">isotope</Term>. <Term id="electron">Electrons</Term> balance the charge —
+          add or remove one and you get an <Term id="ion">ion</Term>.
         </ConceptCard>
         <DidYouKnow>
           Carbon-14 — carbon with 8 neutrons instead of 6 — is radioactive and decays at a known rate.

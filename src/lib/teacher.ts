@@ -1,16 +1,49 @@
 import { useEffect, useState } from "react";
 import {
-  collection, doc, getDoc, onSnapshot, query, serverTimestamp, setDoc, updateDoc, where,
+  collection, deleteDoc, doc, getDoc, getDocs, limit, onSnapshot, query,
+  serverTimestamp, setDoc, Timestamp, updateDoc, where,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import type { Mastery, StudentProfile, TopicGrade } from "./profile";
 
-// A class doc lives at classes/{CODE} — the join code *is* the document id.
+// A class doc lives at classes/{ID}. Historically the join code WAS the
+// document id; since the adviser review (regenerable + expiring codes) the
+// ACTIVE code lives in `joinCode` + `joinCodeExpiresAt`, and the doc id is
+// just the permanent class id (which doubles as the original code).
 export interface ClassInfo {
-  id: string;          // the 6-char join code
+  id: string;          // permanent class id (also the original join code)
   name: string;
   teacherId: string;
   teacherName?: string | null;
+  /** Active join code; falls back to the doc id for pre-review classes. */
+  joinCode?: string;
+  /** When the active code stops admitting students (null = never, legacy). */
+  joinCodeExpiresAt?: Timestamp | null;
+  archived?: boolean;
+}
+
+/** How long a freshly issued join code admits students. */
+export const CODE_VALID_DAYS = 30;
+
+/** The code students should currently be given for this class. */
+export function activeJoinCode(cls: ClassInfo): string {
+  return cls.joinCode ?? cls.id;
+}
+
+/** True once the class's active code has lapsed. */
+export function joinCodeExpired(cls: Pick<ClassInfo, "joinCodeExpiresAt">): boolean {
+  const t = cls.joinCodeExpiresAt;
+  return !!t && t.toMillis() < Date.now();
+}
+
+/** Millis until expiry (negative = already expired; null = never expires). */
+export function joinCodeMillisLeft(cls: Pick<ClassInfo, "joinCodeExpiresAt">): number | null {
+  const t = cls.joinCodeExpiresAt;
+  return t ? t.toMillis() - Date.now() : null;
+}
+
+function codeExpiry(): Timestamp {
+  return Timestamp.fromMillis(Date.now() + CODE_VALID_DAYS * 86_400_000);
 }
 
 export interface RosterEntry {
@@ -38,7 +71,7 @@ function randomCode(len = 6): string {
 }
 
 /** Create a class with a unique join code. Returns the new class. */
-export async function createClass(teacherId: string, teacherName: string | null, name: string): Promise<ClassInfo> {
+export async function createClass(teacherId: string, teacherName: string | null, name: string, schoolId?: string | null): Promise<ClassInfo> {
   // Find an unused code (retry on the rare collision).
   let code = randomCode();
   for (let i = 0; i < 5; i++) {
@@ -46,11 +79,53 @@ export async function createClass(teacherId: string, teacherName: string | null,
     if (!existing.exists()) break;
     code = randomCode();
   }
-  const info = { id: code, name, teacherId, teacherName };
+  const expires = codeExpiry();
+  const info: ClassInfo = { id: code, name, teacherId, teacherName, joinCode: code, joinCodeExpiresAt: expires };
   await setDoc(doc(db, "classes", code), {
     name, teacherId, teacherName, createdAt: serverTimestamp(),
+    joinCode: code, joinCodeExpiresAt: expires, archived: false,
+    // Which school this class belongs to (multi-tenant). Omitted for pre-school classes.
+    ...(schoolId ? { schoolId } : {}),
   });
   return info;
+}
+
+/** Issue a fresh join code (invalidates the old one) valid CODE_VALID_DAYS. */
+export async function regenerateJoinCode(classId: string): Promise<string> {
+  let code = randomCode();
+  for (let i = 0; i < 6; i++) {
+    const clashDoc = await getDoc(doc(db, "classes", code));
+    if (!clashDoc.exists()) {
+      const clashField = await getDocs(query(collection(db, "classes"), where("joinCode", "==", code), limit(1)));
+      if (clashField.empty) break;
+    }
+    code = randomCode();
+  }
+  await updateDoc(doc(db, "classes", classId), { joinCode: code, joinCodeExpiresAt: codeExpiry() });
+  return code;
+}
+
+/** Archive / restore a class (hidden from the active list, nothing deleted). */
+export async function setClassArchived(classId: string, archived: boolean): Promise<void> {
+  await updateDoc(doc(db, "classes", classId), { archived });
+}
+
+/**
+ * Remove a student who is not part of the class (adviser item 6). Deletes the
+ * roster entry (teachers are allowed by rules); clearing the student's own
+ * profile stamp is best-effort — it may be denied until the rules deploy.
+ */
+export async function removeStudentFromClass(classId: string, studentUid: string): Promise<void> {
+  await deleteDoc(doc(db, "classes", classId, "roster", studentUid));
+  try {
+    const snap = await getDoc(doc(db, "users", studentUid));
+    if (snap.exists() && snap.data()?.classId === classId) {
+      await updateDoc(doc(db, "users", studentUid), { classId: null, className: null });
+    }
+  } catch {
+    // Firestore rules may not allow the profile stamp yet — the roster
+    // removal above is what controls access, so this is cosmetic.
+  }
 }
 
 /** Live list of a teacher's classes. */
@@ -80,24 +155,169 @@ export function useRoster(classId: string | null) {
   return roster;
 }
 
-/** Look up a class by its join code (returns null if the code is invalid). */
-export async function findClassByCode(code: string): Promise<ClassInfo | null> {
+/** Outcome of presenting a join code — expired is its own state so the UI
+ * can say "ask your teacher for a new code" instead of "wrong code". */
+export type CodeLookup =
+  | { status: "ok"; cls: ClassInfo }
+  | { status: "expired"; cls: ClassInfo }
+  | { status: "invalid" };
+
+/** Resolve a join code to its class, honouring regeneration and expiry. */
+export async function resolveClassByCode(code: string): Promise<CodeLookup> {
   const id = code.trim().toUpperCase();
-  if (!id) return null;
+  if (!id) return { status: "invalid" };
+
+  // 1 · Original codes are document ids (also the pre-auth School Door path).
   const snap = await getDoc(doc(db, "classes", id));
-  if (!snap.exists()) return null;
-  return { id, ...(snap.data() as Omit<ClassInfo, "id">) };
+  if (snap.exists()) {
+    const cls = { id: snap.id, ...(snap.data() as Omit<ClassInfo, "id">) };
+    if (activeJoinCode(cls) !== id) return { status: "invalid" }; // code was regenerated — old one is dead
+    if (cls.archived) return { status: "invalid" };
+    if (joinCodeExpired(cls)) return { status: "expired", cls };
+    return { status: "ok", cls };
+  }
+
+  // 2 · Regenerated codes live in the joinCode field (signed-in query).
+  try {
+    const qs = await getDocs(query(collection(db, "classes"), where("joinCode", "==", id), limit(1)));
+    if (qs.empty) return { status: "invalid" };
+    const d = qs.docs[0];
+    const cls = { id: d.id, ...(d.data() as Omit<ClassInfo, "id">) };
+    if (cls.archived) return { status: "invalid" };
+    if (joinCodeExpired(cls)) return { status: "expired", cls };
+    return { status: "ok", cls };
+  } catch {
+    return { status: "invalid" }; // signed-out: the field query is not permitted
+  }
+}
+
+/** Look up a class by its join code (null if invalid/expired). */
+export async function findClassByCode(code: string): Promise<ClassInfo | null> {
+  const res = await resolveClassByCode(code);
+  return res.status === "ok" ? res.cls : null;
 }
 
 /** A student joins a class: writes a roster entry + stamps their profile. */
-export async function joinClass(student: { uid: string; name: string | null; email: string | null }, code: string): Promise<ClassInfo | null> {
-  const cls = await findClassByCode(code);
-  if (!cls) return null;
+export async function joinClass(student: { uid: string; name: string | null; email: string | null }, code: string): Promise<CodeLookup> {
+  const res = await resolveClassByCode(code);
+  if (res.status !== "ok") return res;
+  const cls = res.cls;
   await setDoc(doc(db, "classes", cls.id, "roster", student.uid), {
     uid: student.uid, name: student.name, email: student.email, joinedAt: serverTimestamp(),
   });
   await updateDoc(doc(db, "users", student.uid), { classId: cls.id, className: cls.name });
-  return cls;
+  return res;
+}
+
+// ── Request-based enrolment (Phase 4) ───────────────────────────────────────
+// A student with a valid code REQUESTS to join; the teacher accepts before the
+// student is on the roster. The pending state is mirrored on the user doc
+// (`pendingClassId`/`pendingClassName`) so the student's dashboard can show it.
+
+export interface JoinRequest {
+  uid: string;
+  name: string | null;
+  email: string | null;
+}
+
+/** A student requests to join a class by code. Returns the code lookup result. */
+export async function requestToJoinClass(
+  student: { uid: string; name: string | null; email: string | null },
+  code: string,
+): Promise<CodeLookup> {
+  const res = await resolveClassByCode(code);
+  if (res.status !== "ok") return res;
+  const cls = res.cls;
+  await setDoc(doc(db, "classes", cls.id, "requests", student.uid), {
+    uid: student.uid, name: student.name, email: student.email, requestedAt: serverTimestamp(),
+  });
+  await updateDoc(doc(db, "users", student.uid), { pendingClassId: cls.id, pendingClassName: cls.name });
+  return res;
+}
+
+/** A student cancels their own pending request. */
+export async function cancelJoinRequest(studentUid: string, classId: string): Promise<void> {
+  await deleteDoc(doc(db, "classes", classId, "requests", studentUid));
+  try { await updateDoc(doc(db, "users", studentUid), { pendingClassId: null, pendingClassName: null }); } catch { /* best-effort */ }
+}
+
+/** Live pending join requests for a class (teacher view). */
+export function useJoinRequests(classId: string | null) {
+  const [requests, setRequests] = useState<JoinRequest[]>([]);
+  useEffect(() => {
+    if (!classId) { setRequests([]); return; }
+    return onSnapshot(collection(db, "classes", classId, "requests"), (snap) => {
+      setRequests(snap.docs.map((d) => d.data() as JoinRequest));
+    }, (err) => console.error("useJoinRequests:", err));
+  }, [classId]);
+  return requests;
+}
+
+/** Teacher accepts a request: roster entry + stamp student + clear pending + drop request. */
+export async function acceptJoinRequest(classId: string, className: string, req: JoinRequest): Promise<void> {
+  await setDoc(doc(db, "classes", classId, "roster", req.uid), {
+    uid: req.uid, name: req.name, email: req.email, joinedAt: serverTimestamp(),
+  });
+  await updateDoc(doc(db, "users", req.uid), {
+    classId, className, pendingClassId: null, pendingClassName: null,
+  });
+  await deleteDoc(doc(db, "classes", classId, "requests", req.uid));
+}
+
+/** Teacher rejects a request: clear the student's pending stamp + drop request. */
+export async function rejectJoinRequest(classId: string, uid: string): Promise<void> {
+  try { await updateDoc(doc(db, "users", uid), { pendingClassId: null, pendingClassName: null }); } catch { /* best-effort */ }
+  await deleteDoc(doc(db, "classes", classId, "requests", uid));
+}
+
+// ── Grade export (formatted CSV, client-side) ───────────────────────────────
+function csvCell(v: string | number | null | undefined): string {
+  const s = String(v ?? "");
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+/**
+ * Build a gradebook CSV for a class: one row per student, with each grading
+ * topic's score/outOf, %, and mastery, plus an average. Fetches each student's
+ * teacher-entered grades (`getStudentGrades`) — the only real grades.
+ */
+export async function buildClassGradesCsv(className: string, roster: RosterEntry[]): Promise<string> {
+  const rows = await Promise.all(roster.map(async (s) => ({ s, ...(await getStudentGrades(s.uid)) })));
+
+  const header = ["Student", "Email", ...GRADE_TOPICS.flatMap((t) => [t, `${t} %`, `${t} Mastery`]), "Average %"];
+  const lines: (string | number)[][] = [header];
+
+  for (const { s, grades, mastery } of rows) {
+    const cells: (string | number)[] = [s.name ?? "", s.email ?? ""];
+    const pcts: number[] = [];
+    for (const t of GRADE_TOPICS) {
+      const g = grades[t];
+      if (g && g.outOf) {
+        const pct = Math.round((g.score / g.outOf) * 100);
+        pcts.push(pct);
+        cells.push(`${g.score}/${g.outOf}`, pct, mastery[t] ?? "");
+      } else {
+        cells.push("", "", mastery[t] ?? "");
+      }
+    }
+    cells.push(pcts.length ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : "");
+    lines.push(cells);
+  }
+
+  // Title row + header so the file reads well when opened directly.
+  const title = `AlcheMix gradebook — ${className}`;
+  return [[title], [], ...lines].map((r) => r.map(csvCell).join(",")).join("\r\n");
+}
+
+/** Trigger a client-side CSV download (BOM so Excel reads UTF-8 correctly). */
+export function downloadCsv(filename: string, csv: string): void {
+  const blob = new Blob([String.fromCharCode(0xfeff) + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 /** Teacher reads a student's current grades/mastery (to edit them). */
@@ -194,6 +414,15 @@ export const MODULE_CATALOG: ModuleCatalogEntry[] = [
   { id: "decay", label: "Radioactive Decay", route: "/decay", practiceKey: "decay" },
   { id: "quiz", label: "3D Visual Quiz", route: "/quiz", practiceKey: "quiz" },
   { id: "starters", label: "Starters for Ten", route: "/starters", practiceKey: "starters" },
+  { id: "solutions", label: "The Elixir Bench", route: "/solutions", practiceKey: "solutions" },
+  { id: "thermo", label: "Cauldron of Heat", route: "/thermo", practiceKey: "thermo" },
+  { id: "rates", label: "Reaction Rates", route: "/rates", practiceKey: "rates" },
+  { id: "equilibrium", label: "Equilibrium", route: "/equilibrium", practiceKey: "equilibrium" },
+  { id: "electro", label: "The Voltaic Forge", route: "/electro", practiceKey: "electro" },
+  { id: "forces", label: "Invisible Bonds", route: "/forces", practiceKey: "forces" },
+  { id: "grimoire", label: "The Grimoire (cards)", route: "/cards", practiceKey: "grimoire" },
+  { id: "identifier", label: "Element Identifier (mobile)", route: "/identifier", practiceKey: "identifier" },
+  { id: "scanner", label: "AR Scanner (mobile)", route: "/scanner", practiceKey: "scanner" },
 ];
 
 export const moduleById = (id: string): ModuleCatalogEntry | undefined =>

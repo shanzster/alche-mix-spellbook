@@ -3,7 +3,7 @@ import { getAnalytics, isSupported } from "firebase/analytics";
 import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey:            "AIzaSyB3waPbnSaS0tKQqwmCkhMGZlsdpPc4dvw",
   authDomain:        "alchemix-grimoire.firebaseapp.com",
   projectId:         "alchemix-grimoire",

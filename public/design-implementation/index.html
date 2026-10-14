@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AlcheMix — Dark Alchemy Direction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&display=swap" rel="stylesheet" />
+<style>
+  /* ── Dark Alchemy direction test ─────────────────────────────────────────
+     A static format study: UnifrakturMaguntia (display) + Crimson Pro (body)
+     over the dark-alchemy-vibe art set. Not wired to the app. */
+
+  :root {
+    --ink:        #0a0e17;   /* page night */
+    --ink-2:      #0e1422;   /* raised panel */
+    --parchment:  #efe0bd;   /* main text */
+    --parch-dim:  #b7a781;   /* muted text */
+    --gold:       #c9a44a;   /* rules, accents */
+    --gold-hi:    #e8c877;   /* bright gold */
+    --teal:       #3fe0c5;   /* arcane glow */
+    --rule:       rgb(201 164 74 / .32);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--ink);
+    color: var(--parchment);
+    font-family: "Crimson Pro", Georgia, serif;
+    font-size: 19px;
+    line-height: 1.65;
+    overflow-x: hidden;
+  }
+  img { max-width: 100%; display: block; }
+
+  .display { font-family: "UnifrakturMaguntia", cursive; font-weight: 400; letter-spacing: .01em; }
+
+  .eyebrow {
+    font-size: 13px; letter-spacing: .45em; text-transform: uppercase;
+    color: var(--gold); font-weight: 500;
+  }
+
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 28px; }
+
+  /* Reveal on scroll */
+  .reveal { opacity: 0; transform: translateY(26px); transition: opacity .8s ease, transform .8s ease; }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* ── Nav ── */
+  nav {
+    position: fixed; inset: 0 0 auto 0; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 34px;
+    background: linear-gradient(180deg, rgb(10 14 23 / .92), rgb(10 14 23 / .55) 70%, transparent);
+  }
+  nav .brand { font-size: 30px; color: var(--gold-hi); text-decoration: none; }
+  nav .links { display: flex; gap: 30px; }
+  nav .links a {
+    color: var(--parch-dim); text-decoration: none; font-size: 15px;
+    letter-spacing: .22em; text-transform: uppercase;
+  }
+  nav .links a:hover { color: var(--gold-hi); }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 13px 30px; text-decoration: none; font-size: 17px; font-weight: 500;
+    letter-spacing: .06em;
+    border: 1px solid var(--gold);
+    transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn-gold {
+    background: linear-gradient(170deg, var(--gold-hi), var(--gold));
+    color: #141005; border-color: var(--gold-hi);
+    box-shadow: 0 0 34px -10px rgb(201 164 74 / .65);
+  }
+  .btn-gold:hover { box-shadow: 0 6px 42px -10px rgb(232 200 119 / .8); }
+  .btn-ghost { color: var(--parchment); background: rgb(14 20 34 / .45); }
+  .btn-ghost:hover { color: var(--gold-hi); border-color: var(--gold-hi); }
+
+  /* ── Hero — centred ceremony ─────────────────────────────────────────────
+     The conjurer stands dead-centre, the transmutation compass revolving
+     behind him; the typography is centred and layered over the figure.
+     Element-cliff wings parallax at the edges; gold dust drifts over all.
+     Parallax layers read --py (set by the scroll script). */
+  .hero {
+    position: relative; min-height: 100vh; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .hero-sky {
+    position: absolute; inset: 0; z-index: 0;
+    background: url("../dark-alchemy-vibe/hf_20261011_153424_70edcca6-cfe3-43b7-a534-b4aae90c82e6.png") center / cover no-repeat;
+    opacity: .9;
+    -webkit-mask-image: linear-gradient(180deg, black 72%, transparent 100%);
+            mask-image: linear-gradient(180deg, black 72%, transparent 100%);
+  }
+  .hero-dust {
+    position: absolute; inset: -12% 0; z-index: 1; pointer-events: none;
+    background: url("../dark-alchemy-vibe/hf_20261011_155908_915e14d2-fbb1-4fcb-965f-13895f6ad396.png") center / cover no-repeat;
+    mix-blend-mode: screen; opacity: .55;
+    transform: translate(var(--mx, 0px), calc(var(--py, 0px) + var(--my, 0px)));
+  }
+  /* Mid-depth layer — drifting boulders far behind the ceremony */
+  .hero-rocks {
+    position: absolute; inset: -12% 0; z-index: 1; pointer-events: none;
+    background: url("../dark-alchemy-vibe/hf_20261011_155909_03e8641b-2e04-434e-bcac-b4d08b847e3d.png") center / cover no-repeat;
+    mix-blend-mode: lighten; opacity: .28;
+    transform: translate(var(--mx, 0px), calc(var(--py, 0px) + var(--my, 0px)));
+  }
+  /* The ruined gate — stands behind the conjurer, feet of the composition */
+  .ly-arch {
+    position: absolute; left: 50%; bottom: 0; z-index: 2; pointer-events: none;
+    width: min(84vw, 1480px); aspect-ratio: 2688 / 1536;
+    transform: translate(calc(-50% + var(--mx, 0px)), calc(var(--py, 0px) + var(--my, 0px)));
+    background: url("../dark-alchemy-vibe/cut-arch.png") center bottom / contain no-repeat;
+  }
+  /* Rune cliff guarding the left edge */
+  .ly-cliff {
+    position: absolute; left: -1vw; top: -4vh; z-index: 3; pointer-events: none;
+    height: 112vh; aspect-ratio: 1536 / 2688;
+    transform: translate(var(--mx, 0px), calc(var(--py, 0px) + var(--my, 0px)));
+    background: url("../dark-alchemy-vibe/cut-cliff-left.png") left center / contain no-repeat;
+  }
+  /* The hanging lantern — chains from the top-left corner, in front of the
+     cliff, with a slow sway. Outer div = parallax, inner = sway. */
+  .ly-lantern {
+    position: absolute; left: -1vw; top: 0; z-index: 5; pointer-events: none;
+    width: min(34vw, 640px); aspect-ratio: 1;
+    transform: translate(var(--mx, 0px), calc(var(--py, 0px) + var(--my, 0px)));
+  }
+  .lantern-img {
+    width: 100%; height: 100%;
+    background: url("../dark-alchemy-vibe/cut-lantern.png") left top / contain no-repeat;
+    transform-origin: 22% 0%;
+    animation: sway 8s ease-in-out infinite;
+  }
+  @keyframes sway {
+    0%, 100% { transform: rotate(-1.1deg); }
+    50% { transform: rotate(1.3deg); }
+  }
+  /* Grass ledge peeking out from BEHIND the left rune wall */
+  .ly-ledge-l {
+    position: absolute; left: -7vw; bottom: 15vh; z-index: 2; pointer-events: none;
+    width: 44vw; aspect-ratio: 2688 / 1536;
+    transform: translate(var(--mx, 0px), calc(var(--py, 0px) + var(--my, 0px)));
+    background: url("../dark-alchemy-vibe/cut-ledge-left.png") left center / contain no-repeat;
+  }
+  .ly-ledge-r {
+    position: absolute; right: -3vw; bottom: -6vh; z-index: 6; pointer-events: none;
+    width: 46vw; aspect-ratio: 2688 / 1536;
+    transform: translate(var(--mx, 0px), calc(var(--py, 0px) + var(--my, 0px)));
+    background: url("../dark-alchemy-vibe/cut-ledge-right.png") right bottom / contain no-repeat;
+  }
+  /* Layers hold their breath until every image has decoded, then the scene
+     assembles back-to-front — no mid-load pop-in. */
+  .hero:not(.ready) [data-depth] { opacity: 0; }
+  .hero.ready [data-depth] {
+    /* `backwards` + a from-only keyframe: each layer fades up to its OWN
+       resting opacity (dust .55, boulders .28, the rest 1). */
+    animation: layer-in 1s ease-out backwards;
+    animation-delay: calc(var(--ent, 0) * .12s);
+  }
+  @keyframes layer-in { from { opacity: 0; } }
+
+  /* Floor of the hero fades into the page ink */
+  .hero-fade {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 22vh; z-index: 7; pointer-events: none;
+    background: linear-gradient(180deg, transparent, var(--ink) 90%);
+  }
+  .hero-conjurer {
+    position: absolute; left: 50%; bottom: -30vh; z-index: 4;
+    height: 120vh; aspect-ratio: 1792 / 2432;
+    transform: translate(calc(-50% + var(--mx, 0px)), calc(var(--py, 0px) + var(--my, 0px)));
+    background: url("../dark-alchemy-vibe/cut-conjurer.png") center / contain no-repeat;
+    pointer-events: none;
+  }
+  /* Centred typography — layered over the figure */
+  .hero-center {
+    position: relative; z-index: 8; text-align: center;
+    padding: 16vh 24px 0; max-width: 1060px;
+  }
+  /* Dark veil under the type so it reads over the conjurer's hood */
+  .hero-center::before {
+    content: ""; position: absolute; inset: -40px -80px -60px; z-index: -1;
+    background: radial-gradient(ellipse 60% 60% at 50% 60%, rgb(5 8 14 / .72), transparent 78%);
+  }
+  .hero-center .eyebrow {
+    font-size: 15px; color: var(--gold-hi);
+    text-shadow: 0 1px 6px rgb(5 8 14), 0 0 22px rgb(5 8 14);
+  }
+  .hero-center h1 {
+    font-size: clamp(52px, 8vw, 116px);
+    line-height: 1.05; margin-top: 20px; color: var(--parchment);
+    text-shadow: 0 3px 34px rgb(5 8 14 / .95), 0 0 10px rgb(5 8 14 / .6);
+  }
+  .hero-center h1 .gold { color: var(--gold-hi); text-shadow: 0 0 40px rgb(232 200 119 / .4), 0 3px 30px rgb(5 8 14 / .9); }
+  /* Lede + CTAs anchored toward the foot of the ceremony */
+  .hero-foot {
+    position: relative; z-index: 9; text-align: center;
+    margin-top: auto; padding: 0 24px 7vh;
+  }
+  /* Frosted dark band with feathered edges — the tagline sits over the
+     conjurer's brightest gold, so a shadow alone is not enough. */
+  .hero-foot::before {
+    content: ""; position: absolute; inset: -44px -140px -16px; z-index: -1;
+    background: rgb(7 10 17 / .66);
+    -webkit-backdrop-filter: blur(9px);
+            backdrop-filter: blur(9px);
+    -webkit-mask-image: radial-gradient(ellipse 58% 78% at 50% 52%, black 52%, transparent 82%);
+            mask-image: radial-gradient(ellipse 58% 78% at 50% 52%, black 52%, transparent 82%);
+  }
+  .hero-foot p.lede {
+    font-size: 22px; font-style: italic; color: var(--parchment);
+    max-width: 560px; margin: 0 auto 26px;
+    text-shadow: 0 1px 4px rgb(5 8 14), 0 2px 20px rgb(5 8 14 / .95);
+  }
+  .hero-ctas { display: flex; flex-wrap: wrap; gap: 18px; justify-content: center; }
+  .hero-note { margin-top: 24px; font-size: 13px; letter-spacing: .28em; text-transform: uppercase; color: rgb(239 224 189 / .85); text-shadow: 0 1px 4px rgb(5 8 14), 0 1px 12px rgb(5 8 14 / .9); }
+
+  /* ── Torn parchment divider ── */
+  .torn {
+    height: 150px;
+    background: url("../dark-alchemy-vibe/hf_20261011_153424_ee3e2950-5aa7-4b5e-9619-bf958dfc863d.png") center / cover no-repeat;
+  }
+
+  /* ── Section scaffolding ── */
+  section.block { position: relative; padding: 110px 0; }
+  .sect-head { text-align: center; margin-bottom: 64px; }
+  .sect-head h2 { font-size: clamp(40px, 4.6vw, 62px); color: var(--parchment); margin-top: 16px; }
+  .sect-head h2 .gold { color: var(--gold-hi); }
+  .sect-head p.sub { font-style: italic; color: var(--parch-dim); max-width: 560px; margin: 14px auto 0; }
+
+  /* Gold hairline double-rule panel (the ink-panel of this direction) */
+  .plate {
+    position: relative; background: linear-gradient(180deg, var(--ink-2), rgb(10 14 23 / .6));
+    border: 1px solid var(--rule); padding: 34px 30px;
+  }
+  .plate::after {
+    content: ""; position: absolute; inset: 6px; pointer-events: none;
+    border: 1px solid rgb(201 164 74 / .14);
+  }
+
+  /* ── Chronicle (what is) ── */
+  .chronicle { display: grid; grid-template-columns: 1.05fr 1fr; gap: 64px; align-items: center; }
+  .chronicle .book {
+    aspect-ratio: 2432 / 1792;
+    background: url("../dark-alchemy-vibe/hf_20261011_153422_984287cd-bd77-4bdf-8a00-200428552bb8.png") center / cover no-repeat;
+    mix-blend-mode: lighten;
+    -webkit-mask-image: radial-gradient(ellipse 78% 74% at 50% 50%, black 55%, transparent 79%);
+            mask-image: radial-gradient(ellipse 78% 74% at 50% 50%, black 55%, transparent 79%);
+  }
+  .chronicle h2 { font-size: clamp(38px, 4vw, 56px); margin: 14px 0 20px; }
+  .chronicle p { margin-bottom: 16px; color: #d9cba6; }
+  .chronicle strong { color: var(--parchment); }
+  .tallies { display: flex; flex-wrap: wrap; gap: 10px 36px; margin-top: 26px; border-top: 1px solid var(--rule); padding-top: 22px; }
+  .tallies .t { display: flex; align-items: baseline; gap: 10px; }
+  .tallies .n { font-family: "UnifrakturMaguntia", cursive; font-size: 34px; color: var(--gold-hi); }
+  .tallies .l { font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: var(--parch-dim); }
+
+  /* ── The Rite (how it works) ── */
+  .rite { position: relative; }
+  .rite-bg {
+    position: absolute; inset: 0; pointer-events: none;
+    background: url("../dark-alchemy-vibe/hf_20261011_153424_2df293e4-8d2d-407e-babc-e083d3d839ba.png") center / cover no-repeat;
+    opacity: .5; mix-blend-mode: lighten;
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, black 18%, black 82%, transparent 100%);
+            mask-image: linear-gradient(180deg, transparent 0%, black 18%, black 82%, transparent 100%);
+  }
+  .steps { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; }
+  .step { text-align: center; padding: 40px 28px 34px; }
+  .step .emblem {
+    width: 150px; aspect-ratio: 1; margin: 0 auto 24px; border-radius: 50%;
+    border: 1px solid var(--gold);
+    box-shadow: 0 0 0 5px rgb(201 164 74 / .1), 0 0 44px -12px rgb(63 224 197 / .35);
+    background-size: 128%; background-position: center; background-repeat: no-repeat;
+  }
+  .step .emblem.lens      { background-image: url("../dark-alchemy-vibe/hf_20261011_153422_99fa47c6-4fd9-495c-8253-e9da7e295b48.png"); }
+  .step .emblem.compass   { background-image: url("../dark-alchemy-vibe/hf_20261011_153423_0ee5b51a-ca2f-478b-b917-254fd5752b5c.png"); }
+  .step .emblem.astrolabe { background-image: url("../dark-alchemy-vibe/hf_20261011_153422_cdd4c102-e2da-43f8-8411-df5d576e5916.png"); }
+  .step .no { font-size: 13px; letter-spacing: .4em; color: var(--teal); }
+  .step h3 { font-family: "UnifrakturMaguntia", cursive; font-weight: 400; font-size: 30px; margin: 10px 0 10px; color: var(--parchment); }
+  .step p { font-size: 17px; color: var(--parch-dim); }
+
+  /* ── Atelier band ── */
+  .atelier {
+    position: relative; min-height: 64vh; display: flex; align-items: center; justify-content: center;
+    background: url("../dark-alchemy-vibe/hf_20261011_153424_6e09cb34-c687-4519-97ac-eb4dce409604.png") center 30% / cover no-repeat;
+  }
+  .atelier::before {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, var(--ink) 0%, rgb(10 14 23 / .25) 22%, rgb(10 14 23 / .25) 72%, var(--ink) 100%);
+  }
+  .atelier blockquote { position: relative; text-align: center; max-width: 760px; padding: 0 28px; }
+  .atelier blockquote p.q { font-size: clamp(34px, 4vw, 54px); font-family: "UnifrakturMaguntia", cursive; line-height: 1.25; text-shadow: 0 4px 34px rgb(5 8 14 / .95); }
+  .atelier blockquote footer { margin-top: 18px; font-style: italic; color: var(--parch-dim); letter-spacing: .08em; }
+
+  /* ── Marginalia ── */
+  .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 26px; }
+  .cards .plate h3 { font-size: 15px; letter-spacing: .24em; text-transform: uppercase; color: var(--gold-hi); margin-bottom: 12px; font-family: "Crimson Pro", serif; font-weight: 600; }
+  .cards .plate p { font-size: 17px; color: var(--parch-dim); }
+  .cards .glyph { font-size: 26px; color: var(--teal); margin-bottom: 14px; }
+
+  /* ── Summons (final CTA framed plate) ── */
+  .summons { padding: 30px 0 100px; }
+  .frame {
+    position: relative;
+    width: min(470px, 92vw);
+    height: calc(min(470px, 92vw) * 1.357);
+    margin: 0 auto;
+    background: url("../dark-alchemy-vibe/hf_20261011_153423_3f61b788-b364-4c75-b0b5-16092d6b51b1.png") center / 100% 100% no-repeat;
+    display: grid; place-content: center; justify-items: center; text-align: center;
+    padding: 0 92px;
+  }
+  .frame .eyebrow { color: #7a5c22; }
+  .frame h2 { font-size: clamp(34px, 4vw, 46px); color: #241a08; margin: 10px 0 12px; line-height: 1.15; }
+  .frame p { color: #5d4a26; font-size: 18px; font-style: italic; margin-bottom: 26px; }
+  .frame .btn-gold { border-color: #8a6a2d; box-shadow: 0 10px 30px -12px rgb(60 40 8 / .55); }
+  .frame .plaque {
+    position: absolute; bottom: 6.8%; left: 50%; transform: translateX(-50%);
+    width: 70%; text-align: center; white-space: nowrap;
+    font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: #4e3c1c;
+  }
+
+  /* ── Footer / workbench ── */
+  .bench {
+    position: relative; height: 46vh; min-height: 320px;
+    background: url("../dark-alchemy-vibe/hf_20261011_153423_c2b8d6b1-51ff-43e7-b019-d018352964ec.png") center bottom / cover no-repeat;
+  }
+  .bench::before {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, var(--ink) 0%, transparent 45%);
+  }
+  .bench .fine {
+    position: absolute; bottom: 22px; width: 100%; text-align: center;
+    font-size: 13px; letter-spacing: .3em; text-transform: uppercase; color: rgb(20 14 4 / .75);
+  }
+
+  /* Leather texture under the mid-page (very faint) */
+  .leather {
+    background:
+      linear-gradient(180deg, rgb(10 14 23 / .82), rgb(10 14 23 / .82)),
+      url("../dark-alchemy-vibe/hf_20261011_153423_84fd3684-23d2-4fcd-8650-9682c3344dae.png") center / 900px repeat;
+  }
+
+  /* ── The mix-and-match game — hex stones, no icons ─────────────────────── */
+  .altar { margin-top: 44px; padding: 40px 28px 36px; }
+  .tray-label { text-align: center; font-size: 13px; letter-spacing: .3em; text-transform: uppercase; color: var(--parch-dim); margin-bottom: 20px; }
+  .tray { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 36px; max-width: 760px; margin-left: auto; margin-right: auto; }
+  .hex {
+    width: 78px; aspect-ratio: 0.9; border: 0; padding: 2px; cursor: pointer;
+    clip-path: polygon(50% 0%, 94% 25%, 94% 75%, 50% 100%, 6% 75%, 6% 25%);
+    background: linear-gradient(170deg, #8a7339, #39301a 70%);
+    transition: transform .18s ease, filter .18s ease;
+  }
+  .hex:hover { transform: translateY(-5px); filter: brightness(1.2); }
+  .hex:disabled { opacity: .3; cursor: default; transform: none; filter: none; }
+  .hex-in {
+    width: 100%; height: 100%;
+    clip-path: polygon(50% 0%, 94% 25%, 94% 75%, 50% 100%, 6% 75%, 6% 25%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    background: radial-gradient(circle at 36% 24%, #262f4e, #10141f 72%);
+  }
+  .hex-in .sym { font: 600 25px "Crimson Pro", serif; color: var(--gold-hi); }
+  .hex-in .nm { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--parch-dim); }
+  .altar-row { display: flex; align-items: center; justify-content: center; gap: 22px; flex-wrap: wrap; margin-bottom: 30px; }
+  .slot { width: 112px; aspect-ratio: 0.9; }
+  .slot .hex { width: 100%; height: 100%; cursor: pointer; }
+  .slot .hex.empty { background: linear-gradient(170deg, rgb(201 164 74 / .4), rgb(57 48 26 / .5)); }
+  .slot .hex.empty .hex-in { background: rgb(14 20 34 / .7); }
+  .slot .hex-in .sym { font-size: 34px; }
+  .slot .hex-in .slot-word { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--parch-dim); padding: 0 10px; text-align: center; }
+  .opr { font-family: "UnifrakturMaguntia", cursive; font-size: 38px; color: var(--gold); }
+  .result-zone { width: 320px; min-height: 180px; display: flex; align-items: center; justify-content: center; }
+  .result-wait { font-size: 12px; letter-spacing: .24em; text-transform: uppercase; color: rgb(183 167 129 / .5); text-align: center; border: 1px dashed rgb(201 164 74 / .3); padding: 56px 26px; width: 100%; }
+  .forged { text-align: center; width: 100%; padding: 22px 18px; border: 1px solid var(--rule); background: linear-gradient(180deg, rgb(201 164 74 / .12), rgb(14 20 34 / .6)); animation: pop .6s cubic-bezier(.34,1.56,.64,1) both; }
+  .forged .formula { font: 600 42px "Crimson Pro", serif; color: var(--gold-hi); }
+  .forged .formula sub { font-size: 24px; }
+  .forged .cname { font-size: 17px; color: var(--parchment); margin-top: 2px; }
+  .forged .uses { font-size: 15px; font-style: italic; color: var(--parch-dim); margin-top: 6px; }
+  .bond-chip { display: inline-block; margin-top: 10px; padding: 3px 14px; font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: var(--teal); border: 1px solid rgb(63 224 197 / .4); }
+  .counsel { width: 100%; padding: 26px 24px; border: 1px dashed rgb(201 164 74 / .45); text-align: center; animation: pop .6s cubic-bezier(.34,1.56,.64,1) both; }
+  .counsel .who { font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--gold); margin-bottom: 8px; }
+  .counsel .why { font-style: italic; font-size: 17px; color: var(--parch-dim); }
+  @keyframes pop { from { opacity: 0; transform: scale(.6); } 60% { transform: scale(1.05); } to { opacity: 1; transform: scale(1); } }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-3px) rotate(-.4deg); } 75% { transform: translateX(3px) rotate(.4deg); } }
+  .unstable { animation: pop .6s both, shake .4s ease-in-out .7s infinite; }
+  .altar-actions { text-align: center; }
+  .altar-hint { margin-top: 18px; font-size: 15px; font-style: italic; color: var(--parch-dim); }
+  .altar-hint .g { color: var(--gold-hi); font-style: normal; }
+
+  /* ── Why Schools — the astrolabe ledger ────────────────────────────────── */
+  .schools-grid { display: grid; grid-template-columns: .9fr 1.1fr; gap: 56px; align-items: center; }
+  .astro-fig {
+    aspect-ratio: 1;
+    background: url("../dark-alchemy-vibe/hf_20261011_153422_cdd4c102-e2da-43f8-8411-df5d576e5916.png") center / cover no-repeat;
+    mix-blend-mode: lighten;
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, black 52%, transparent 76%);
+            mask-image: radial-gradient(circle at 50% 50%, black 52%, transparent 76%);
+  }
+  .ledger { list-style: none; }
+  .ledger li { display: flex; gap: 20px; padding: 20px 0; border-bottom: 1px solid rgb(201 164 74 / .18); }
+  .ledger li:first-child { border-top: 1px solid rgb(201 164 74 / .18); }
+  .ledger .rn { font: 600 19px "Crimson Pro", serif; color: var(--gold); min-width: 42px; text-align: right; }
+  .ledger h3 { font-size: 18px; font-weight: 600; color: var(--parchment); margin-bottom: 4px; font-family: "Crimson Pro", serif; }
+  .ledger p { font-size: 16px; color: var(--parch-dim); }
+
+  /* Marginalia numerals — typography, not icons */
+  .mg-num { font: 600 15px "Crimson Pro", serif; letter-spacing: .26em; color: var(--teal); margin-bottom: 14px; }
+  .mg-num::after { content: ""; display: block; width: 34px; height: 1px; margin-top: 10px; background: rgb(201 164 74 / .5); }
+  @media (max-width: 880px) {
+    nav .links { display: none; }
+    .hero-conjurer { height: 72vh; bottom: -10vh; }
+    .hero-center { padding-top: 15vh; }
+    .ly-cliff, .ly-ledge-l { display: none; }
+    .ly-arch { width: 130vw; }
+    .ly-lantern { width: 38vw; }
+    .ly-ledge-r { width: 72vw; }
+    .chronicle { grid-template-columns: 1fr; gap: 30px; }
+    .steps { grid-template-columns: 1fr; }
+    .cards { grid-template-columns: 1fr; }
+    .schools-grid { grid-template-columns: 1fr; gap: 20px; }
+    .astro-fig { max-width: 320px; margin: 0 auto; }
+    body { font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="brand display" href="#">AlcheMix</a>
+  <div class="links">
+    <a href="#chronicle">What It Is</a>
+    <a href="#rite">The Rite</a>
+    <a href="#schools">For Schools</a>
+    <a href="#summons">Enter</a>
+  </div>
+</nav>
+
+<!-- ── HERO — the centred ceremony ────────────────────────────────────── -->
+<header class="hero">
+  <div class="hero-sky"></div>
+  <div class="hero-dust" data-speed="0.14" data-depth="-8" style="--ent:0"></div>
+  <div class="hero-rocks" data-speed="0.2" data-depth="-13" style="--ent:1"></div>
+  <div class="ly-ledge-l" data-speed="0.1" data-depth="-16" style="--ent:2"></div>
+  <div class="ly-arch" data-speed="0.07" data-depth="-18" style="--ent:3"></div>
+  <div class="ly-cliff" data-speed="0.12" data-depth="-26" style="--ent:4"></div>
+  <div class="ly-lantern" data-speed="0.16" data-depth="-28" style="--ent:5"><div class="lantern-img"></div></div>
+  <div class="ly-ledge-r" data-speed="-0.12" data-depth="-32" style="--ent:6"></div>
+  <div class="hero-conjurer" data-speed="0.05" data-depth="-22" style="--ent:7"></div>
+  <div class="hero-fade"></div>
+  <div class="hero-center">
+    <p class="eyebrow">✦ The Alchemist's Grimoire ✦</p>
+    <h1 class="display">Where Elements<br />Whisper Their <span class="gold">Secrets.</span></h1>
+  </div>
+  <div class="hero-foot">
+    <p class="lede">Real chemistry, bound in a grimoire. Scan the cards, mix the elements, and forge what the old masters only dreamed of.</p>
+    <div class="hero-ctas">
+      <a class="btn btn-gold" href="#summons">Begin the Apprenticeship</a>
+      <a class="btn btn-ghost" href="#chronicle">Read the Chronicle</a>
+    </div>
+    <p class="hero-note">Free to explore · No account needed for the elements</p>
+  </div>
+</header>
+
+<div class="torn"></div>
+
+<!-- ── CHAPTER I — CHRONICLE ─────────────────────────────────────────── -->
+<section class="block leather" id="chronicle">
+  <div class="wrap">
+    <div class="chronicle">
+      <div class="book reveal"></div>
+      <div class="reveal">
+        <p class="eyebrow">Chapter I — The Chronicle</p>
+        <h2 class="display">What is <span style="color:var(--gold-hi)">AlcheMix?</span></h2>
+        <p>AlcheMix is a chemistry learning platform wearing the cloak of alchemy. Beneath the robes, every number is textbook-true — real bond types, real reactions, real elements — taught through a world of grimoires, trials, and forging.</p>
+        <p>It begins with a deck of <strong>12 physical trading cards</strong>, the base elements. Point a phone at a card and it wakes in augmented reality; carry the deck to the website and the full Grimoire opens.</p>
+        <div class="tallies">
+          <div class="t"><span class="n">12</span><span class="l">physical cards</span></div>
+          <div class="t"><span class="n">118</span><span class="l">elements chronicled</span></div>
+          <div class="t"><span class="n">20+</span><span class="l">learning modules</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CHAPTER II — THE RITE ─────────────────────────────────────────── -->
+<section class="block rite" id="rite">
+  <div class="rite-bg"></div>
+  <div class="wrap">
+    <div class="sect-head reveal">
+      <p class="eyebrow">Chapter II — The Rite</p>
+      <h2 class="display">How Does It <span class="gold">Work?</span></h2>
+      <p class="sub">Draw two cards from the Grimoire and lay them on the altar. The forge obeys real chemistry — some pairs bond, some refuse.</p>
+    </div>
+    <div class="steps">
+      <div class="step plate reveal">
+        <div class="emblem lens"></div>
+        <p class="no">— I —</p>
+        <h3>Draw from the Deck</h3>
+        <p>Twelve physical base-element cards. Under the assayer's lens of a phone camera, each one wakes in augmented reality.</p>
+      </div>
+      <div class="step plate reveal">
+        <div class="emblem compass"></div>
+        <p class="no">— II —</p>
+        <h3>Mix at the Altar</h3>
+        <p>The combiner weighs valence, charge, and electronegativity — the same engine that runs the real forge in the Grimoire.</p>
+      </div>
+      <div class="step plate reveal">
+        <div class="emblem astrolabe"></div>
+        <p class="no">— III —</p>
+        <h3>Forge &amp; Collect</h3>
+        <p>A true bond forges a compound card for your Codex. An impossible mix earns the Alchemist's warm counsel instead.</p>
+      </div>
+    </div>
+
+    <!-- The altar — try the rite yourself. Runs the same valence rules as
+         the real forge, ported verbatim from the app's combiner. -->
+    <div class="altar plate reveal">
+      <p class="tray-label">The twelve base cards — pick two and forge</p>
+      <div class="tray" id="tray"></div>
+      <div class="altar-row">
+        <div class="slot" id="slotA"></div>
+        <span class="opr">+</span>
+        <div class="slot" id="slotB"></div>
+        <span class="opr">→</span>
+        <div class="result-zone" id="resultZone">
+          <div class="result-wait">The forged stone appears here</div>
+        </div>
+      </div>
+      <div class="altar-actions">
+        <button class="btn btn-gold" id="forgeBtn" disabled>Forge the Mix</button>
+        <p class="altar-hint" id="altarHint">Not sure where to begin? Try <span class="g">Na + Cl</span>, <span class="g">H + O</span> — or <span class="g">Fe + Mg</span>, and see what the forge says.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CHAPTER III — WHY SCHOOLS ─────────────────────────────────────── -->
+<section class="block" id="schools">
+  <div class="wrap">
+    <div class="sect-head reveal">
+      <p class="eyebrow">Chapter III — The Astrolabe</p>
+      <h2 class="display">Why Schools Should <span class="gold">Implement</span> This.</h2>
+      <p class="sub">The apprentices collect secrets. Their educators hold the astrolabe — and see everything.</p>
+    </div>
+    <div class="schools-grid">
+      <div class="astro-fig reveal"></div>
+      <ol class="ledger reveal">
+        <li><span class="rn">I.</span><div>
+          <h3>A console built for teaching</h3>
+          <p>Classes with join codes, a quiz builder seeded from the curriculum, mission configurator, and a gradebook — authored once, delivered to every apprentice.</p>
+        </div></li>
+        <li><span class="rn">II.</span><div>
+          <h3>Sight before the exam</h3>
+          <p>A live performance matrix surfaces struggling concepts per student and per class — weeks before a test would have revealed them.</p>
+        </div></li>
+        <li><span class="rn">III.</span><div>
+          <h3>Real chemistry, honest motivation</h3>
+          <p>Every value is textbook-accurate, and practice counters are engagement — never grades. Marks stay where they belong: with the teacher.</p>
+        </div></li>
+        <li><span class="rn">IV.</span><div>
+          <h3>Runs on what you already have</h3>
+          <p>Any phone camera wakes the AR cards; the site works offline, and every AI feature has a no-key fallback. No lab, no licenses, no special hardware.</p>
+        </div></li>
+        <li><span class="rn">V.</span><div>
+          <h3>A tangible thing to own</h3>
+          <p>Twelve physical cards per apprentice — something to hold, trade, and keep. The deck makes the chemistry classroom's quietest subject collectible.</p>
+        </div></li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ── ATELIER BAND ──────────────────────────────────────────────────── -->
+<section class="atelier">
+  <blockquote class="reveal">
+    <p class="q">“Every element tells a story — some simply refuse to share it with the impatient.”</p>
+    <footer>— the Alchemist, keeper of the Grimoire</footer>
+  </blockquote>
+</section>
+
+<!-- ── CHAPTER III — MARGINALIA ──────────────────────────────────────── -->
+<section class="block" id="marginalia">
+  <div class="wrap">
+    <div class="sect-head reveal">
+      <p class="eyebrow">Chapter IV — Marginalia</p>
+      <h2 class="display">Noted in the <span class="gold">Margins.</span></h2>
+    </div>
+    <div class="cards">
+      <div class="plate reveal"><div class="mg-num">I</div><h3>A Shelf of 20+ Modules</h3><p>Titration, gas laws, equilibrium, electrochemistry, VSEPR shapes, radioactive decay — every simulation built on textbook-accurate values.</p></div>
+      <div class="plate reveal"><div class="mg-num">II</div><h3>AR Card Scanning</h3><p>The physical Grimoire cards wake under a phone camera: 3D atoms in your hands, and a ceremony that runs the real compound engine.</p></div>
+      <div class="plate reveal"><div class="mg-num">III</div><h3>118 Elements, with Lore</h3><p>The full periodic table — trends, states, discovery timeline — plus etymology and alchemical history for every element.</p></div>
+      <div class="plate reveal"><div class="mg-num">IV</div><h3>Ask the Alchemist</h3><p>A mentor on every page. Wrong answers and impossible mixes earn warm counsel, never punishment — even offline.</p></div>
+      <div class="plate reveal"><div class="mg-num">V</div><h3>Daily Rites &amp; Streaks</h3><p>Three starter questions a day, spaced review that remembers what you forget, and trials that award stars — never grades.</p></div>
+      <div class="plate reveal"><div class="mg-num">VI</div><h3>The Compound Codex</h3><p>Every forged compound earns a page — formula, bond, hazards, and where it appears in the real world. A personal encyclopedia, discovered.</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FINAL SUMMONS ─────────────────────────────────────────────────── -->
+<section class="summons" id="summons">
+  <div class="frame reveal">
+    <p class="eyebrow">The Summons</p>
+    <h2 class="display">The Grimoire Awaits.</h2>
+    <p>Start with the elements — free, no account. When you are ready, step inside and begin forging.</p>
+    <a class="btn btn-gold" href="#">Enter the Grimoire</a>
+    <div class="plaque">AlcheMix · Est. MMXXVI</div>
+  </div>
+</section>
+
+<!-- ── WORKBENCH FOOTER ──────────────────────────────────────────────── -->
+<footer class="bench">
+  <p class="fine">✦ AlcheMix — Augmented Chemistry Education ✦</p>
+</footer>
+
+<script>
+  const obs = new IntersectionObserver((entries) => {
+    for (const e of entries) if (e.isIntersecting) { e.target.classList.add("in"); obs.unobserve(e.target); }
+  }, { threshold: 0.14 });
+  document.querySelectorAll(".reveal").forEach((el) => obs.observe(el));
+
+  // ── The mix-and-match game — the app's combiner, ported verbatim ────────
+  const CARDS = [
+    { s: "H",  n: "Hydrogen",  val: 1, sign:  1, kind: "nonmetal", en: 2.2, root: "Hydr"  },
+    { s: "C",  n: "Carbon",    val: 4, sign: -1, kind: "nonmetal", en: 2.5, root: "Carb"  },
+    { s: "N",  n: "Nitrogen",  val: 3, sign: -1, kind: "nonmetal", en: 3.0, root: "Nitr"  },
+    { s: "O",  n: "Oxygen",    val: 2, sign: -1, kind: "nonmetal", en: 3.5, root: "Ox"    },
+    { s: "S",  n: "Sulfur",    val: 2, sign: -1, kind: "nonmetal", en: 2.6, root: "Sulf"  },
+    { s: "Cl", n: "Chlorine",  val: 1, sign: -1, kind: "nonmetal", en: 3.2, root: "Chlor" },
+    { s: "Na", n: "Sodium",    val: 1, sign:  1, kind: "metal",    en: 0.9 },
+    { s: "Mg", n: "Magnesium", val: 2, sign:  1, kind: "metal",    en: 1.3 },
+    { s: "Al", n: "Aluminium", val: 3, sign:  1, kind: "metal",    en: 1.6 },
+    { s: "K",  n: "Potassium", val: 1, sign:  1, kind: "metal",    en: 0.8 },
+    { s: "Ca", n: "Calcium",   val: 2, sign:  1, kind: "metal",    en: 1.0 },
+    { s: "Fe", n: "Iron",      val: 2, sign:  1, kind: "metal",    en: 1.8 },
+  ];
+  const PREFIX = ["", "", "Di", "Tri", "Tetra", "Penta", "Hexa"];
+  const INFO = {
+    "NaCl":  { name: "Sodium chloride (table salt)", uses: "Seasoning and preserving food." },
+    "H2O":   { name: "Water", uses: "Essential to all life; the universal solvent." },
+    "CO2":   { name: "Carbon dioxide", uses: "Fizzy drinks and fire extinguishers." },
+    "HCl":   { name: "Hydrogen chloride (hydrochloric acid)", uses: "Stomach acid; cleaning metal." },
+    "CaO":   { name: "Calcium oxide (quicklime)", uses: "Making cement and steel." },
+    "MgO":   { name: "Magnesium oxide", uses: "Antacids and heat-resistant bricks." },
+    "Na2O":  { name: "Sodium oxide", uses: "Making glass and ceramics." },
+    "Al2O3": { name: "Aluminium oxide", uses: "Sandpaper and ceramics; protects aluminium." },
+    "H3N":   { name: "Ammonia", uses: "Fertilisers and cleaning products." },
+    "NCl3":  { name: "Nitrogen trichloride", uses: "Almost none — dangerously explosive.", unstable: true },
+    "FeS":   { name: "Iron(II) sulfide", uses: "Releases rotten-egg gas in acid." },
+    "FeO":   { name: "Iron(II) oxide", uses: "Pigments; a form of rust." },
+    "FeCl2": { name: "Iron(II) chloride", uses: "Treating waste water." },
+  };
+  const gcd = (a, b) => (b === 0 ? a : gcd(b, a % b));
+  function combine(a, b) {
+    if (a.kind === "metal" && b.kind === "metal")
+      return { valid: false, reason: "Two metals form an alloy, not a molecular compound." };
+    if (a.s === b.s)
+      return { valid: false, reason: "Mix two different cards to forge a compound." };
+    const bond = a.kind !== b.kind ? "ionic" : "covalent";
+    const [first, second] = a.en <= b.en ? [a, b] : [b, a];
+    let s1 = second.val, s2 = first.val;
+    const g = gcd(s1, s2) || 1; s1 /= g; s2 /= g;
+    const sub = (n) => (n === 1 ? "" : String(n));
+    const formula = `${first.s}${sub(s1)}${second.s}${sub(s2)}`;
+    let name;
+    if (bond === "ionic") {
+      name = `${first.n} ${(second.root ?? second.n)}ide`;
+    } else {
+      const p1 = s1 < PREFIX.length ? PREFIX[s1] : "";
+      const p2 = s2 < PREFIX.length ? PREFIX[s2] : "";
+      name = `${p1 ? p1 + " " : ""}${first.n} ${p2 || "Mono"}${(second.root ?? second.n).toLowerCase()}ide`;
+    }
+    const info = INFO[formula];
+    return { valid: true, formula, bond, name, info };
+  }
+
+  const tray = document.getElementById("tray");
+  const slotA = document.getElementById("slotA");
+  const slotB = document.getElementById("slotB");
+  const zone = document.getElementById("resultZone");
+  const forgeBtn = document.getElementById("forgeBtn");
+  const hexHTML = (c, big) =>
+    `<div class="hex-in"><span class="sym">${c.s}</span><span class="nm">${big ? c.n : c.n}</span></div>`;
+  const state = { a: null, b: null };
+
+  function renderTray() {
+    tray.innerHTML = "";
+    for (const c of CARDS) {
+      const btn = document.createElement("button");
+      btn.className = "hex";
+      btn.disabled = !!(state.a && state.b);
+      btn.innerHTML = hexHTML(c);
+      btn.setAttribute("aria-label", "Pick " + c.n);
+      btn.onclick = () => { if (!state.a) state.a = c; else if (!state.b) state.b = c; render(); };
+      tray.appendChild(btn);
+    }
+  }
+  function renderSlot(el, card, label) {
+    el.innerHTML = "";
+    const btn = document.createElement("button");
+    btn.className = "hex" + (card ? "" : " empty");
+    btn.innerHTML = card
+      ? hexHTML(card, true)
+      : `<div class="hex-in"><span class="slot-word">${label}</span></div>`;
+    btn.setAttribute("aria-label", card ? "Remove " + card.n : label);
+    btn.onclick = () => {
+      if (el === slotA) state.a = null; else state.b = null;
+      render();
+    };
+    el.appendChild(btn);
+  }
+  function render(result) {
+    renderTray();
+    renderSlot(slotA, state.a, "First card");
+    renderSlot(slotB, state.b, "Second card");
+    forgeBtn.disabled = !(state.a && state.b);
+    if (result === undefined) {
+      zone.innerHTML = `<div class="result-wait">The forged stone appears here</div>`;
+      return;
+    }
+    if (result === "forging") {
+      zone.innerHTML = `<div class="result-wait">The forge burns&hellip;</div>`;
+      return;
+    }
+    if (result.valid) {
+      const f = result.formula.replace(/\d+/g, "<sub>$&</sub>");
+      zone.innerHTML = `<div class="forged${result.info && result.info.unstable ? " unstable" : ""}">
+          <div class="formula">${f}</div>
+          <div class="cname">${result.info ? result.info.name : result.name}</div>
+          ${result.info ? `<div class="uses">${result.info.uses}</div>` : ""}
+          <span class="bond-chip">${result.bond} bond</span>
+        </div>`;
+    } else {
+      zone.innerHTML = `<div class="counsel">
+          <div class="who">The Alchemist counsels</div>
+          <div class="why">${result.reason}</div>
+        </div>`;
+    }
+  }
+  forgeBtn.onclick = () => {
+    if (!(state.a && state.b)) return;
+    render("forging");
+    setTimeout(() => render(combine(state.a, state.b)), 900);
+  };
+  render();
+
+  // Scroll parallax — each layer declares its speed; we only write --py so
+  // the layers' own base transforms (centring, spin) stay intact.
+  const layers = document.querySelectorAll("[data-speed]");
+  let ticking = false;
+  addEventListener("scroll", () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const y = scrollY;
+      for (const el of layers) el.style.setProperty("--py", (y * parseFloat(el.dataset.speed)) + "px");
+      ticking = false;
+    });
+  }, { passive: true });
+
+  // Assemble the scene only once every layer's art has decoded — otherwise
+  // the big PNGs pop in one by one as they load.
+  const heroEl = document.querySelector(".hero");
+  {
+    const bgEls = heroEl.querySelectorAll("[data-depth], .lantern-img");
+    const urls = new Set();
+    for (const el of bgEls) {
+      const m = getComputedStyle(el).backgroundImage.match(/url\("([^"]+)"\)/);
+      if (m) urls.add(m[1]);
+    }
+    let shown = false;
+    const show = () => { if (!shown) { shown = true; heroEl.classList.add("ready"); } };
+    Promise.allSettled([...urls].map((u) => {
+      const img = new Image();
+      img.src = u;
+      return img.decode();
+    })).then(show);
+    setTimeout(show, 4000); // never hold the page hostage on a slow network
+  }
+
+  // Pointer parallax — the scene leans away from the cursor, each layer by
+  // its depth, eased so the drift feels weighty rather than twitchy.
+  const hero = document.querySelector(".hero");
+  const deepLayers = document.querySelectorAll("[data-depth]");
+  if (hero && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    const target = { x: 0, y: 0 }, eased = { x: 0, y: 0 };
+    hero.addEventListener("mousemove", (e) => {
+      const r = hero.getBoundingClientRect();
+      target.x = ((e.clientX - r.left) / r.width - 0.5) * 2;
+      target.y = ((e.clientY - r.top) / r.height - 0.5) * 2;
+    });
+    hero.addEventListener("mouseleave", () => { target.x = 0; target.y = 0; });
+    (function glide() {
+      eased.x += (target.x - eased.x) * 0.055;
+      eased.y += (target.y - eased.y) * 0.055;
+      for (const el of deepLayers) {
+        const d = parseFloat(el.dataset.depth);
+        el.style.setProperty("--mx", (eased.x * d).toFixed(2) + "px");
+        el.style.setProperty("--my", (eased.y * d * 0.6).toFixed(2) + "px");
+      }
+      requestAnimationFrame(glide);
+    })();
+  }
+</script>
+</body>
+</html>

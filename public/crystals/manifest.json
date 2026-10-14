@@ -1,0 +1,86 @@
+[
+  {
+    "symbol": "H",
+    "name": "Hydrogen",
+    "z": 1,
+    "crystalSystem": "hexagonal",
+    "color": "#60a5fa"
+  },
+  {
+    "symbol": "He",
+    "name": "Helium",
+    "z": 2,
+    "crystalSystem": "hexagonal",
+    "color": "#7dd3fc"
+  },
+  {
+    "symbol": "Li",
+    "name": "Lithium",
+    "z": 3,
+    "crystalSystem": "cubic",
+    "color": "#b57bf0"
+  },
+  {
+    "symbol": "Be",
+    "name": "Beryllium",
+    "z": 4,
+    "crystalSystem": "hexagonal",
+    "color": "#a3e635"
+  },
+  {
+    "symbol": "B",
+    "name": "Boron",
+    "z": 5,
+    "crystalSystem": "rhombohedral",
+    "color": "#fda4af"
+  },
+  {
+    "symbol": "C",
+    "name": "Carbon",
+    "z": 6,
+    "crystalSystem": "hexagonal",
+    "color": "#a3a3a3"
+  },
+  {
+    "symbol": "N",
+    "name": "Nitrogen",
+    "z": 7,
+    "crystalSystem": "cubic",
+    "color": "#93c5fd"
+  },
+  {
+    "symbol": "O",
+    "name": "Oxygen",
+    "z": 8,
+    "crystalSystem": "monoclinic",
+    "color": "#f87171"
+  },
+  {
+    "symbol": "F",
+    "name": "Fluorine",
+    "z": 9,
+    "crystalSystem": "monoclinic",
+    "color": "#4ade80"
+  },
+  {
+    "symbol": "Ne",
+    "name": "Neon",
+    "z": 10,
+    "crystalSystem": "cubic",
+    "color": "#f472b6"
+  },
+  {
+    "symbol": "Na",
+    "name": "Sodium",
+    "z": 11,
+    "crystalSystem": "cubic",
+    "color": "#8b5cf6"
+  },
+  {
+    "symbol": "Mg",
+    "name": "Magnesium",
+    "z": 12,
+    "crystalSystem": "hexagonal",
+    "color": "#34d399"
+  }
+]

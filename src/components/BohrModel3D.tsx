@@ -221,7 +221,9 @@ export function BohrModel3D({
     let frameId: number;
     let t = 0;
 
+    let visible = true;
     const animate = () => {
+      if (!visible) { frameId = 0; return; }
       frameId = requestAnimationFrame(animate);
       t += 0.01;
 
@@ -252,10 +254,17 @@ export function BohrModel3D({
 
       renderer.render(scene, camera);
     };
+    // Pause the loop while off-screen (constant GPU/CPU drain otherwise).
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) { if (!visible) { visible = true; if (!frameId) animate(); } }
+      else visible = false;
+    }, { threshold: 0 });
+    io.observe(mount);
     animate();
 
     return () => {
       cancelAnimationFrame(frameId);
+      io.disconnect();
       window.removeEventListener("resize", onResize);
       renderer.domElement.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("pointermove", onPointerMove);

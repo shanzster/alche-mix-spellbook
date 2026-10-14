@@ -146,19 +146,33 @@ submission: element, elementName, question, answer, image (data URL),
 correct, confidence, feedback, needsManualReview, source (gemini/fallback),
 teacherApproved?, createdAt.
 
-### D4 — Firestore `classes/{CODE}`
-Owner: `src/lib/teacher.ts`. Doc id = the 6-char join code.
-Fields: name, teacherId, teacherName, createdAt, **quizzes[]** (`QuizDef`:
-id, title, questions[{prompt, choices×4, answer, hint?}], createdAt-ms),
-**missions[]** (`MissionDef`: id, title, note?, targets[{moduleId, label,
-practiceKey}], createdAt-ms). Teacher-authored content lives on this doc —
-there are deliberately no separate quiz/mission collections.
+### D4 — Firestore `classes/{ID}`
+Owner: `src/lib/teacher.ts`. Doc id = the permanent class id (historically
+the join code; it still doubles as the ORIGINAL code). Since the adviser
+review (2026-10-12) the ACTIVE code is a field so it can be regenerated and
+expire: **joinCode** (6-char, unique), **joinCodeExpiresAt** (Timestamp —
+codes stop admitting after `CODE_VALID_DAYS` = 30; regenerating issues a new
+code and kills the old one instantly), **archived** (bool — archived classes
+leave the working teacher tabs and refuse joins).
+Other fields: name, teacherId, teacherName, createdAt, **quizzes[]**
+(`QuizDef`: id, title, questions[{prompt, choices×4, answer, hint?}],
+createdAt-ms), **missions[]** (`MissionDef`: id, title, note?,
+targets[{moduleId, label, practiceKey}], createdAt-ms). Teacher-authored
+content lives on this doc — there are deliberately no separate
+quiz/mission collections.
+Code lookup order (`resolveClassByCode`): doc-id get first (works pre-auth
+for original codes), then a signed-in `where("joinCode"==…)` query for
+regenerated codes; "expired" is a distinct result so the UI can say "ask
+your teacher for a fresh code".
 
-### D5 — Firestore `classes/{CODE}/roster/{uid}` (subcollection)
+### D5 — Firestore `classes/{ID}/roster/{uid}` (subcollection)
 Written on join (`teacher.ts`) and by `syncRosterStats()` (`profile.ts`).
 Fields: uid, name, email, joinedAt + **denormalized leaderboard stats**:
 displayName, stars, aurum, duelWins, compounds (count), streak, statsAt.
 Classmates may read this; nothing sensitive is mirrored.
+Deleted by the class teacher via `removeStudentFromClass()` (adviser item
+6); the student's `users/{uid}.classId/.className` stamp is cleared
+best-effort (needs the 2026-10-12 `firestore.rules` deploy).
 
 ### D6 — Firestore `duels/{autoId}`
 Owner: `src/lib/duel-net.ts` (`DuelDoc`). Fields: players[2] (uids, index =
@@ -187,6 +201,31 @@ paths curated off the student navigation). Written from the public `/modules`
 Curator page (admin-only per rules); read live by every `StudentShell` to
 filter the rail, Table of Contents, pager, and mobile nav. `/app` is never
 filtered (shell anchor).
+
+### D11 — Firestore `schools/{schoolId}` (multi-tenant)
+Owner: `src/lib/schools.ts`. One doc per school. Fields: name, **code** (6-char
+shareable SCHOOL code — onboards teachers), logoUrl + brandColor (branding),
+adminEmails[], createdBy, active. Created by the super admin; a school admin may
+edit only their own school's name/logo/brandColor/code.
+See `docs/SCHOOL_MULTITENANCY.md` for the full hierarchy and flows.
+
+### D12 — Firestore `schoolAdminInvites/{emailLower}` (multi-tenant)
+Owner: `src/lib/schools.ts`. `{email, schoolId}`. The super admin designates an
+email as a school's admin; `ensureUserProfile` reads it on login to promote the
+account to `school_admin` + stamp `schoolId`.
+
+### D13 — Firestore `classes/{ID}/requests/{uid}` (subcollection)
+Owner: `src/lib/teacher.ts`. Pending student join requests `{uid, name, email,
+requestedAt}`. A student with a valid code requests; the class teacher accepts
+(→ roster **D5** + stamps the student) or rejects. Mirrored on the user doc as
+`pendingClassId`/`pendingClassName` so the student dashboard shows the pending
+state.
+
+> **New `users/{uid}` (D2) fields (multi-tenant):** `schoolId` (school_admin /
+> teacher / student); `pendingClassId` + `pendingClassName` (a pending join
+> request). **Roles** now: `admin` (= super admin) · `school_admin` · `teacher`
+> · `student`. **New routes:** `/school` (school-admin console), `/teacher/login`
+> (educator door). **`classes` (D4)** gained a `schoolId` field.
 
 ### D9 — Static in-code datasets (read-only "reference stores")
 Not databases, but they appear on DFDs as the content source every module

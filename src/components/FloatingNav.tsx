@@ -1,14 +1,19 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Info, Atom, Compass, School, LogIn, LogOut, UserPlus } from "lucide-react";
+import { Info, Atom, BookOpen, Compass, School, Layers, LogIn, LogOut, UserPlus } from "lucide-react";
 import { onAuthChange, signOut, type User } from "../lib/auth";
 import { ThemeToggle } from "./ThemeToggle";
 
-// ── Nav destinations — each with its OWN icon + a visible label ────────────
+// ── Nav destinations — 3 left of the logo orb, 3 right, so the pill reads
+//    symmetrically around the centred home orb. ──────────────────────────────
 const NAV_LINKS = [
+  // left wing
   { href: "/about", label: "About", icon: Info },
   { href: "/elements", label: "Elements", icon: Atom },
+  { href: "/grimoire", label: "Grimoire", icon: Layers },
+  // right wing
   { href: "/learn", label: "How It Works", icon: Compass },
+  { href: "/lexicon", label: "Lexicon", icon: BookOpen },
   { href: "/schools", label: "For Schools", icon: School },
 ] as const;
 
@@ -25,8 +30,9 @@ function NavLink({ href, label, icon: Icon }: (typeof NAV_LINKS)[number]) {
       }}
     >
       <Icon className="h-4 w-4 flex-shrink-0" />
-      {/* Label is visible from sm up; icon-only on the smallest screens. */}
-      <span className="hidden sm:inline font-ui text-xs font-semibold tracking-[0.04em] whitespace-nowrap">
+      {/* Labels appear from lg up; below that the six items stay icon-only so the
+          centred pill can't collide with the right-pinned theme/auth controls. */}
+      <span className="hidden lg:inline font-ui text-xs font-semibold tracking-[0.04em] whitespace-nowrap">
         {label}
       </span>
     </Link>
@@ -140,8 +146,8 @@ export function FloatingNav() {
           }}
           aria-label="Primary"
         >
-          <NavLink {...NAV_LINKS[0]} />
-          <NavLink {...NAV_LINKS[1]} />
+          {/* Left wing — three links */}
+          {NAV_LINKS.slice(0, 3).map((l) => <NavLink key={l.href} {...l} />)}
 
           {/* Logo orb — seated inside the pill, vertically centred (no overlap) */}
           <Link
@@ -161,8 +167,8 @@ export function FloatingNav() {
             />
           </Link>
 
-          <NavLink {...NAV_LINKS[2]} />
-          <NavLink {...NAV_LINKS[3]} />
+          {/* Right wing — three links */}
+          {NAV_LINKS.slice(3).map((l) => <NavLink key={l.href} {...l} />)}
 
           {/* Mobile: theme + auth live inside the pill so nothing overlaps. */}
           <span className="flex items-center gap-1.5 md:hidden">

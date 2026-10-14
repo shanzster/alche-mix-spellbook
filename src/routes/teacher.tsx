@@ -4,9 +4,10 @@ import {
   GraduationCap, Users, ClipboardCheck, Plus, Copy, Check, LogOut,  BookOpen,
   Layers, Sparkles, ChevronLeft, ScanSearch, Clock, X, ImageOff, Loader2,
   AlertTriangle, Award, ChevronDown, ChevronRight, Flame, FlaskConical, Star,
-  ListChecks, Pencil, Trash2, ArrowUp, ArrowDown, Wand2,
+  ListChecks, Pencil, Trash2, ArrowUp, ArrowDown, Wand2, Download,
 } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
+import { ArcaneField } from "../components/ArcaneField";
 import { RequireRole } from "../components/RequireRole";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { signOut } from "../lib/auth";
@@ -14,6 +15,10 @@ import { useUserProfile, type Mastery, type PathProgress, type PathStage } from 
 import { CURRICULUM, conceptById } from "../lib/curriculum";
 import {
   createClass, useTeacherClasses, useRoster, getStudentGrades, setStudentGrade,
+  buildClassGradesCsv, downloadCsv,
+  activeJoinCode, joinCodeExpired, joinCodeMillisLeft, regenerateJoinCode,
+  setClassArchived, removeStudentFromClass,
+  useJoinRequests, acceptJoinRequest, rejectJoinRequest, type JoinRequest,
   useClassProfiles, practiceTotal, lastActiveMillis, aggregateConceptTrouble,
   useClassAssignments, saveQuiz, deleteQuiz, saveMission, deleteMission,
   validateQuiz, validateMission, newAssignmentId, MODULE_CATALOG, moduleById,
@@ -41,45 +46,129 @@ const MASTERY_OPTS: { value: Mastery; label: string }[] = [
 ];
 
 // ── Roster + join code for one class ────────────────────────────────────────
+// Adviser items 5–6: the code is regenerable and expires; students can be
+// removed from the roster; whole classes can be archived and restored.
+function JoinRequestsBlock({ cls }: { cls: ClassInfo }) {
+  const requests = useJoinRequests(cls.id);
+  const [busy, setBusy] = useState<string | null>(null);
+  if (requests.length === 0) return null;
+
+  const accept = async (r: JoinRequest) => { setBusy(r.uid); try { await acceptJoinRequest(cls.id, cls.name, r); } finally { setBusy(null); } };
+  const reject = async (r: JoinRequest) => { setBusy(r.uid); try { await rejectJoinRequest(cls.id, r.uid); } finally { setBusy(null); } };
+
+  return (
+    <div className="mt-4 rounded-xl p-3" style={{ background: "color-mix(in oklab, var(--color-gold) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)" }}>
+      <p className="mb-2 text-[10px] uppercase tracking-[0.2em] text-gold">Join requests · {requests.length}</p>
+      <div className="space-y-1.5">
+        {requests.map((r) => (
+          <div key={r.uid} className="flex items-center justify-between gap-3 rounded-lg px-3 py-1.5"
+            style={{ background: "color-mix(in oklab, var(--color-mist) 50%, transparent)", border: "1px solid var(--color-border)" }}>
+            <span className="truncate text-xs text-parchment">{r.name ?? r.email ?? "Student"}</span>
+            <div className="flex flex-shrink-0 items-center gap-2">
+              <button onClick={() => accept(r)} disabled={busy === r.uid} className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold text-white transition hover:brightness-110 disabled:opacity-50" style={{ background: "var(--color-emerald-elixir)" }}>
+                <Check className="h-3 w-3" /> Accept
+              </button>
+              <button onClick={() => reject(r)} disabled={busy === r.uid} className="text-[11px] font-semibold uppercase tracking-[0.1em] text-crimson/75 transition hover:text-crimson disabled:opacity-50">
+                Reject
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ClassCard({ cls }: { cls: ClassInfo }) {
   const roster = useRoster(cls.id);
   const [copied, setCopied] = useState(false);
-  const copy = async () => { try { await navigator.clipboard.writeText(cls.id); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ } };
+  const [busy, setBusy] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  const code = activeJoinCode(cls);
+  const expired = joinCodeExpired(cls);
+  const msLeft = joinCodeMillisLeft(cls);
+  const daysLeft = msLeft !== null ? Math.max(0, Math.ceil(msLeft / 86_400_000)) : null;
+
+  const copy = async () => { try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ } };
+  const regen = async () => {
+    if (!window.confirm("Issue a fresh join code? The current code stops working immediately — students already enrolled are unaffected.")) return;
+    setBusy(true);
+    try { await regenerateJoinCode(cls.id); } finally { setBusy(false); }
+  };
+  const toggleArchive = async () => {
+    setBusy(true);
+    try { await setClassArchived(cls.id, !cls.archived); } finally { setBusy(false); }
+  };
+  const remove = async (s: RosterEntry) => {
+    if (!window.confirm(`Remove ${s.name ?? s.email ?? "this student"} from ${cls.name}? They can rejoin only with a valid code.`)) return;
+    setRemoving(s.uid);
+    try { await removeStudentFromClass(cls.id, s.uid); } finally { setRemoving(null); }
+  };
 
   return (
-    <div className="glass rounded-2xl p-5">
+    <div className="glass rounded-2xl p-5" style={cls.archived ? { opacity: 0.75 } : undefined}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex items-center gap-3">
           <span className="orb-rune h-10 w-10 flex-shrink-0 text-gold">
             <Users className="h-4 w-4" />
           </span>
           <div>
-          <h3 className="font-display text-lg">{cls.name}</h3>
-          <p className="text-xs text-parchment/60 mt-0.5 inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {roster.length} enrolled</p>
+            <h3 className="font-display text-lg">
+              {cls.name}
+              {cls.archived && <span className="ml-2 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-parchment/70" style={{ border: "1px solid var(--color-border)" }}>Archived</span>}
+            </h3>
+            <p className="text-xs text-parchment/60 mt-0.5 inline-flex items-center gap-1.5"><Users className="h-3.5 w-3.5" /> {roster.length} enrolled</p>
           </div>
         </div>
-        <button onClick={copy} className="flex items-center gap-2 rounded-lg px-3 py-2 transition hover:-translate-y-0.5"
-          style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent)" }}>
-          <span className="font-display text-lg tracking-[0.3em] text-teal">{cls.id}</span>
-          {copied ? <Check className="h-4 w-4 text-teal" /> : <Copy className="h-4 w-4 text-parchment/60" />}
+        <div className="flex flex-col items-end gap-1">
+          <button onClick={copy} className="flex items-center gap-2 rounded-lg px-3 py-2 transition hover:-translate-y-0.5"
+            style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent)", border: `1px solid color-mix(in oklab, ${expired ? "var(--color-crimson)" : "var(--color-emerald-elixir)"} 35%, transparent)` }}>
+            <span className="font-sans text-lg font-bold tracking-[0.3em] text-teal">{code}</span>
+            {copied ? <Check className="h-4 w-4 text-teal" /> : <Copy className="h-4 w-4 text-parchment/60" />}
+          </button>
+          <span className={`text-[10px] uppercase tracking-[0.12em] ${expired ? "text-crimson" : "text-parchment/55"}`}>
+            {expired ? "Code expired — issue a new one" : daysLeft !== null ? `Code valid for ${daysLeft} day${daysLeft === 1 ? "" : "s"}` : "No expiry (issue a new code to add one)"}
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button onClick={regen} disabled={busy}
+          className="rounded-lg px-3 py-1.5 text-xs font-semibold text-teal transition hover:-translate-y-0.5 disabled:opacity-50"
+          style={{ border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 40%, transparent)" }}>
+          {busy ? "Working…" : "New code"}
+        </button>
+        <button onClick={toggleArchive} disabled={busy}
+          className="rounded-lg px-3 py-1.5 text-xs font-semibold text-parchment transition hover:-translate-y-0.5 disabled:opacity-50"
+          style={{ border: "1px solid var(--color-border)" }}>
+          {cls.archived ? "Restore class" : "Archive class"}
         </button>
       </div>
+
+      <JoinRequestsBlock cls={cls} />
+
       {roster.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 space-y-1.5">
           {roster.map((s) => (
-            <span key={s.uid} className="rounded-full px-3 py-1 text-xs text-parchment" style={{ background: "color-mix(in oklab, var(--color-mist) 50%, transparent)", border: "1px solid var(--color-border)" }}>
-              {s.name ?? s.email ?? "Student"}
-            </span>
+            <div key={s.uid} className="flex items-center justify-between gap-3 rounded-lg px-3 py-1.5"
+              style={{ background: "color-mix(in oklab, var(--color-mist) 50%, transparent)", border: "1px solid var(--color-border)" }}>
+              <span className="truncate text-xs text-parchment">{s.name ?? s.email ?? "Student"}</span>
+              <button onClick={() => remove(s)} disabled={removing === s.uid}
+                className="flex-shrink-0 text-[11px] font-semibold uppercase tracking-[0.1em] text-crimson/75 transition hover:text-crimson disabled:opacity-50">
+                {removing === s.uid ? "Removing…" : "Remove"}
+              </button>
+            </div>
           ))}
         </div>
       ) : (
-        <p className="mt-4 text-xs text-parchment/50">Share the code <span className="text-teal font-display tracking-[0.2em]">{cls.id}</span> — students enter it on their dashboard to enrol.</p>
+        <p className="mt-4 text-xs text-parchment/50">Share the code <span className="text-teal font-sans font-bold tracking-[0.2em]">{code}</span> — students enter it on their dashboard to enrol.</p>
       )}
     </div>
   );
 }
 
-function ClassesTab({ teacherId, teacherName, classes }: { teacherId: string; teacherName: string | null; classes: ClassInfo[] }) {
+function ClassesTab({ teacherId, teacherName, schoolId, classes }: { teacherId: string; teacherName: string | null; schoolId?: string | null; classes: ClassInfo[] }) {
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
 
@@ -87,7 +176,7 @@ function ClassesTab({ teacherId, teacherName, classes }: { teacherId: string; te
     e.preventDefault();
     if (!name.trim()) return;
     setCreating(true);
-    await createClass(teacherId, teacherName, name.trim());
+    await createClass(teacherId, teacherName, name.trim(), schoolId);
     setName("");
     setCreating(false);
   };
@@ -108,13 +197,23 @@ function ClassesTab({ teacherId, teacherName, classes }: { teacherId: string; te
           <span className="orb-rune mx-auto flex h-12 w-12 text-gold">
             <Users className="h-5 w-5" />
           </span>
-          <p className="font-display text-base mb-1 mt-3">No classes yet</p>
+          <h3 className="font-display text-base mb-1 mt-3">No classes yet</h3>
           <p className="text-sm text-parchment/60">Create your first class to generate a join code students can use.</p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {classes.map((c) => <ClassCard key={c.id} cls={c} />)}
-        </div>
+        <>
+          <div className="grid gap-4 md:grid-cols-2">
+            {classes.filter((c) => !c.archived).map((c) => <ClassCard key={c.id} cls={c} />)}
+          </div>
+          {classes.some((c) => c.archived) && (
+            <div className="mt-8">
+              <p className="mb-3 text-xs uppercase tracking-[0.25em] text-parchment/50">Archived classes</p>
+              <div className="grid gap-4 md:grid-cols-2">
+                {classes.filter((c) => c.archived).map((c) => <ClassCard key={c.id} cls={c} />)}
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -154,7 +253,7 @@ function StudentGradePanel({ student, onBack }: { student: RosterEntry; onBack: 
       <div className="space-y-3">
         {GRADE_TOPICS.map((topic) => (
           <div key={topic} className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl p-3" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-            <span className="font-display text-sm flex-1">{topic}</span>
+            <span className="font-ui font-semibold text-sm flex-1">{topic}</span>
             <div className="flex items-center gap-2">
               <input type="number" min={0} placeholder="score" value={grades[topic]?.score ?? ""}
                 onChange={(e) => setGrades((p) => ({ ...p, [topic]: { score: Number(e.target.value), outOf: p[topic]?.outOf ?? 0 } }))}
@@ -182,14 +281,27 @@ function StudentGradePanel({ student, onBack }: { student: RosterEntry; onBack: 
 function GradebookTab({ classes }: { classes: ClassInfo[] }) {
   const [classId, setClassId] = useState<string | null>(classes[0]?.id ?? null);
   const [student, setStudent] = useState<RosterEntry | null>(null);
+  const [exporting, setExporting] = useState(false);
   const roster = useRoster(classId);
 
   if (classes.length === 0) return <p className="text-sm text-parchment/60">Create a class first to grade students.</p>;
   if (student) return <StudentGradePanel student={student} onBack={() => setStudent(null)} />;
 
+  const selectedClass = classes.find((c) => c.id === classId);
+
+  const exportCsv = async () => {
+    if (!selectedClass || roster.length === 0) return;
+    setExporting(true);
+    try {
+      const csv = await buildClassGradesCsv(selectedClass.name, roster);
+      const safe = selectedClass.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+      downloadCsv(`alchemix-grades-${safe}.csv`, csv);
+    } finally { setExporting(false); }
+  };
+
   return (
     <div>
-      <div className="flex flex-wrap gap-2 mb-5">
+      <div className="mb-5 flex flex-wrap items-center gap-2">
         {classes.map((c) => (
           <button key={c.id} onClick={() => { setClassId(c.id); setStudent(null); }}
             className="rounded-full px-4 py-1.5 text-xs tracking-[0.1em] uppercase transition"
@@ -197,6 +309,12 @@ function GradebookTab({ classes }: { classes: ClassInfo[] }) {
             {c.name}
           </button>
         ))}
+        <button onClick={exportCsv} disabled={exporting || roster.length === 0}
+          className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold text-teal transition hover:-translate-y-0.5 disabled:opacity-40"
+          style={{ border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 40%, transparent)" }}
+          title="Download this class's gradebook as a CSV">
+          <Download className="h-3.5 w-3.5" /> {exporting ? "Exporting…" : "Export CSV"}
+        </button>
       </div>
       {roster.length === 0 ? (
         <p className="text-sm text-parchment/50">No students enrolled in this class yet.</p>
@@ -206,7 +324,7 @@ function GradebookTab({ classes }: { classes: ClassInfo[] }) {
             <button key={s.uid} onClick={() => setStudent(s)}
               className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition hover:bg-teal/5"
               style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-              <span className="font-display text-sm">{s.name ?? s.email}</span>
+              <span className="font-ui font-semibold text-sm">{s.name ?? s.email}</span>
               <span className="text-xs tracking-[0.15em] uppercase text-teal">Grade →</span>
             </button>
           ))}
@@ -239,7 +357,7 @@ function EvidenceReviewCard({ e }: { e: TeacherEvidenceEntry }) {
         {e.image
           ? <img src={e.image} alt={`${e.elementName} find`} className="h-full w-full object-cover" />
           : <div className="h-full w-full flex items-center justify-center text-parchment/30"><ImageOff className="h-7 w-7" /></div>}
-        <span className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-display backdrop-blur-sm"
+        <span className="absolute top-2 left-2 flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-ui font-semibold backdrop-blur-sm"
           style={{ background: "color-mix(in oklab, #000 45%, transparent)", color: "#fff" }}>
           <span style={{ color: e.correct || e.teacherApproved ? T_ACCENT : "var(--color-gold)" }}>{e.element}</span> {e.elementName}
         </span>
@@ -251,7 +369,7 @@ function EvidenceReviewCard({ e }: { e: TeacherEvidenceEntry }) {
 
       <div className="p-4 flex flex-col flex-1" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)" }}>
         <div className="flex items-center justify-between mb-2">
-          <span className="font-display text-sm truncate">{e.studentName ?? "Student"}</span>
+          <span className="font-ui font-semibold text-sm truncate">{e.studentName ?? "Student"}</span>
           <span className="text-[9px] tracking-[0.18em] uppercase flex-shrink-0"
             style={{ color: e.source === "gemini" ? T_ACCENT : "var(--color-gold)" }}>
             {e.source === "gemini" ? "AI-graded" : "Needs review"}
@@ -263,12 +381,12 @@ function EvidenceReviewCard({ e }: { e: TeacherEvidenceEntry }) {
         {pending ? (
           <div className="mt-3 flex gap-2">
             <button onClick={() => review(true)} disabled={busy}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-display tracking-[0.1em] uppercase transition disabled:opacity-60"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-ui font-semibold tracking-[0.1em] uppercase transition disabled:opacity-60"
               style={{ background: `color-mix(in oklab, ${T_ACCENT} 18%, transparent)`, color: T_ACCENT, border: `1px solid color-mix(in oklab, ${T_ACCENT} 40%, transparent)` }}>
               {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />} Approve
             </button>
             <button onClick={() => review(false)} disabled={busy}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-display tracking-[0.1em] uppercase transition disabled:opacity-60"
+              className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-ui font-semibold tracking-[0.1em] uppercase transition disabled:opacity-60"
               style={{ background: "color-mix(in oklab, var(--color-crimson) 14%, transparent)", color: "var(--color-crimson)", border: "1px solid color-mix(in oklab, var(--color-crimson) 35%, transparent)" }}>
               <X className="h-3.5 w-3.5" /> Reject
             </button>
@@ -339,7 +457,7 @@ function EvidenceTab({ classes }: { classes: ClassInfo[] }) {
       ) : shown.length === 0 ? (
         <div className="rounded-2xl px-5 py-12 text-center" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px dashed color-mix(in oklab, var(--color-parchment) 30%, transparent)" }}>
           <ScanSearch className="h-8 w-8 text-parchment/50 mx-auto mb-3" />
-          <p className="font-display text-base mb-1">{filter === "pending" ? "Nothing to review" : "No finds yet"}</p>
+          <h3 className="font-display text-base mb-1">{filter === "pending" ? "Nothing to review" : "No finds yet"}</h3>
           <p className="text-sm text-parchment/60">
             {filter === "pending"
               ? "Scavenger-hunt submissions that need a human decision will appear here."
@@ -412,7 +530,7 @@ function StudentDetail({ s }: { s: StudentSnapshot }) {
             style={{ background: `color-mix(in oklab, ${st.color} 10%, transparent)`, border: `1px solid color-mix(in oklab, ${st.color} 25%, transparent)` }}>
             <st.icon className="h-3 w-3" style={{ color: st.color }} />
             <span className="text-parchment/70">{st.label}</span>
-            <span className="font-display" style={{ color: st.color }}>{st.value}</span>
+            <span className="font-ui font-bold" style={{ color: st.color }}>{st.value}</span>
           </span>
         ))}
       </div>
@@ -570,7 +688,7 @@ function MatrixTab({ classes }: { classes: ClassInfo[] }) {
                           className="cursor-pointer transition hover:bg-teal/5"
                           style={{ borderTop: "1px solid var(--color-border)", background: open ? "color-mix(in oklab, var(--color-emerald-elixir) 6%, transparent)" : "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)" }}>
                           <td className="px-4 py-3">
-                            <span className="inline-flex items-center gap-1.5 font-display text-sm">
+                            <span className="inline-flex items-center gap-1.5 font-ui font-semibold text-sm">
                               <Chevron className="h-3.5 w-3.5 text-parchment/40 flex-shrink-0" /> {s.name ?? "Student"}
                             </span>
                           </td>
@@ -655,7 +773,7 @@ function AuthorEmpty({ icon: Icon, title, desc }: { icon: typeof Layers; title: 
       <span className="orb-rune mx-auto flex h-12 w-12 text-gold">
         <Icon className="h-5 w-5" />
       </span>
-      <p className="font-display text-base mb-1 mt-3">{title}</p>
+      <h3 className="font-display text-base mb-1 mt-3">{title}</h3>
       <p className="text-sm text-parchment/60">{desc}</p>
     </div>
   );
@@ -784,7 +902,7 @@ function QuizResults({ quiz, students }: { quiz: QuizDef; students: StudentSnaps
               <span key={s.uid} className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px]"
                 style={{ background: `color-mix(in oklab, ${tone} ${r ? 10 : 5}%, transparent)`, border: `1px solid color-mix(in oklab, ${tone} ${r ? 30 : 15}%, transparent)`, opacity: r ? 1 : 0.6 }}>
                 <span className="text-parchment/80">{s.name ?? "Student"}</span>
-                <span className="font-display" style={{ color: tone }}>{r ? `${r.score}/${r.outOf}` : "—"}</span>
+                <span className="font-ui font-bold" style={{ color: tone }}>{r ? `${r.score}/${r.outOf}` : "—"}</span>
               </span>
             );
           })}
@@ -962,7 +1080,7 @@ function MissionEditor({ classId, initial, onDone }: { classId: string; initial:
               {targets.map((t, i) => (
                 <div key={t.moduleId} className="flex items-center gap-2 rounded-lg px-3 py-2"
                   style={{ background: "color-mix(in oklab, var(--color-mist) 45%, transparent)", border: "1px solid var(--color-border)" }}>
-                  <span className="font-display text-xs text-parchment/50 w-5 flex-shrink-0">{i + 1}.</span>
+                  <span className="font-ui font-semibold text-xs text-parchment/50 w-5 flex-shrink-0">{i + 1}.</span>
                   <span className="text-sm flex-1 min-w-0 truncate">{t.label}</span>
                   <button onClick={() => move(i, -1)} disabled={i === 0} className="text-parchment/50 hover:text-teal transition disabled:opacity-30" aria-label="Move up"><ArrowUp className="h-3.5 w-3.5" /></button>
                   <button onClick={() => move(i, 1)} disabled={i === targets.length - 1} className="text-parchment/50 hover:text-teal transition disabled:opacity-30" aria-label="Move down"><ArrowDown className="h-3.5 w-3.5" /></button>
@@ -1034,7 +1152,7 @@ function MissionsTab({ classes }: { classes: ClassInfo[] }) {
               <ol className="mt-3 space-y-1">
                 {m.targets.map((t, i) => (
                   <li key={t.moduleId} className="text-xs text-parchment/70">
-                    <span className="font-display text-parchment/45 mr-1.5">{i + 1}.</span>{t.label}
+                    <span className="font-ui font-semibold text-parchment/45 mr-1.5">{i + 1}.</span>{t.label}
                   </li>
                 ))}
               </ol>
@@ -1077,9 +1195,8 @@ function TeacherConsole() {
   };
 
   return (
-    <div className="bg-arcane min-h-screen text-spectral">
-      <div className="bg-aurora pointer-events-none fixed inset-0 z-0" />
-      <div className="bg-arcane-stars pointer-events-none fixed inset-0 z-0 opacity-50" />
+    <div className="grimoire-display bg-arcane min-h-screen text-spectral">
+      <ArcaneField />
 
       {/* ── Desktop rail — the console's only chrome, like the student side ── */}
       <nav
@@ -1156,7 +1273,7 @@ function TeacherConsole() {
 
       <div className="relative z-10 px-5 pt-20 pb-12 md:pl-24 md:pr-8 md:pt-10">
         <div className="mx-auto max-w-6xl">
-          <PageHeader eyebrow="Educator Console" title={`Welcome, ${name}.`} subtitle="Set up classes, enrol students with a join code, and grade their progress." icon={GraduationCap} />
+          <PageHeader home="/teacher" hideNav eyebrow="Educator Console" title={`Welcome, ${name}.`} subtitle="Set up classes, enrol students with a join code, and grade their progress." icon={GraduationCap} />
 
           {/* Mobile tabs — the rail's phone projection */}
           <div className="glass-strong scroll-slim md:hidden -mt-2 mb-6 flex gap-1 overflow-x-auto rounded-2xl p-1">
@@ -1169,12 +1286,14 @@ function TeacherConsole() {
             ))}
           </div>
 
-          {tab === "classes" && <ClassesTab teacherId={uid ?? ""} teacherName={profile?.displayName ?? profile?.email ?? null} classes={classes} />}
-          {tab === "gradebook" && <GradebookTab classes={classes} />}
-          {tab === "evidence" && <EvidenceTab classes={classes} />}
-          {tab === "matrix" && <MatrixTab classes={classes} />}
-          {tab === "quizzes" && <QuizBuilderTab classes={classes} />}
-          {tab === "missions" && <MissionsTab classes={classes} />}
+          {/* Working tabs see only active classes; the Classes tab manages
+              archived ones too. */}
+          {tab === "classes" && <ClassesTab teacherId={uid ?? ""} teacherName={profile?.displayName ?? profile?.email ?? null} schoolId={profile?.schoolId ?? null} classes={classes} />}
+          {tab === "gradebook" && <GradebookTab classes={classes.filter((c) => !c.archived)} />}
+          {tab === "evidence" && <EvidenceTab classes={classes.filter((c) => !c.archived)} />}
+          {tab === "matrix" && <MatrixTab classes={classes.filter((c) => !c.archived)} />}
+          {tab === "quizzes" && <QuizBuilderTab classes={classes.filter((c) => !c.archived)} />}
+          {tab === "missions" && <MissionsTab classes={classes.filter((c) => !c.archived)} />}
         </div>
       </div>
     </div>

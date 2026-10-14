@@ -1,21 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { onAuthChange } from "../lib/auth";
-import {
-  FlaskConical,
-  Eye,
-  BookOpen,
-  Feather,
-  ArrowRight,
-  ScrollText,
-  Atom,
-  GraduationCap,
-  Camera,
-  Zap,
-  BookMarked,
-} from "lucide-react";
-import { BohrModel3D } from "../components/BohrModel3D";
+import { AlcheLoader } from "../components/AlcheLoader";
 import { FloatingNav } from "../components/FloatingNav";
+import { BASE_CARDS, combine, type Card, type MixResult } from "../lib/cards";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -50,92 +38,6 @@ function Reveal({ children, delay = 0, className = "" }: { children: React.React
   );
 }
 
-// ── Shared: animated molecule node canvas ────────────────────────────────────
-function MoleculeCanvas({ color = "var(--color-wraith)" }: { color?: string }) {
-  const ref = useRef<HTMLCanvasElement>(null);
-  useEffect(() => {
-    const canvas = ref.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d")!;
-    // Canvas paint styles can't resolve CSS var() — pin the colour on the
-    // element and read back the computed value so color-mix gets a real colour.
-    canvas.style.color = color;
-    const paint = getComputedStyle(canvas).color;
-    const resize = () => { canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight; };
-    resize();
-    window.addEventListener("resize", resize);
-    type Node = { x: number; y: number; vx: number; vy: number; r: number; label: string };
-    const LABELS = ["H₂O","NaCl","CO₂","O₂","CH₄","Fe","Au","Na","NH₃","HCl","Ca","Mg"];
-    const nodes: Node[] = Array.from({ length: 10 }, (_, i) => ({
-      x: Math.random() * canvas.width, y: Math.random() * canvas.height,
-      vx: (Math.random() - 0.5) * 0.4, vy: (Math.random() - 0.5) * 0.4,
-      r: 18 + Math.random() * 14, label: LABELS[i % LABELS.length],
-    }));
-    let raf: number;
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      for (const n of nodes) {
-        n.x += n.vx; n.y += n.vy;
-        if (n.x < n.r || n.x > canvas.width  - n.r) n.vx *= -1;
-        if (n.y < n.r || n.y > canvas.height - n.r) n.vy *= -1;
-      }
-      for (let i = 0; i < nodes.length; i++) {
-        for (let j = i + 1; j < nodes.length; j++) {
-          const dx = nodes[j].x - nodes[i].x, dy = nodes[j].y - nodes[i].y;
-          const d = Math.sqrt(dx*dx + dy*dy);
-          if (d < 180) {
-            const a = (1 - d / 180) * 0.55;
-            ctx.beginPath(); ctx.moveTo(nodes[i].x, nodes[i].y); ctx.lineTo(nodes[j].x, nodes[j].y);
-            ctx.strokeStyle = `color-mix(in oklab, ${paint} ${Math.round(a*100)}%, transparent)`;
-            ctx.lineWidth = (1 - d / 180) * 2; ctx.stroke();
-          }
-        }
-      }
-      for (const n of nodes) {
-        ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
-        ctx.fillStyle = `color-mix(in oklab, ${paint} 14%, transparent)`; ctx.fill();
-        ctx.strokeStyle = `color-mix(in oklab, ${paint} 45%, transparent)`; ctx.lineWidth = 1.2; ctx.stroke();
-        ctx.fillStyle = `color-mix(in oklab, ${paint} 80%, transparent)`;
-        ctx.font = `600 10px "EB Garamond", serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.fillText(n.label, n.x, n.y);
-      }
-      raf = requestAnimationFrame(draw);
-    };
-    draw();
-    return () => { cancelAnimationFrame(raf); window.removeEventListener("resize", resize); };
-  }, [color]);
-  return <canvas ref={ref} className="w-full h-full" style={{ pointerEvents: "none" }} />;
-}
-
-// ── Shared: orbit ring visual ────────────────────────────────────────────────
-function OrbitRing({ size = 220, color = "var(--color-wraith)", icon }: {
-  size?: number; color?: string; icon: React.ReactNode;
-}) {
-  return (
-    <div className="relative flex items-center justify-center flex-shrink-0" style={{ width: size, height: size }}>
-      {[0.95, 0.72, 0.50].map((scale, i) => (
-        <div key={i} className="absolute rounded-full border" style={{
-          width: size * scale, height: size * scale,
-          borderColor: `color-mix(in oklab, ${color} ${25 - i * 6}%, transparent)`,
-          animation: `float-slow ${6 + i * 2}s ease-in-out infinite`, animationDelay: `${i * 0.8}s`,
-        }} />
-      ))}
-      <div className="absolute inset-0 rounded-full" style={{
-        background: `radial-gradient(circle at 50% 50%, color-mix(in oklab, ${color} 16%, transparent), transparent 65%)`,
-      }} />
-      <div className="relative z-10 flex items-center justify-center rounded-full animate-breathing"
-        style={{
-          width: size * 0.28, height: size * 0.28,
-          background: `color-mix(in oklab, ${color} 15%, transparent)`,
-          border: `1.5px solid color-mix(in oklab, ${color} 40%, transparent)`,
-          color,
-        }}>
-        {icon}
-      </div>
-    </div>
-  );
-}
-
 function useScrollY() {
   const [y, setY] = useState(0);
   useEffect(() => {
@@ -146,128 +48,806 @@ function useScrollY() {
   return y;
 }
 
-// ── Base element data ─────────────────────────────────────────────────────────
-const BASE_ELEMENTS = [
-  { sym:"H",  name:"Hydrogen",  num:1,  electrons:"1",          c:"#60a5fa", nc:"#93c5fd" },
-  { sym:"O",  name:"Oxygen",    num:8,  electrons:"2,6",        c:"#f87171", nc:"#fca5a5" },
-  { sym:"C",  name:"Carbon",    num:6,  electrons:"2,4",        c:"#a3a3a3", nc:"#d4d4d4" },
-  { sym:"N",  name:"Nitrogen",  num:7,  electrons:"2,5",        c:"#93c5fd", nc:"#bfdbfe" },
-  { sym:"Fe", name:"Iron",      num:26, electrons:"2,8,14,2",   c:"#a78bfa", nc:"#c4b5fd" },
-  { sym:"Au", name:"Gold",      num:79, electrons:"2,8,18,32,18,1", c:"#fbbf24", nc:"#fde68a" },
-  { sym:"Na", name:"Sodium",    num:11, electrons:"2,8,1",      c:"#f87171", nc:"#fca5a5" },
-  { sym:"Cl", name:"Chlorine",  num:17, electrons:"2,8,7",      c:"#4ade80", nc:"#86efac" },
-  { sym:"Ca", name:"Calcium",   num:20, electrons:"2,8,8,2",    c:"#fb923c", nc:"#fdba74" },
-  { sym:"U",  name:"Uranium",   num:92, electrons:"2,8,18,32,21,9,2", c:"#4ade80", nc:"#6ee7b7" },
-  { sym:"Mg", name:"Magnesium", num:12, electrons:"2,8,2",      c:"#34d399", nc:"#6ee7b7" },
-  { sym:"S",  name:"Sulfur",    num:16, electrons:"2,8,6",      c:"#facc15", nc:"#fde68a" },
-];
-
-// The AlcheMix signature element — a fictional "brand atom" for the hero.
-// 6 protons, electron shells 2,4 — it spins on its own.
-const ALCHEMIX_ELEMENT = {
-  sym: "Ax",
-  name: "AlcheMix",
-  protons: 6,
-  electrons: "2,4",
-  color: "#2dd4bf",        // teal — primary
-  nucleusColor: "#a855f7", // violet — secondary
-};
-
-// ── Shared selected-element state (lifted so both components share it) ─────
-import { createContext, useContext } from "react";
-const ElementCtx = createContext<{
-  selected: typeof BASE_ELEMENTS[0];
-  setSelected: (e: typeof BASE_ELEMENTS[0]) => void;
-}>({ selected: BASE_ELEMENTS[5], setSelected: () => {} });
-
-function ElementSelector() {
-  const { selected, setSelected } = useContext(ElementCtx);
+// ── Section heading — eyebrow + display title, the page's recurring voice ───
+function SectionHead({ eyebrow, title, sub }: { eyebrow: string; title: React.ReactNode; sub?: string }) {
   return (
-    <>
-      <div className="flex flex-wrap gap-2 mb-6">
-        {BASE_ELEMENTS.map((el, i) => {
-          const isActive = selected.sym === el.sym;
-          return (
-            <button
-              key={el.sym}
-              onClick={() => setSelected(el)}
-              className="relative flex items-center justify-center rounded-lg font-ui text-sm font-bold transition-all duration-200 hover:scale-110"
-              style={{
-                width: 44, height: 44,
-                background: `radial-gradient(circle at 35% 35%, color-mix(in oklab, ${el.c} ${isActive ? 80 : 55}%, white 15%), color-mix(in oklab, ${el.c} ${isActive ? 50 : 25}%, transparent))`,
-                border: `${isActive ? "2px" : "1.5px"} solid color-mix(in oklab, ${el.c} ${isActive ? 90 : 45}%, transparent)`,
-                boxShadow: isActive ? `0 0 20px -2px ${el.c}, 0 0 40px -8px ${el.c}` : `0 0 8px -4px ${el.c}`,
-                color: "white",
-                animationDelay: `${i * 0.22}s`,
-              }}
-              aria-label={el.name}
-              aria-pressed={isActive}
-            >
-              {el.sym}
-              {isActive && (
-                <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 h-1 w-1 rounded-full"
-                  style={{ background: el.c, boxShadow: `0 0 6px 2px ${el.c}` }} />
-              )}
-            </button>
-          );
-        })}
-        <div className="flex items-center justify-center rounded-lg text-xs text-parchment/50 border border-parchment/20"
-          style={{ width: 44, height: 44 }}>+30</div>
-      </div>
-      <Link to="/elements" className="btn-arcane btn-arcane-hover">
-        <Atom className="h-4 w-4" /> Browse All Elements
-      </Link>
-    </>
+    <Reveal className="text-center mb-14">
+      <p className="text-xs tracking-[0.4em] text-gold uppercase mb-3">{eyebrow}</p>
+      <h2 className="font-display text-4xl md:text-5xl">{title}</h2>
+      {sub && <p className="font-serif italic text-parchment mt-4 text-lg max-w-2xl mx-auto">{sub}</p>}
+    </Reveal>
   );
 }
 
-function BohrModelPanel() {
-  const { selected } = useContext(ElementCtx);
+// Ornamental ink divider between chapters.
+function InkDivider({ label }: { label?: string }) {
   return (
-    <div className="atom-stage-panel relative rounded-2xl overflow-hidden"
-      style={{
-        border: `1px solid color-mix(in oklab, ${selected.c} 35%, transparent)`,
-        boxShadow: `0 0 60px -20px color-mix(in oklab, ${selected.c} 45%, transparent)`,
-        minHeight: "420px",
-        transition: "border-color 0.4s, box-shadow 0.4s",
-      }}>
-      {/* Background rings */}
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-        {[0.85, 0.65, 0.45].map((s, i) => (
-          <div key={i} className="absolute rounded-full"
-            style={{
-              width: `${s * 100}%`, height: `${s * 100}%`,
-              border: `1px solid color-mix(in oklab, ${selected.c} 12%, transparent)`,
-              animation: `float-slow ${7 + i * 2}s ease-in-out infinite`,
-              animationDelay: `${i * 1.2}s`,
-              transition: "border-color 0.4s",
-            }} />
-        ))}
-      </div>
-
-      {/* Re-mount the model when element changes by using sym as key */}
-      <BohrModel3D
-        key={selected.sym}
-        electrons={selected.electrons}
-        color={selected.c}
-        nucleusColor={selected.nc}
-        label={selected.sym}
-      />
-
-      {/* Label */}
-      <div className="absolute bottom-0 left-0 right-0 px-4 py-3 text-center pointer-events-none"
-        style={{ background: "linear-gradient(180deg, transparent, color-mix(in oklab, #0b1220 80%, transparent))" }}>
-        <span className="font-display text-lg" style={{ color: selected.c }}>{selected.sym}</span>
-        <span className="text-white/60 text-xs ml-2 tracking-[0.2em] uppercase">{selected.name} · {selected.num}p</span>
-      </div>
+    <div className="relative z-10 mx-auto flex max-w-4xl items-center gap-5 px-6 py-6">
+      <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, transparent, color-mix(in oklab, var(--color-gold) 55%, transparent))" }} />
+      <span className="text-gold text-sm">✦</span>
+      {label && <p className="font-serif italic text-sm text-parchment whitespace-nowrap">{label}</p>}
+      <span className="text-gold text-sm">✦</span>
+      <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, color-mix(in oklab, var(--color-gold) 55%, transparent), transparent)" }} />
     </div>
   );
 }
 
+// ── HERO — the Alchemist's ceremony, centred (the static page's layout,
+// rebuilt with the real-app-hero-page art). Layered parallax: backdrop,
+// grain, figure and headline each drift on scroll AND lean with the cursor,
+// eased every frame. The living Bohr atom floats above the Alchemist's
+// hands — drag it to spin.
+function HeroScene() {
+  const sectionRef = useRef<HTMLElement>(null);
+  const headRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const target = { x: 0, y: 0 };
+    const eased = { x: 0, y: 0 };
+    let raf = 0;
+    let running = false;
+
+    const onMove = (e: MouseEvent) => {
+      const r = sectionRef.current?.getBoundingClientRect();
+      if (!r) return;
+      target.x = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - 0.5) * 2));
+      target.y = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - 0.5) * 2));
+    };
+    const onLeave = (e: MouseEvent) => {
+      if (!e.relatedTarget) { target.x = 0; target.y = 0; }
+    };
+    window.addEventListener("mousemove", onMove, { passive: true });
+    window.addEventListener("mouseout", onLeave, { passive: true });
+
+    // Every layer declares its own depth: data-par="mouseX,mouseY,scroll".
+    // Transform goes on the SAME element as any blend mode (an ancestor's
+    // transform would isolate the blend — learned the hard way).
+    const layers = Array.from(
+      sectionRef.current?.querySelectorAll<HTMLElement>("[data-par]") ?? [],
+    );
+    let lastSy = -1;
+    const frame = () => {
+      if (!running) return;
+      // Hold still while the theme ripple captures and plays.
+      if (document.documentElement.hasAttribute("data-theme-ripple")) {
+        raf = requestAnimationFrame(frame);
+        return;
+      }
+      const dx = target.x - eased.x;
+      const dy = target.y - eased.y;
+      eased.x += dx * 0.12;
+      eased.y += dy * 0.12;
+      const sy = window.scrollY;
+      // Idle guard: no pointer drift and no scroll → skip all style writes.
+      if (Math.abs(dx) < 0.002 && Math.abs(dy) < 0.002 && sy === lastSy) {
+        raf = requestAnimationFrame(frame);
+        return;
+      }
+      lastSy = sy;
+      for (const el of layers) {
+        const [fx, fy, fs] = (el.dataset.par ?? "0,0,0").split(",").map(Number);
+        el.style.transform = `translate(${(eased.x * fx).toFixed(2)}px, ${(sy * fs + eased.y * fy).toFixed(2)}px)`;
+      }
+      if (headRef.current) {
+        headRef.current.style.transform = `translate(${(eased.x * 7).toFixed(2)}px, ${(sy * -0.22 + eased.y * 5).toFixed(2)}px)`;
+        headRef.current.style.opacity = String(Math.max(0, 1 - sy / 620));
+      }
+      raf = requestAnimationFrame(frame);
+    };
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting && !running) { running = true; raf = requestAnimationFrame(frame); }
+      else if (!e.isIntersecting && running) { running = false; cancelAnimationFrame(raf); }
+    }, { threshold: 0.02 });
+    if (sectionRef.current) io.observe(sectionRef.current);
+
+    return () => {
+      running = false;
+      cancelAnimationFrame(raf);
+      io.disconnect();
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseout", onLeave);
+    };
+  }, []);
+
+  return (
+    <section ref={sectionRef} className="relative min-h-screen overflow-hidden">
+      {/* The hall — glyphed nebula arch by night, sunlit atelier by day.
+          Bled past the edges so the parallax never shows a seam. */}
+      <div className="absolute -inset-[5%]">
+        <img
+          src="/real-app-hero-page/hero-backdrop-dark.webp"
+          alt="" aria-hidden
+          className="absolute inset-0 hidden h-full w-full object-cover dark:block"
+        />
+        <img
+          src="/real-app-hero-page/hero-backdrop-light.webp"
+          alt="" aria-hidden
+          className="absolute inset-0 h-full w-full object-cover dark:hidden"
+        />
+      </div>
+      {/* Grain, crystal frame and side wings are STATIC — they use mix-blend-mode,
+          and parallaxing a blended layer forces the whole stack to re-composite
+          every scroll frame (landing jank). Keeping them still composites once;
+          the backdrop, figure and headline still parallax for depth. */}
+      {/* Grain — gold dust by night, old ink stains by day */}
+      <div
+        className="pointer-events-none absolute -inset-[7%] hidden dark:block"
+        style={{ background: "url('/real-app-hero-page/grain-overlay-dark.webp') center / cover", mixBlendMode: "screen", opacity: 0.55 }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute -inset-[7%] dark:hidden"
+        style={{ background: "url('/real-app-hero-page/grain-overlay-light.webp') center / cover", mixBlendMode: "multiply", opacity: 0.3 }}
+        aria-hidden
+      />
+      {/* Crystal frame — shards ringing the hero's edges, centre left clear */}
+      <div
+        className="pointer-events-none absolute -inset-[6%] hidden dark:block"
+        style={{ background: "url('/real-app-hero-page/crystal-frame-dark.webp') center / cover", mixBlendMode: "lighten", opacity: 0.6 }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute -inset-[6%] dark:hidden"
+        style={{ background: "url('/real-app-hero-page/crystal-frame-light.webp') center / cover", mixBlendMode: "multiply", opacity: 0.4 }}
+        aria-hidden
+      />
+      {/* LEFT wing — ruined arch and thorn vines by night, the ivy column by day */}
+      <img
+        src="/real-app-hero-page/side-ruins-dark.webp"
+        alt="" aria-hidden
+        className="pointer-events-none absolute left-[-3%] top-1/2 hidden h-[115%] -translate-y-1/2 md:dark:block"
+        style={{ mixBlendMode: "lighten" }}
+      />
+      <img
+        src="/real-app-hero-page/side-column-light.webp"
+        alt="" aria-hidden
+        className="pointer-events-none absolute left-[-3%] top-1/2 hidden h-[115%] -translate-y-1/2 md:block dark:hidden"
+        style={{ mixBlendMode: "multiply" }}
+      />
+      {/* RIGHT wing — the chained monolith by night, the rope cliff by day */}
+      <img
+        src="/real-app-hero-page/side-monolith-dark.webp"
+        alt="" aria-hidden
+        className="pointer-events-none absolute right-[-3%] top-1/2 hidden h-[115%] -translate-y-1/2 md:dark:block"
+        style={{ mixBlendMode: "lighten" }}
+      />
+      <img
+        src="/real-app-hero-page/side-cliff-light.webp"
+        alt="" aria-hidden
+        className="pointer-events-none absolute right-[-3%] top-1/2 hidden h-[115%] -translate-y-1/2 md:block dark:hidden"
+        style={{ mixBlendMode: "multiply" }}
+      />
+      {/* Centre veil + fade into the page below */}
+      <div
+        className="pointer-events-none absolute inset-0 hidden dark:block"
+        style={{ background: "radial-gradient(ellipse 58% 62% at 50% 56%, rgb(11 18 32 / 0.52), transparent 78%), linear-gradient(180deg, transparent 62%, var(--color-mist) 97%)" }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute inset-0 dark:hidden"
+        style={{ background: "radial-gradient(ellipse 58% 62% at 50% 56%, rgb(246 243 236 / 0.6), transparent 78%), linear-gradient(180deg, transparent 62%, var(--color-mist) 97%)" }}
+        aria-hidden
+      />
+
+      {/* The Alchemist — the middle hero, a bit big. Conjurer by night,
+          apprentice by day (backgrounds cut, so parallax transforms are safe). */}
+      <div
+        className="pointer-events-none absolute bottom-[-4vh] left-1/2 z-[5] -translate-x-1/2"
+        style={{ height: "min(86vh, 820px)", aspectRatio: "1792 / 2432" }}
+      >
+        <div data-par="20,12,0.06" className="will-change-transform relative h-full w-full">
+          {/* Bottom fade grounds the figures into the page fade (and hides
+              the painted floor shadows the cutout keeps). */}
+          <img
+            src="/real-app-hero-page/cut-figure-conjurer-dark.webp"
+            alt="The Alchemist"
+            className="absolute inset-0 hidden h-full w-full object-contain dark:block"
+            style={{
+              maskImage: "linear-gradient(180deg, black 80%, transparent 98%)",
+              WebkitMaskImage: "linear-gradient(180deg, black 80%, transparent 98%)",
+            }}
+          />
+          <img
+            src="/real-app-hero-page/cut-figure-apprentice-light.webp"
+            alt="The Alchemist's apprentice"
+            className="absolute inset-0 h-full w-full object-contain dark:hidden"
+            style={{
+              maskImage: "linear-gradient(180deg, black 76%, transparent 96%)",
+              WebkitMaskImage: "linear-gradient(180deg, black 76%, transparent 96%)",
+            }}
+          />
+        </div>
+      </div>
+
+      {/* The proclamation — centred over the ceremony */}
+      <div className="pointer-events-none relative z-10 flex min-h-screen flex-col items-center px-6 pb-[5vh] pt-28 text-center">
+        <div ref={headRef} className="will-change-transform relative">
+          <p className="mb-4 text-[11px] uppercase tracking-[0.45em] text-gold" style={{ textShadow: "0 1px 10px color-mix(in oklab, var(--color-mist) 90%, transparent), 0 0 4px color-mix(in oklab, var(--color-mist) 70%, transparent)" }}>
+            ✦ The Alchemist's Grimoire ✦
+          </p>
+          <h1 className="font-display text-5xl leading-[1.05] md:text-6xl lg:text-7xl">
+            Where <span className="aurora-gradient animate-aurora">Elements</span>
+            <br /> Whisper Their <span className="text-wraith text-glow-violet">Secrets.</span>
+          </h1>
+        </div>
+
+        <div className="relative mt-auto">
+          {/* Frosted band so the tagline reads over the robes */}
+          <div
+            className="absolute -inset-x-24 -inset-y-5 -z-10"
+            style={{
+              background: "color-mix(in oklab, var(--color-mist) 82%, transparent)",
+              maskImage: "radial-gradient(ellipse 58% 80% at 50% 50%, black 52%, transparent 84%)",
+              WebkitMaskImage: "radial-gradient(ellipse 58% 80% at 50% 50%, black 52%, transparent 84%)",
+            }}
+            aria-hidden
+          />
+          <p className="mx-auto max-w-xl font-serif text-lg italic leading-relaxed text-parchment">
+            Real chemistry, bound in a grimoire. Scan the cards, mix the
+            elements, and forge what the old masters only dreamed of.
+          </p>
+          <div className="pointer-events-auto mt-6 flex flex-wrap items-center justify-center gap-4">
+            <Link to="/app" className="btn-arcane btn-arcane-hover">
+              Begin the Apprenticeship
+            </Link>
+            <a href="#chronicle" className="btn-ghost-arcane">
+              Read the Chronicle
+            </a>
+          </div>
+          <p className="mt-5 text-[10px] uppercase tracking-[0.25em] text-parchment/70">
+            Free to explore · No account needed for the elements
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ── CHAPTER I — What is AlcheMix (typography + the deck box) ───────────────
+// Two columns: the chronicle's words, and the physical card box — hover or
+// tap and the box opens, dips a little, and two cards rise out of it into a
+// line. All real generated art, no SVG.
+function DeckBox() {
+  const [open, setOpen] = useState(false);
+  const cards = [
+    { light: "/chronicle/card-hydrogen.webp", dark: "/chronicle/card-hydrogen-dark.webp", alt: "The Hydrogen card", x: "-56%", r: -11, d: 0 },
+    { light: "/chronicle/card-oxygen.webp", dark: "/chronicle/card-oxygen-dark.webp", alt: "The Oxygen card", x: "56%", r: 11, d: 120 },
+  ];
+  return (
+    <div className="mx-auto w-full max-w-[400px]">
+      <div
+        className="relative h-[440px] w-full cursor-pointer select-none sm:h-[500px]"
+        onMouseEnter={() => setOpen(true)}
+        onMouseLeave={() => setOpen(false)}
+        onClick={() => setOpen((o) => !o)}
+        role="button"
+        aria-pressed={open}
+        aria-label="Open the AlcheMix card box"
+      >
+        {/* The two cards — tucked inside, rising into a line when opened.
+            Day and night editions swap with the theme. */}
+        {cards.map((c) => {
+          const cardStyle = {
+            zIndex: open ? 3 : 1,
+            transform: open
+              ? `translate(calc(-50% + ${c.x}), -62%) rotate(0deg)`
+              : `translate(-50%, 4%) rotate(${c.r}deg) scale(0.5)`,
+            opacity: open ? 1 : 0,
+            transition: "transform .7s cubic-bezier(.34,1.56,.64,1), opacity .4s ease",
+            transitionDelay: open ? `${c.d}ms` : "0ms",
+            filter: "drop-shadow(0 12px 26px rgb(0 0 0 / 0.35))",
+          } as const;
+          return (
+            <span key={c.alt}>
+              <img src={c.light} alt={c.alt} className="absolute left-1/2 top-[34%] w-36 sm:w-40 dark:hidden" style={cardStyle} />
+              <img src={c.dark} alt={c.alt} className="absolute left-1/2 top-[34%] hidden w-36 sm:w-40 dark:block" style={cardStyle} />
+            </span>
+          );
+        })}
+        {/* The box — swaps open and dips subtly to let the cards out.
+            Parchment edition by day, midnight edition by night. */}
+        <div
+          className="absolute inset-x-0 bottom-0 z-[2] flex justify-center"
+          style={{
+            transform: open ? "translateY(18px) scale(0.95)" : "none",
+            transition: "transform .6s cubic-bezier(.22,1,.36,1)",
+          }}
+        >
+          <div className="relative w-[80%]" style={{ filter: "drop-shadow(0 18px 30px rgb(0 0 0 / 0.3))" }}>
+            {/* sizing img (keeps the wrapper's height) */}
+            <img
+              src="/chronicle/card-box-closed.webp"
+              alt="The AlcheMix card box"
+              className="w-full dark:hidden"
+              style={{ opacity: open ? 0 : 1, transition: "opacity .35s ease" }}
+            />
+            <img
+              src="/chronicle/card-box-closed-dark.webp"
+              alt="The AlcheMix card box"
+              className="hidden w-full dark:block"
+              style={{ opacity: open ? 0 : 1, transition: "opacity .35s ease" }}
+            />
+            <img
+              src="/chronicle/card-box-open.webp"
+              alt=""
+              aria-hidden
+              className="absolute inset-0 w-full dark:hidden"
+              style={{ opacity: open ? 1 : 0, transition: "opacity .35s ease" }}
+            />
+            <img
+              src="/chronicle/card-box-open-dark.webp"
+              alt=""
+              aria-hidden
+              className="absolute inset-0 hidden w-full dark:block"
+              style={{ opacity: open ? 1 : 0, transition: "opacity .35s ease" }}
+            />
+          </div>
+        </div>
+      </div>
+      <p className="mt-3 text-center text-[10px] uppercase tracking-[0.25em] text-parchment/60">
+        {open ? "The base elements, ready to forge" : "Hover — or tap — to open the deck"}
+      </p>
+    </div>
+  );
+}
+
+function ChronicleScroll() {
+  return (
+    <section id="chronicle" className="relative scroll-mt-24 overflow-hidden py-20" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 760px" }}>
+      <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 lg:grid-cols-2">
+        {/* The words */}
+        <Reveal>
+          <p className="mb-3 text-xs uppercase tracking-[0.4em] text-gold">Chapter I — The Chronicle</p>
+          <h2 className="font-display mb-6 text-4xl md:text-5xl">
+            What is <span className="text-gold">AlcheMix?</span>
+          </h2>
+          <div className="space-y-4 font-serif text-lg leading-relaxed text-parchment">
+            <p>
+              AlcheMix is a chemistry learning platform wearing the cloak of
+              alchemy. Beneath the robes, every number is textbook-true — real
+              bond types, real reactions, real elements — taught through a
+              world of grimoires, trials, and forging.
+            </p>
+            <p>
+              It begins with a deck of <strong className="text-spectral">12 physical trading cards</strong>,
+              the base elements. Point a phone at a card and it wakes in
+              augmented reality; carry the deck to the website and the full
+              Grimoire opens — simulations, guided lessons, and the Compound
+              Codex of everything you have forged.
+            </p>
+            <p>
+              Educators hold the other half of the book: classes, assignments,
+              and a live view of every apprentice's progress.
+            </p>
+          </div>
+          {/* The tallies */}
+          <div className="mt-7 flex flex-wrap gap-x-8 gap-y-2 border-t pt-5" style={{ borderColor: "color-mix(in oklab, var(--color-gold) 30%, transparent)" }}>
+            {[
+              ["12", "physical cards"],
+              ["118", "elements chronicled"],
+              ["20+", "learning modules"],
+            ].map(([n, l]) => (
+              <div key={l} className="flex items-baseline gap-2">
+                <span className="font-display text-3xl text-gold">{n}</span>
+                <span className="text-xs uppercase tracking-[0.15em] text-parchment/70">{l}</span>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+
+        {/* The deck */}
+        <Reveal delay={140}>
+          <DeckBox />
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+// ── CHAPTER II — How does it work (the live forging rite) ───────────────────
+// A real taste of the system: two Grimoire cards go into the altar and the
+// app's actual combine() engine decides what — if anything — is forged.
+function MiniCard({ card, onClick, dimmed }: { card: Card; onClick: () => void; dimmed: boolean }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={dimmed}
+      className="hex-stone group w-[76px] p-[2px] transition-all duration-200 hover:-translate-y-1 disabled:opacity-30 disabled:hover:translate-y-0"
+      style={{
+        aspectRatio: "0.9",
+        background: `linear-gradient(170deg, color-mix(in oklab, ${card.color} 55%, var(--color-gold)), color-mix(in oklab, var(--color-gold) 40%, transparent))`,
+      }}
+      aria-label={`Pick ${card.name}`}
+    >
+      <span
+        className="hex-stone flex h-full w-full flex-col items-center justify-center"
+        style={{
+          background: `radial-gradient(circle at 36% 24%, color-mix(in oklab, ${card.color} 26%, var(--color-slate-sunken)), var(--color-mist) 74%)`,
+        }}
+      >
+        {/* Symbols keep chemical casing (Na, Cl) — serif like the engraved stones. */}
+        <span className="font-serif text-2xl font-semibold" style={{ color: `color-mix(in oklab, ${card.color} 70%, var(--color-spectral))` }}>
+          {card.symbol}
+        </span>
+        <span className="text-[8px] uppercase tracking-widest text-parchment">{card.name}</span>
+      </span>
+    </button>
+  );
+}
+
+function AltarSlot({ card, onClear, label }: { card: Card | null; onClear: () => void; label: string }) {
+  if (!card) {
+    return (
+      <div
+        className="hex-stone w-[108px] p-[2px]"
+        style={{ aspectRatio: "0.9", background: "color-mix(in oklab, var(--color-gold) 35%, transparent)" }}
+      >
+        <div
+          className="hex-stone flex h-full w-full flex-col items-center justify-center text-center"
+          style={{ background: "color-mix(in oklab, var(--color-mist) 80%, transparent)" }}
+        >
+          <span className="mb-1 text-wraith/80">✦</span>
+          <span className="px-3 text-[10px] uppercase tracking-[0.15em] text-parchment">{label}</span>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <button
+      onClick={onClear}
+      className="hex-stone group w-[108px] p-[2px] transition-transform hover:scale-[1.04]"
+      style={{
+        aspectRatio: "0.9",
+        background: `linear-gradient(170deg, color-mix(in oklab, ${card.color} 60%, var(--color-gold)), color-mix(in oklab, var(--color-gold) 45%, transparent))`,
+      }}
+      aria-label={`Remove ${card.name}`}
+      title={`Remove ${card.name}`}
+    >
+      <span
+        className="hex-stone flex h-full w-full flex-col items-center justify-center"
+        style={{ background: `radial-gradient(circle at 36% 24%, color-mix(in oklab, ${card.color} 28%, var(--color-slate-sunken)), var(--color-mist) 74%)` }}
+      >
+        <span className="font-serif text-4xl font-semibold" style={{ color: `color-mix(in oklab, ${card.color} 70%, var(--color-spectral))` }}>{card.symbol}</span>
+        <span className="mt-0.5 text-[9px] uppercase tracking-widest text-parchment">{card.name}</span>
+        <span className="text-[9px] text-parchment/0 transition-colors group-hover:text-parchment/80">× remove</span>
+      </span>
+    </button>
+  );
+}
+
+function ForgeRite() {
+  const [slotA, setSlotA] = useState<Card | null>(null);
+  const [slotB, setSlotB] = useState<Card | null>(null);
+  const [result, setResult] = useState<MixResult | null>(null);
+  const [forging, setForging] = useState(false);
+
+  const pick = (card: Card) => {
+    setResult(null);
+    if (!slotA) setSlotA(card);
+    else if (!slotB) setSlotB(card);
+  };
+  const clear = (which: "a" | "b") => {
+    setResult(null);
+    if (which === "a") setSlotA(null);
+    else setSlotB(null);
+  };
+  const forge = () => {
+    if (!slotA || !slotB || forging) return;
+    setForging(true);
+    setResult(null);
+    window.setTimeout(() => {
+      setResult(combine(slotA, slotB));
+      setForging(false);
+    }, 900);
+  };
+
+  return (
+    <section className="relative overflow-hidden py-20" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 1400px" }}>
+      {/* Bench backdrop — a warm pool of candlelight grounds the altar so the
+          rite reads as a lit workbench, not a floating card. Pure decoration. */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-0">
+        <div
+          className="absolute left-1/2 top-[58%] h-[560px] w-[900px] max-w-[120vw] -translate-x-1/2 -translate-y-1/2 rounded-full blur-2xl"
+          style={{ background: "radial-gradient(ellipse, color-mix(in oklab, var(--color-gold) 13%, transparent), transparent 70%)" }}
+        />
+      </div>
+      <div className="relative z-10 mx-auto max-w-5xl px-6">
+        <SectionHead
+          eyebrow="Chapter II — The Rite"
+          title="How does it work?"
+          sub="Draw two cards from the Grimoire and lay them on the altar. The forge obeys real chemistry — some pairs bond, some refuse."
+        />
+
+        {/* The three movements of the rite */}
+        <Reveal className="mb-12">
+          <div className="grid gap-6 md:grid-cols-3">
+            {[
+              { n: "I", title: "Draw from the Deck", body: "Twenty physical base-element cards in the set. In the app they wake in AR; here, draw any two below." },
+              { n: "II", title: "Mix at the Altar", body: "The combiner weighs valence, charge, and electronegativity — the same engine that runs the real forge." },
+              { n: "III", title: "Forge & Collect", body: "A true bond forges a compound card for your Codex. An impossible mix earns the Alchemist's counsel instead." },
+            ].map(({ n, title, body }) => (
+              <div key={n} className="ink-panel ink-halftone p-6 text-center">
+                <p className="mb-2 text-xs tracking-[0.4em] text-teal">— {n} —</p>
+                <h3 className="font-display mb-2 text-2xl">{title}</h3>
+                <p className="text-sm leading-relaxed text-parchment">{body}</p>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+
+        {/* The altar bench — the workbench surface is layered under the rite so
+            the cards visibly rest on it; a gold-ruled slab holds the mix. */}
+        <Reveal>
+          <div className="ink-panel relative overflow-hidden rounded-2xl">
+            <img
+              src="/dark-alchemy-vibe/band-workbench.webp"
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 bottom-0 h-[62%] w-full object-cover opacity-20"
+              style={{
+                maskImage: "linear-gradient(180deg, transparent, black 70%)",
+                WebkitMaskImage: "linear-gradient(180deg, transparent, black 70%)",
+              }}
+            />
+            <div className="relative p-6 md:p-10">
+              {/* The deck — base cards to draw from */}
+              <p className="mb-3 text-center text-[10px] uppercase tracking-[0.3em] text-parchment/70">
+                The base cards — draw two
+              </p>
+              <div className="mb-8 flex flex-wrap justify-center gap-2.5">
+                {BASE_CARDS.map((c) => (
+                  <MiniCard
+                    key={c.symbol}
+                    card={c}
+                    dimmed={!!slotA && !!slotB}
+                    onClick={() => pick(c)}
+                  />
+                ))}
+              </div>
+
+              {/* The altar slab — a distinct inset surface the mix is laid on */}
+              <div
+                className="rounded-xl border border-[color-mix(in_oklab,var(--color-gold)_30%,transparent)] px-4 py-6 md:px-8"
+                style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)" }}
+              >
+                <p className="mb-5 text-center font-serif text-xs italic text-parchment/60">
+                  — lay them on the altar —
+                </p>
+                {/* Slots + forge: stacked on mobile, a single row on desktop */}
+                <div className="flex flex-col items-center justify-center gap-4 md:flex-row md:gap-6">
+                  <AltarSlot card={slotA} onClear={() => clear("a")} label="First card" />
+                  <span className="font-display text-3xl text-gold">+</span>
+                  <AltarSlot card={slotB} onClear={() => clear("b")} label="Second card" />
+                  <span className="font-display text-3xl text-gold md:-rotate-0 rotate-90">→</span>
+
+                  {/* Crucible / result */}
+                  <div className="relative flex h-40 w-56 items-center justify-center">
+                {forging && (
+                  <img
+                    src="/Hero-Section/rings.png"
+                    alt=""
+                    aria-hidden
+                    className="absolute h-36 w-36"
+                    style={{ animation: "spin-slow 2.5s linear infinite", mixBlendMode: "screen", opacity: 0.9 }}
+                  />
+                )}
+                {!forging && result?.valid && (
+                  <div
+                    className={`animate-card-pop flex h-full w-full flex-col items-center justify-center rounded-xl px-3 text-center ${result.unstable ? "animate-hazard-shake" : ""}`}
+                    style={{
+                      background: "linear-gradient(170deg, color-mix(in oklab, var(--color-gold) 18%, var(--color-slate-sunken)), var(--color-slate-sunken))",
+                      border: "1.5px solid color-mix(in oklab, var(--color-gold) 60%, transparent)",
+                      boxShadow: "0 0 30px -8px color-mix(in oklab, var(--color-gold) 55%, transparent)",
+                    }}
+                  >
+                    <span className="font-serif text-4xl font-semibold text-gold">{result.formula}</span>
+                    <span className="mt-1 font-ui text-sm font-semibold">{result.name}</span>
+                    {result.commonName && (
+                      <span className="font-serif text-xs italic text-parchment">"{result.commonName}"</span>
+                    )}
+                    <span className="mt-1.5 rounded-full px-2.5 py-0.5 text-[9px] uppercase tracking-[0.2em]"
+                      style={{
+                        color: "var(--color-emerald-elixir)",
+                        border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 45%, transparent)",
+                        background: "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)",
+                      }}>
+                      {result.bond} bond
+                    </span>
+                  </div>
+                )}
+                {!forging && result && !result.valid && (
+                  <div className="animate-card-pop flex h-full w-full flex-col items-center justify-center px-4 text-center"
+                    style={{
+                      background: "color-mix(in oklab, var(--color-amber-scry) 10%, var(--color-slate-sunken))",
+                      border: "1.5px dashed color-mix(in oklab, var(--color-amber-scry) 55%, transparent)",
+                    }}>
+                    <span className="mb-1 text-[10px] uppercase tracking-[0.25em] text-amber-scry">The Alchemist Counsels</span>
+                    <span className="font-serif text-sm italic leading-snug text-parchment">{result.reason}</span>
+                  </div>
+                )}
+                {!forging && !result && (
+                  <div className="rune-dashed flex h-full w-full items-center justify-center rounded-xl">
+                    <span className="px-4 text-center text-[10px] uppercase tracking-[0.2em] text-parchment/70">
+                      The forged card appears here
+                    </span>
+                  </div>
+                )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-7 flex flex-col items-center gap-3">
+              <button
+                onClick={forge}
+                disabled={!slotA || !slotB || forging}
+                className="btn-arcane btn-arcane-hover disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {forging ? "Forging…" : "Forge the Mix"}
+              </button>
+              <p className="max-w-md text-center text-xs text-parchment/60">
+                {result?.valid && result.uses ? (
+                  <span className="font-serif italic text-parchment">Found in the world: {result.uses}</span>
+                ) : (
+                  <>Not sure where to start? Try <span className="text-gold">Na + Cl</span>,{" "}
+                  <span className="text-gold">H + O</span>, or <span className="text-gold">Na + Fe</span> —
+                  and see what the forge says.</>
+                )}
+              </p>
+              </div>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+// ── CHAPTER III — Marginalia (facts about the system) ───────────────────────
+function Marginalia() {
+  const FEATURES = [
+    { n: "I", title: "A Shelf of 20+ Modules", body: "Titration, gas laws, equilibrium, electrochemistry, VSEPR shapes, radioactive decay and more — every simulation built on textbook-accurate values." },
+    { n: "II", title: "AR Card Scanning", body: "The physical Grimoire cards wake under a phone camera: 3D atoms in your hands, and a scanning ceremony that runs the real compound engine." },
+    { n: "III", title: "118 Elements, with Lore", body: "The full periodic table — trends, states, discovery timeline — plus etymology and alchemical history for every element in the chronicle." },
+    { n: "IV", title: "Ask the Alchemist", body: "A mentor on every page. Wrong answers and impossible mixes earn warm counsel, never punishment — and the mentor still answers offline." },
+    { n: "V", title: "The Educator's Astrolabe", body: "Classes with join codes, a quiz builder, mission configurator, gradebook, and a live performance matrix that surfaces struggling concepts early." },
+    { n: "VI", title: "Rites that Build Habits", body: "Daily starter questions with streaks, spaced review that remembers what you forget, and trials that award stars — motivation, never grades." },
+  ];
+  return (
+    <section className="relative z-10 py-20" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 1100px" }}>
+      <div className="mx-auto max-w-6xl px-6">
+        <SectionHead
+          eyebrow="Chapter III — Marginalia"
+          title="Noted in the margins."
+          sub="More of what the system holds, for apprentices and their educators."
+        />
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          {FEATURES.map(({ n, title, body }, i) => (
+            <Reveal key={title} delay={(i % 3) * 110}>
+              <div className="ink-panel ink-halftone group h-full p-6 transition-transform duration-300 hover:-translate-y-1">
+                <div className="mg-num">{n}</div>
+                <h3 className="mb-2 text-lg font-semibold">{title}</h3>
+                <p className="text-sm leading-relaxed text-parchment">{body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+
+        {/* Two doors — apprentice & educator */}
+        <Reveal className="mt-14">
+          <div className="grid gap-6 md:grid-cols-2">
+            <div className="ink-panel p-8">
+              <p className="mb-1 text-[11px] uppercase tracking-[0.3em] text-wraith">Students</p>
+              <h3 className="font-display mb-3 text-2xl">For Apprentices</h3>
+              <p className="mb-5 text-sm leading-relaxed text-parchment">
+                Collect the cards, pass the trials, fill your Codex. The
+                element browser is open to everyone — no account, no key.
+              </p>
+              <Link to="/elements" className="btn-arcane btn-arcane-hover text-sm">
+                Browse the Elements
+              </Link>
+            </div>
+            <div className="ink-panel p-8">
+              <p className="mb-1 text-[11px] uppercase tracking-[0.3em] text-gold">Teachers &amp; Schools</p>
+              <h3 className="font-display mb-3 text-2xl">For Educators</h3>
+              <p className="mb-5 text-sm leading-relaxed text-parchment">
+                Open a class with a join code and watch the whole room learn —
+                assignments, analytics, and evidence review in one console.
+              </p>
+              <Link to="/schools" className="btn-ghost-arcane text-sm">
+                Why Schools Choose AlcheMix
+              </Link>
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+// ── Final summons ────────────────────────────────────────────────────────────
+function FinalSummons() {
+  return (
+    <section className="relative overflow-hidden py-24" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 700px" }}>
+      <Reveal className="relative mx-auto max-w-3xl px-6">
+        {/* The summons plate — double gold rule, a revolving transmutation
+            seal turning slowly behind the words (dark mode only). */}
+        <div className="ink-panel relative overflow-hidden px-6 py-16 text-center md:px-14">
+          <div className="pointer-events-none absolute left-1/2 top-1/2 hidden aspect-square w-[560px] -translate-x-1/2 -translate-y-1/2 dark:block">
+            <div
+              className="animate-spin-slower h-full w-full"
+              style={{
+                background: "url('/dark-alchemy-vibe/hf_20261011_153423_0ee5b51a-ca2f-478b-b917-254fd5752b5c.png') center / contain no-repeat",
+                mixBlendMode: "screen",
+                opacity: 0.32,
+                maskImage: "radial-gradient(circle closest-side, black 70%, transparent 96%)",
+                WebkitMaskImage: "radial-gradient(circle closest-side, black 70%, transparent 96%)",
+              }}
+            />
+          </div>
+
+          <p className="relative mb-4 text-xs uppercase tracking-[0.4em] text-gold">✦ The Summons ✦</p>
+          <h2 className="relative mb-5 font-display text-4xl md:text-5xl">
+            The Grimoire is waiting.<br />
+            <span className="text-gold" style={{ textShadow: "0 0 26px color-mix(in oklab, var(--color-gold) 45%, transparent)" }}>
+              Open it.
+            </span>
+          </h2>
+          <p className="relative mx-auto mb-9 max-w-xl font-serif text-lg italic leading-relaxed text-parchment">
+            Start with the elements — free, no account. When you're ready,
+            step into the Grimoire and begin forging.
+          </p>
+          <div className="relative flex flex-wrap items-center justify-center gap-4">
+            <Link to="/app" className="btn-arcane btn-arcane-hover">
+              Enter the Grimoire
+            </Link>
+            <Link to="/elements" className="btn-ghost-arcane">
+              Start with Elements
+            </Link>
+          </div>
+          <p className="relative mt-7 text-[10px] uppercase tracking-[0.25em] text-parchment/60">
+            Free to explore · No account needed for the elements
+          </p>
+        </div>
+      </Reveal>
+    </section>
+  );
+}
+
+// Both themes' artwork, so a theme flip never stalls on network + decode.
+// CSS backgrounds on display:none elements are NOT fetched until shown —
+// without this, the ripple froze while the other edition downloaded.
+const THEME_ART = [
+  "/backdrops/night-ink.webp", "/backdrops/parchment-day.webp",
+  "/real-app-hero-page/hero-backdrop-dark.webp", "/real-app-hero-page/hero-backdrop-light.webp",
+  "/real-app-hero-page/grain-overlay-dark.webp", "/real-app-hero-page/grain-overlay-light.webp",
+  "/real-app-hero-page/crystal-frame-dark.webp", "/real-app-hero-page/crystal-frame-light.webp",
+  "/real-app-hero-page/side-ruins-dark.webp", "/real-app-hero-page/side-column-light.webp",
+  "/real-app-hero-page/side-monolith-dark.webp", "/real-app-hero-page/side-cliff-light.webp",
+  "/real-app-hero-page/cut-figure-conjurer-dark.webp", "/real-app-hero-page/cut-figure-apprentice-light.webp",
+  "/chronicle/card-box-closed.webp", "/chronicle/card-box-closed-dark.webp",
+  "/chronicle/card-box-open.webp", "/chronicle/card-box-open-dark.webp",
+  "/chronicle/card-hydrogen.webp", "/chronicle/card-hydrogen-dark.webp",
+  "/chronicle/card-oxygen.webp", "/chronicle/card-oxygen-dark.webp",
+];
+
+function usePrefetchThemeArt() {
+  useEffect(() => {
+    const idle: (cb: () => void) => void =
+      window.requestIdleCallback?.bind(window) ??
+      ((cb: () => void) => { window.setTimeout(cb, 1200); });
+    idle(() => {
+      for (const src of THEME_ART) {
+        const img = new Image();
+        img.src = src;
+        img.decode?.().catch(() => {});
+      }
+    });
+  }, []);
+}
+
 function Landing() {
-  const [selectedEl, setSelectedEl] = useState(BASE_ELEMENTS[5]); // Gold default
-  const y = useScrollY();
-  const heroRef = useRef<HTMLDivElement>(null);
+  usePrefetchThemeArt();
 
   // Signed-in students skip the marketing page and go straight to the dashboard.
   const navigate = useNavigate();
@@ -277,466 +857,39 @@ function Landing() {
     else setAuthReady(true);
   }), [navigate]);
 
-  const heroEl = ALCHEMIX_ELEMENT;
-
   // Hold the page until we know whether to redirect — avoids flashing the
   // landing to a logged-in student before the bounce to /app.
   if (!authReady) {
-    return <div className="bg-arcane min-h-screen flex items-center justify-center">
-      <FlaskConical className="h-8 w-8 text-teal animate-spin" />
-    </div>;
+    return <AlcheLoader label={null} />;
   }
 
   return (
-    <ElementCtx.Provider value={{ selected: selectedEl, setSelected: setSelectedEl }}>
-    <div className="bg-arcane min-h-screen overflow-x-hidden text-spectral">
-      {/* Starfield */}
-      <div className="bg-arcane-stars pointer-events-none fixed inset-0 z-0 opacity-70" />
-
-      {/* Floating Pill Nav (shared across the app) */}
+    <div className="grimoire-skin min-h-screen overflow-x-hidden text-spectral">
+      {/* GPU-composited page backdrop (replaces background-attachment:fixed,
+          which repainted the whole page on every scroll frame). */}
+      <div className="bg-grimoire-fixed" aria-hidden />
       <FloatingNav />
 
-      {/* HERO — living atom */}
-      <section
-        ref={heroRef}
-        className="relative flex min-h-screen items-center overflow-hidden pt-28 pb-16"
-      >
-        {/* Single ambient glow behind the atom */}
-        <div
-          className="absolute inset-0 z-0"
-          style={{
-            background: `radial-gradient(ellipse 85% 65% at 62% 52%, color-mix(in oklab, ${heroEl.color} 20%, transparent) 0%, color-mix(in oklab, var(--color-wraith) 10%, transparent) 45%, transparent 70%)`,
-          }}
-        />
+      <HeroScene />
 
-        <div className="relative z-20 mx-auto grid w-full max-w-6xl grid-cols-1 items-center gap-8 px-6 md:grid-cols-2 md:gap-10">
-          {/* Left — copy */}
-          <div
-            className="order-2 text-center md:order-1 md:text-left"
-            style={{ transform: `translateY(${y * -0.25}px)`, opacity: Math.max(0, 1 - y / 700) }}
-          >
-            <h1 className="font-display text-5xl leading-[1.05] md:text-6xl lg:text-7xl">
-              Where <span className="aurora-gradient animate-aurora">Elements</span>
-              <br /> Whisper Their <span className="text-wraith text-glow-violet">Secrets.</span>
-            </h1>
-            <p className="mx-auto mt-6 max-w-xl text-lg leading-relaxed text-parchment md:mx-0">
-              An augmented-reality chemistry platform for secondary and tertiary
-              education. Students turn, inspect, and forge molecular structures in 3D —
-              while educators track every step in real time.
-            </p>
-            <div className="mt-9 flex flex-wrap items-center justify-center gap-4 md:justify-start">
-              <Link to="/app" className="btn-arcane btn-arcane-hover">
-                <FlaskConical className="h-4 w-4" /> Start Learning
-              </Link>
-              <a href="#discover" className="btn-ghost-arcane">
-                <ScrollText className="h-4 w-4" /> Explore Features
-              </a>
-            </div>
-          </div>
+      {/* Torn parchment seam between the sky and the chronicle (dark only —
+          in light the parchment page needs no seam). */}
+      <div
+        className="relative z-10 hidden h-24 md:h-32 dark:block"
+        style={{ background: "url('/dark-alchemy-vibe/hf_20261011_153424_ee3e2950-5aa7-4b5e-9619-bf958dfc863d.png') center / cover no-repeat" }}
+        aria-hidden
+      />
 
-          {/* Right — the AlcheMix signature atom (spins on its own, drag to spin) */}
-          <div
-            className="order-1 relative flex items-center justify-center md:order-2"
-            style={{ transform: `translateY(${y * -0.1}px)` }}
-          >
-            {/* Faint orbital rings behind the atom */}
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              {[1, 0.78].map((s, i) => (
-                <div
-                  key={i}
-                  className="absolute rounded-full"
-                  style={{
-                    width: `min(${s * 100}%, ${s * 500}px)`,
-                    aspectRatio: "1",
-                    border: `1px solid color-mix(in oklab, ${heroEl.color} ${14 - i * 5}%, transparent)`,
-                  }}
-                />
-              ))}
-            </div>
+      <ChronicleScroll />
+      <InkDivider label="Every element tells a story" />
+      <ForgeRite />
+      <InkDivider label="Some pairs bond — some refuse" />
+      <Marginalia />
+      <FinalSummons />
 
-            <div className="relative w-full max-w-[460px]">
-              {/* Dark stage so the luminous atom reads on the light-mode page.
-                  Invisible (transparent) in dark mode — the night sky is stage enough. */}
-              <div
-                className="atom-stage-orb pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
-                style={{ width: "min(116%, 520px)", aspectRatio: "1" }}
-              />
-              <div className="relative h-[380px] md:h-[480px]">
-                <BohrModel3D
-                  interactive
-                  tumble
-                  electrons={heroEl.electrons}
-                  color={heroEl.color}
-                  nucleusColor={heroEl.nucleusColor}
-                  label={heroEl.sym}
-                />
-              </div>
-
-              {/* Element caption */}
-              <div className="pointer-events-none absolute bottom-1 left-1/2 -translate-x-1/2 text-center">
-                <div className="font-display text-2xl" style={{ color: heroEl.color }}>{heroEl.name}</div>
-                <div className="text-[10px] uppercase tracking-[0.25em] text-parchment/70">
-                  The AlcheMix Element · {heroEl.protons} protons
-                </div>
-              </div>
-
-              {/* Interaction hint */}
-              <div className="pointer-events-none absolute right-1 top-1 text-[9px] uppercase tracking-[0.2em] text-parchment/50">
-                drag to spin ⟳
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Scroll hint */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 text-[10px] tracking-[0.3em] text-gold/70 uppercase">
-          Scroll to explore ▾
-        </div>
-      </section>
-
-      {/* ── SECTION 1: Hook — molecule canvas backdrop ── */}
-      <section id="discover" className="relative z-10 py-24 overflow-hidden">
-        <div className="absolute inset-0 opacity-25 pointer-events-none">
-          <MoleculeCanvas />
-        </div>
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: "linear-gradient(180deg, var(--color-mist) 0%, transparent 20%, transparent 80%, var(--color-mist) 100%)" }} />
-        <Reveal className="relative mx-auto max-w-4xl px-6 text-center">
-          <p className="text-xs tracking-[0.4em] text-gold uppercase mb-4">The Problem We Solve</p>
-          <h2 className="font-display text-4xl md:text-5xl mb-6">
-            Chemistry is invisible.<br />
-            <span className="text-wraith text-glow-violet">We make it tangible.</span>
-          </h2>
-          <p className="text-parchment max-w-2xl mx-auto leading-relaxed text-lg">
-            Atoms, bonds, and reactions happen at a scale the human eye can't observe. AlcheMix AR
-            overlays molecular structures into your physical world through augmented reality —
-            turning abstract concepts into something you can rotate, inspect, and actually understand.
-          </p>
-        </Reveal>
-      </section>
-
-      {/* ── SECTION 2: Three pillars with orbit rings ── */}
-      <section className="relative z-10 py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <Reveal className="text-center mb-16">
-            <p className="text-xs tracking-[0.4em] text-gold uppercase mb-3">Three Pillars</p>
-            <h2 className="font-display text-4xl md:text-5xl">What AlcheMix AR is made of.</h2>
-          </Reveal>
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                color: "var(--color-wraith)",
-                icon: <Atom className="h-7 w-7" />,
-                title: "AR Visualisation",
-                body: "Students point their device at a Grimoire card or open the sandbox and watch molecular structures materialise in 3D — in their hands, in their physical world.",
-                detail: "Bonds, geometry, and orbital shells rendered live.",
-              },
-              {
-                color: "var(--color-gold)",
-                icon: <Eye className="h-7 w-7" />,
-                title: "Educator Dashboard",
-                body: "A live analytics panel gives teachers class-wide visibility — experiment attempts, accuracy rates, and per-student logs — all in real time, all in one place.",
-                detail: "Identify struggling students before they fall behind.",
-              },
-              {
-                color: "var(--color-emerald-elixir)",
-                icon: <Camera className="h-7 w-7" />,
-                title: "AI Evidence Journal",
-                body: "Students photograph real-world chemistry and submit it. An AI vision model analyses each entry and logs a scientific judgment into a personal learning record.",
-                detail: "Bridges classroom chemistry and the real world.",
-              },
-            ].map(({ color, icon, title, body, detail }, i) => (
-              <Reveal key={title} delay={i * 120}>
-                <div className="rounded-2xl p-6 h-full flex flex-col group hover:-translate-y-1 transition-all duration-300"
-                  style={{
-                    background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)",
-                    border: `1px solid color-mix(in oklab, ${color} 22%, transparent)`,
-                    boxShadow: `0 0 40px -20px color-mix(in oklab, ${color} 35%, transparent)`,
-                  }}>
-                  <div className="mb-5 flex items-center justify-center">
-                    <OrbitRing size={140} color={color} icon={<div style={{ color }}>{icon}</div>} />
-                  </div>
-                  <div className="h-0.5 w-12 mx-auto mb-5 rounded-full"
-                    style={{ background: `color-mix(in oklab, ${color} 50%, transparent)` }} />
-                  <h3 className="text-xl text-center mb-3">{title}</h3>
-                  <p className="text-parchment text-sm leading-relaxed text-center flex-1">{body}</p>
-                  <p className="mt-4 text-center text-xs tracking-[0.2em] uppercase" style={{ color }}>{detail}</p>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 3: Students vs Educators ── */}
-      <section className="relative z-10 py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <Reveal className="text-center mb-16">
-            <p className="text-xs tracking-[0.4em] text-gold uppercase mb-3">Built For Two Audiences</p>
-            <h2 className="font-display text-4xl md:text-5xl">Two sides of the same lab.</h2>
-          </Reveal>
-          <div className="grid md:grid-cols-2 gap-6">
-            <Reveal delay={0}>
-              <div className="relative rounded-2xl overflow-hidden group hover:-translate-y-1 transition-all duration-300"
-                style={{
-                  background: "color-mix(in oklab, var(--color-slate-sunken) 75%, transparent)",
-                  border: "1px solid color-mix(in oklab, var(--color-wraith) 30%, transparent)",
-                  boxShadow: "0 0 40px -16px color-mix(in oklab, var(--color-wraith) 40%, transparent)",
-                }}>
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{ background: "radial-gradient(ellipse at 30% 20%, color-mix(in oklab, var(--color-wraith) 14%, transparent), transparent 65%)" }} />
-                <div className="relative p-8">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full animate-breathing"
-                      style={{ background: "color-mix(in oklab, var(--color-wraith) 15%, transparent)", border: "1.5px solid color-mix(in oklab, var(--color-wraith) 45%, transparent)" }}>
-                      <GraduationCap className="h-6 w-6 text-wraith" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl">For Students</h3>
-                      <p className="text-xs text-wraith tracking-[0.2em] uppercase mt-0.5">The Apprentice</p>
-                    </div>
-                  </div>
-                  <p className="text-parchment text-sm leading-relaxed mb-6">
-                    Explore the periodic table in a way no textbook can show you. Run reactions, forge elements
-                    from base Grimoire cards, and submit real-world evidence to build a scientific journal.
-                  </p>
-                  <ul className="space-y-2.5 mb-7">
-                    {["Scan Grimoire cards to reveal 3D AR models","Forge elements by combining base cards","Submit photo evidence for AI-graded analysis","Track your learning through a personal journal"].map(b => (
-                      <li key={b} className="flex items-start gap-2.5 text-sm text-parchment/85">
-                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-wraith flex-shrink-0" />{b}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link to="/elements" className="btn-arcane btn-arcane-hover text-sm">
-                    <Atom className="h-4 w-4" /> Explore Elements
-                  </Link>
-                </div>
-              </div>
-            </Reveal>
-            <Reveal delay={120}>
-              <div className="relative rounded-2xl overflow-hidden group hover:-translate-y-1 transition-all duration-300"
-                style={{
-                  background: "color-mix(in oklab, var(--color-slate-sunken) 75%, transparent)",
-                  border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)",
-                  boxShadow: "0 0 40px -16px color-mix(in oklab, var(--color-gold) 30%, transparent)",
-                }}>
-                <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-                  style={{ background: "radial-gradient(ellipse at 70% 20%, color-mix(in oklab, var(--color-gold) 10%, transparent), transparent 65%)" }} />
-                <div className="relative p-8">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full animate-breathing"
-                      style={{ background: "color-mix(in oklab, var(--color-gold) 15%, transparent)", border: "1.5px solid color-mix(in oklab, var(--color-gold) 45%, transparent)" }}>
-                      <Eye className="h-6 w-6 text-gold" />
-                    </div>
-                    <div>
-                      <h3 className="text-2xl">For Educators</h3>
-                      <p className="text-xs text-gold tracking-[0.2em] uppercase mt-0.5">The Astrolabe</p>
-                    </div>
-                  </div>
-                  <p className="text-parchment text-sm leading-relaxed mb-6">
-                    See exactly where every student stands — in real time, across the whole class.
-                    Monitor experiment attempts, accuracy scores, and evidence submissions in one dashboard.
-                  </p>
-                  <ul className="space-y-2.5 mb-7">
-                    {["Real-time class-wide analytics dashboard","Per-student experiment and accuracy logs","Evidence journal entries visible to educators","Exportable curriculum-aligned reports"].map(b => (
-                      <li key={b} className="flex items-start gap-2.5 text-sm text-parchment/85">
-                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gold flex-shrink-0" />{b}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Link to="/schools" className="btn-ghost-arcane text-sm">
-                      <GraduationCap className="h-4 w-4" /> Why Schools Choose AlcheMix
-                    </Link>
-                    <Link to="/app" className="btn-ghost-arcane text-sm">
-                      <Eye className="h-4 w-4" /> View Dashboard
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 4: Elements intro + Bohr model ── */}
-      <section className="relative z-10 py-24">
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <Reveal>
-              <p className="text-xs tracking-[0.4em] text-gold uppercase mb-3">The Main Stage</p>
-              <h2 className="font-display text-4xl mb-6">
-                42 elements.<br />
-                <span className="text-wraith text-glow-violet">All waiting to be forged.</span>
-              </h2>
-              <p className="text-parchment leading-relaxed mb-5">
-                The periodic table is the foundation of everything AlcheMix AR is built on.
-                Every element has its own story — an electron shell diagram, a category, a set of
-                chemical behaviours that make it unique.
-              </p>
-              <p className="text-parchment leading-relaxed mb-6">
-                You start with 12 physical Grimoire cards: the base elements. From there, every
-                combination you attempt in the Reaction Sandbox can unlock a new element — building
-                your collection one discovery at a time.
-              </p>
-
-              {/* Interactive element selector */}
-              <p className="text-[10px] tracking-[0.3em] text-parchment/50 uppercase mb-3">
-                Select an element to preview its Bohr model →
-              </p>
-              <ElementSelector />
-            </Reveal>
-
-            {/* Bohr model panel — driven by ElementSelector state via context */}
-            <Reveal delay={150}>
-              <BohrModelPanel />
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 5: How it works — 4-step journey ── */}
-      <section className="relative z-10 py-20">
-        <div className="mx-auto max-w-5xl px-6">
-          <Reveal className="text-center mb-16">
-            <p className="text-xs tracking-[0.4em] text-gold uppercase mb-3">The Journey</p>
-            <h2 className="font-display text-4xl md:text-5xl">From card to discovery.</h2>
-          </Reveal>
-          <div className="relative">
-            <div className="hidden md:block absolute top-12 left-[10%] right-[10%] h-px"
-              style={{ background: "linear-gradient(90deg, var(--color-wraith), var(--color-gold), var(--color-amber-scry), var(--color-emerald-elixir))" }} />
-            <div className="grid md:grid-cols-4 gap-6">
-              {[
-                { n: "01", color: "var(--color-wraith)",        icon: <BookOpen className="h-5 w-5" />,    title: "Get the Grimoire",   body: "Receive your physical card set of 12 base elements from your educator." },
-                { n: "02", color: "var(--color-gold)",          icon: <Atom className="h-5 w-5" />,        title: "Scan a Card",        body: "Point the app camera at any Grimoire card to reveal its 3D AR molecular model." },
-                { n: "03", color: "var(--color-amber-scry)",    icon: <FlaskConical className="h-5 w-5" />,title: "Forge New Elements", body: "Combine base elements in the Reaction Sandbox to discover and unlock compounds." },
-                { n: "04", color: "var(--color-emerald-elixir)",icon: <Camera className="h-5 w-5" />,      title: "Submit Evidence",    body: "Photograph real-world chemistry and get instant AI-graded scientific feedback." },
-              ].map(({ n, color, icon, title, body }, i) => (
-                <Reveal key={n} delay={i * 100}>
-                  <div className="relative pt-2 text-center">
-                    <div className="flex justify-center mb-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-full z-10 animate-breathing"
-                        style={{
-                          background: `color-mix(in oklab, ${color} 18%, transparent)`,
-                          border: `2px solid color-mix(in oklab, ${color} 55%, transparent)`,
-                          boxShadow: `0 0 20px -4px color-mix(in oklab, ${color} 45%, transparent)`,
-                          color,
-                        }}>{icon}</div>
-                    </div>
-                    <div className="font-ui text-xs font-bold tracking-[0.3em] uppercase mb-1" style={{ color }}>{n}</div>
-                    <h3 className="text-base mb-2">{title}</h3>
-                    <p className="text-parchment text-xs leading-relaxed">{body}</p>
-                  </div>
-                </Reveal>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 6: Tools preview ── */}
-      <section className="relative z-10 py-20">
-        <div className="mx-auto max-w-6xl px-6">
-          <Reveal className="text-center mb-14">
-            <p className="text-xs tracking-[0.4em] text-gold uppercase mb-3">What's Inside</p>
-            <h2 className="font-display text-4xl md:text-5xl">Three tools. One platform.</h2>
-          </Reveal>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { icon: <Atom className="h-7 w-7" />, label: "Element Explorer", desc: "42 curated elements, colour-coded by category. Bohr model diagrams, electron shells, and curated facts — filterable and searchable.", tag: "Guest Access", tagColor: "var(--color-wraith)", to: "/elements", btnLabel: "Explore Now" },
-              { icon: <BookMarked className="h-7 w-7" />, label: "Grimoire Cards", desc: "A physical card set of the 12 essential base elements — each one AR-scannable, unlocking 3D molecular models. The remaining 30 elements must be forged.", tag: "Physical + Digital", tagColor: "var(--color-gold)", to: "/grimoire", btnLabel: "View Collection" },
-              { icon: <Zap className="h-7 w-7" />, label: "The Platform", desc: "The full AlcheMix experience — Reaction Sandbox, Educator Astrolabe, and AI Evidence Journal, all in one AR-powered web app.", tag: "Full Platform", tagColor: "var(--color-emerald-elixir)", to: "/app", btnLabel: "Open Platform" },
-            ].map(({ icon, label, desc, tag, tagColor, to, btnLabel }) => (
-              <Reveal key={label}>
-                <div className="group flex flex-col rounded-2xl overflow-hidden hover:-translate-y-1 transition-all duration-300 h-full"
-                  style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: `1px solid color-mix(in oklab, ${tagColor} 20%, transparent)` }}>
-                  <div className="h-1.5" style={{ background: tagColor }} />
-                  <div className="p-6 flex flex-col flex-1">
-                    <div className="flex items-start justify-between mb-4">
-                      <span style={{ color: tagColor }}>{icon}</span>
-                      <span className="text-[9px] tracking-[0.25em] uppercase rounded-full px-2.5 py-0.5"
-                        style={{ color: tagColor, background: `color-mix(in oklab, ${tagColor} 12%, transparent)`, border: `1px solid color-mix(in oklab, ${tagColor} 30%, transparent)` }}>{tag}</span>
-                    </div>
-                    <h3 className="text-xl mb-3">{label}</h3>
-                    <p className="text-parchment text-sm leading-relaxed flex-1">{desc}</p>
-                    <Link to={to as any} className="mt-6 inline-flex items-center gap-2 text-sm font-ui font-semibold transition-all duration-200" style={{ color: tagColor }}
-                      onMouseEnter={e => (e.currentTarget.style.gap = "10px")}
-                      onMouseLeave={e => (e.currentTarget.style.gap = "8px")}>
-                      {btnLabel} <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </div>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Quiet divider ── */}
-      <section className="relative z-10 py-10">
-        <div className="mx-auto flex max-w-5xl items-center gap-5 px-6">
-          <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, transparent, var(--color-border))" }} />
-          <p className="font-ui text-xs font-semibold text-gold tracking-[0.35em] uppercase whitespace-nowrap">Every element tells a story</p>
-          <div className="h-px flex-1" style={{ background: "linear-gradient(90deg, var(--color-border), transparent)" }} />
-        </div>
-      </section>
-
-      {/* ── SECTION 7: Credibility strip ── */}
-      <section className="relative z-10 py-16">
-        <div className="mx-auto max-w-5xl px-6">
-          <div className="grid grid-cols-1 gap-px md:grid-cols-3 rounded-2xl overflow-hidden"
-            style={{ border: "1px solid color-mix(in oklab, var(--color-parchment) 15%, transparent)" }}>
-            {[
-              { stat: "42", label: "Elements in the explorer", sub: "12 base cards + 30 forged discoveries" },
-              { stat: "3D AR", label: "Molecular visualisation", sub: "Rendered in your physical space" },
-              { stat: "AI-Graded", label: "Evidence submissions", sub: "Instant feedback on real-world samples" },
-            ].map(({ stat, label, sub }) => (
-              <div key={stat} className="flex flex-col items-center gap-2 px-8 py-10 text-center"
-                style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)" }}>
-                <p className="font-display text-3xl text-wraith">{stat}</p>
-                <p className="font-ui text-sm font-semibold text-spectral">{label}</p>
-                <p className="text-xs text-parchment/60">{sub}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── SECTION 8: Final CTA ── */}
-      <section className="relative overflow-hidden py-24 z-10">
-        <div className="absolute inset-0 pointer-events-none"
-          style={{ background: "radial-gradient(ellipse at 50% 50%, color-mix(in oklab, var(--color-wraith) 18%, transparent), transparent 60%)" }} />
-        <Reveal className="relative mx-auto max-w-3xl px-6 text-center">
-          <div className="relative inline-block mb-8">
-            <div className="absolute inset-0 rounded-full blur-xl opacity-40 animate-breathing" style={{ background: "var(--color-wraith)" }} />
-            <Feather className="relative h-12 w-12 text-wraith animate-float-slow" />
-          </div>
-          <h2 className="font-display text-4xl md:text-5xl mb-6">
-            Ready to see chemistry<br />
-            <span className="aurora-gradient animate-aurora">come to life?</span>
-          </h2>
-          <p className="mx-auto max-w-xl text-parchment leading-relaxed mb-10">
-            Start with the Element Explorer — no account needed. When you're ready for the full
-            AR experience, open the platform and step into the lab.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <Link to="/elements" className="btn-arcane btn-arcane-hover">
-              <Atom className="h-4 w-4" /> Start with Elements
-            </Link>
-            <Link to="/app" className="btn-ghost-arcane">
-              <Zap className="h-4 w-4" /> Open the Platform
-            </Link>
-          </div>
-          <p className="mt-6 text-xs text-parchment/50 tracking-[0.2em] uppercase">
-            Free to explore · No login required for the element browser
-          </p>
-        </Reveal>
-      </section>
-
-      <footer className="border-t border-parchment/20 py-8 text-center text-xs tracking-[0.25em] text-parchment/60 uppercase">
-        ✦ AlcheMix AR — Augmented Chemistry Education ✦
+      <footer className="border-t border-parchment/20 py-8 text-center text-xs uppercase tracking-[0.25em] text-parchment/60">
+        ✦ AlcheMix — Augmented Chemistry Education ✦
       </footer>
     </div>
-    </ElementCtx.Provider>
   );
 }
