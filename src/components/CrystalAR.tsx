@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
+// Type-only import (erased at build — never touches `window` during SSR).
+import type { GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { Camera, Loader2, ScanLine, Sparkles, X, AlertTriangle, FlaskConical } from "lucide-react";
 import { BohrModel3D } from "./BohrModel3D";
 import { cardBySymbol, combine } from "../lib/cards";
@@ -530,6 +532,9 @@ export function CrystalAR({
         revealing: boolean; // dissolve in progress
         revealT: number;    // 0..1 dissolve progress
         done: boolean;      // humanoid fully shown
+        // Skeletal animation (rigged GLBs): one mixer per model that ships clips,
+        // ticked every frame in the render loop.
+        mixers: THREE.AnimationMixer[];
       }
       const REVEAL_DUR = 0.8; // seconds for the crystal → humanoid cross-dissolve
       const loader = new GLTFLoader();
@@ -541,7 +546,7 @@ export function CrystalAR({
         const t: Tracked = {
           el, spinner, model: null, infoPanel: null, summoned: false,
           crystalHolder: null, humanoidHolder: null, humanoid: null,
-          revealing: false, revealT: 0, done: false,
+          revealing: false, revealT: 0, done: false, mixers: [],
         };
 
         // The floating info card is added to the anchor (not the spinner) so it
@@ -559,31 +564,42 @@ export function CrystalAR({
           setError(`Could not load the 3D model for ${el.name}.`);
           setStatus("error");
         };
+        // Rigged GLBs ship skeletal clips; spin up a mixer and loop them all.
+        const playClips = (model: THREE.Object3D, clips?: THREE.AnimationClip[]) => {
+          if (!clips?.length) return;
+          const mixer = new THREE.AnimationMixer(model);
+          clips.forEach((clip) => mixer.clipAction(clip).play());
+          t.mixers.push(mixer);
+        };
 
         if (el.reveal) {
           // Stage one: the crystal, shown immediately.
-          loader.load(el.reveal.crystal, (gltf: { scene: THREE.Group }) => {
+          loader.load(el.reveal.crystal, (gltf: GLTF) => {
             const holder = seatModel(gltf.scene);
             t.spinner.add(holder);
             t.crystalHolder = holder;
             t.model = gltf.scene;
+            playClips(gltf.scene, gltf.animations);
             addInfoPanel(holder.position.z * 2); // position.z === height / 2
           }, undefined, onLoadErr);
-          // Stage two: the humanoid, staged hidden until the dissolve begins.
-          loader.load(el.reveal.humanoid, (gltf: { scene: THREE.Group }) => {
+          // Stage two: the humanoid, staged hidden until the dissolve begins. Its
+          // animation loops from load; it's simply not visible until the reveal.
+          loader.load(el.reveal.humanoid, (gltf: GLTF) => {
             const holder = seatModel(gltf.scene);
             holder.visible = false;
             setModelOpacity(gltf.scene, 0);
             t.spinner.add(holder);
             t.humanoidHolder = holder;
             t.humanoid = gltf.scene;
+            playClips(gltf.scene, gltf.animations);
           }, undefined, onLoadErr);
         } else {
           // Single model (the original behaviour).
-          loader.load(baseModelSrc(el), (gltf: { scene: THREE.Group }) => {
+          loader.load(baseModelSrc(el), (gltf: GLTF) => {
             const holder = seatModel(gltf.scene);
             t.spinner.add(holder);
             t.model = gltf.scene;
+            playClips(gltf.scene, gltf.animations);
             addInfoPanel(holder.position.z * 2);
           }, undefined, onLoadErr);
         }
@@ -717,7 +733,10 @@ export function CrystalAR({
       const clock = new THREE.Clock();
       renderer.setAnimationLoop(() => {
         const dt = clock.getDelta();
-        tracked.forEach((t) => { t.spinner.rotation.z += SPIN_SPEED; });
+        tracked.forEach((t) => {
+          t.spinner.rotation.z += SPIN_SPEED;
+          t.mixers.forEach((m) => m.update(dt)); // advance skeletal animation
+        });
         updateBursts();
         // Crystal → humanoid cross-dissolve: fade the crystal out as the
         // humanoid fades in over REVEAL_DUR, then hand tapping over to it.
