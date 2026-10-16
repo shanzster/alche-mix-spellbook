@@ -569,9 +569,15 @@ export function CrystalAR({
           anchor.group.add(infoPanel);
           t.infoPanel = infoPanel;
         };
-        const onLoadErr = (err: unknown) => {
-          console.error(`[CrystalAR] ${el.key} model load failed`, err);
-          setError(`Could not load the 3D model for ${el.name}.`);
+        // Surface WHICH file failed and WHY — a 404 vs a decode error need
+        // different fixes, and all models load eagerly so the failing one isn't
+        // necessarily the card you're pointing at.
+        const errFor = (path: string) => (err: unknown) => {
+          const detail =
+            err instanceof Error ? err.message
+            : (err as { message?: string })?.message ?? String(err);
+          console.error(`[CrystalAR] model load failed: ${path}`, err);
+          setError(`Could not load ${path}${detail ? ` — ${detail}` : ""}`);
           setStatus("error");
         };
         // Rigged GLBs ship skeletal clips; spin up a mixer and loop them all.
@@ -591,7 +597,7 @@ export function CrystalAR({
             t.model = gltf.scene;
             playClips(gltf.scene, gltf.animations);
             addInfoPanel(holder.position.z * 2); // position.z === height / 2
-          }, undefined, onLoadErr);
+          }, undefined, errFor(el.reveal.crystal));
           // Stage two: the humanoid, staged hidden until the dissolve begins. Its
           // animation loops from load; it's simply not visible until the reveal.
           loader.load(el.reveal.humanoid, (gltf: GLTF) => {
@@ -602,16 +608,17 @@ export function CrystalAR({
             t.humanoidHolder = holder;
             t.humanoid = gltf.scene;
             playClips(gltf.scene, gltf.animations);
-          }, undefined, onLoadErr);
+          }, undefined, errFor(el.reveal.humanoid));
         } else {
           // Single model (the original behaviour).
-          loader.load(baseModelSrc(el), (gltf: GLTF) => {
+          const path = baseModelSrc(el);
+          loader.load(path, (gltf: GLTF) => {
             const holder = seatModel(gltf.scene);
             t.spinner.add(holder);
             t.model = gltf.scene;
             playClips(gltf.scene, gltf.animations);
             addInfoPanel(holder.position.z * 2);
-          }, undefined, onLoadErr);
+          }, undefined, errFor(path));
         }
 
         anchor.onTargetFound = () => {
