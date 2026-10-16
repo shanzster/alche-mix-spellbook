@@ -76,6 +76,10 @@ export const AR_ELEMENTS: ARElement[] = [
       "Lighter than air — balloons float",
     ],
     image: "/image-trigger/image-trigger-helium.png",
+    reveal: {
+      crystal: "/3d-models/helium/helium-crystal.glb",
+      humanoid: "/3d-models/helium/helium-humanoid.glb",
+    },
   },
   {
     key: "hydrogen",
