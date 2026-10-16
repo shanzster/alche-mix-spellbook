@@ -23,7 +23,7 @@ import { forgedFromMix, formulaDisplay, type ForgedCard } from "../lib/forged";
 const MIND_SRC = "/targets.mind";
 
 // Tuning knobs for how each model sits on its card.
-const MODEL_SIZE = 0.6;   // longest dimension, in MindAR units (card width = 1)
+const MODEL_SIZE = 3.0;   // longest dimension, in MindAR units (card width = 1) — ~3× the card, deliberately towering
 const SPIN_SPEED = 0.012; // radians/frame turntable spin
 
 export interface ARElement {
