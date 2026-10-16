@@ -39,11 +39,10 @@ export interface ARElement {
   /** Explicit single-model path; defaults to `/3d-models/<key>/scene.gltf`. */
   model?: string;
   /**
-   * Two-stage reveal: the `crystal` model rises first, then cross-dissolves into
-   * `humanoid` `delayMs` (default 2000) after the card is first found. Overrides
-   * `model` when present.
+   * Two-stage reveal: the `crystal` model rises first; tapping it cross-dissolves
+   * it into the `humanoid`. Overrides `model` when present.
    */
-  reveal?: { crystal: string; humanoid: string; delayMs?: number };
+  reveal?: { crystal: string; humanoid: string };
 }
 
 /** Anchor index = position here = compile order of the trigger images. */
@@ -92,7 +91,6 @@ export const AR_ELEMENTS: ARElement[] = [
     reveal: {
       crystal: "/3d-models/hydrogen/hydrogen-crystal.glb",
       humanoid: "/3d-models/hydrogen/hydrogen-humanoid.glb",
-      delayMs: 2000,
     },
   },
 ];
@@ -444,6 +442,13 @@ export function CrystalAR({
         // after the session stops.
         uiScanning: "no",
         uiLoading: "no",
+        // Anti-jitter. MindAR smooths pose with a One-Euro filter; its defaults
+        // (minCF 0.0001, beta 1000) barely smooth, so the model visibly shakes.
+        // A low minCF + near-zero beta heavily damps jitter on a mostly-still
+        // card. Trade-off: a touch of lag when the card moves fast — raise beta
+        // toward 1 if the model feels like it "drags" behind the card.
+        filterMinCF: 0.0001,
+        filterBeta: 0.01,
       });
       mindarRef.current = mindar;
       const { renderer, scene, camera } = mindar;
@@ -529,7 +534,6 @@ export function CrystalAR({
       const REVEAL_DUR = 0.8; // seconds for the crystal → humanoid cross-dissolve
       const loader = new GLTFLoader();
       const visibleAnchors = new Set<number>();
-      const revealTimers: number[] = [];
       const tracked: Tracked[] = AR_ELEMENTS.map((el, i) => {
         const anchor = mindar.addAnchor(i);
         const spinner = new THREE.Group(); // turntable wrapper (spins the model)
@@ -596,14 +600,7 @@ export function CrystalAR({
             spawnBurst(anchor.group, 0x34d399, 70);  // emerald sparks
             playChime();
             onFound?.(el.key);
-            // Arm the crystal → humanoid reveal (dissolve runs in the loop).
-            if (el.reveal && !t.revealing && !t.done) {
-              revealTimers.push(
-                window.setTimeout(() => {
-                  if (t.humanoid && !t.done) t.revealing = true;
-                }, el.reveal.delayMs ?? 2000),
-              );
-            }
+            // Two-stage elements wait for a TAP to transform (see onPointerDown).
           }
         };
         anchor.onTargetLost = () => {
@@ -616,7 +613,8 @@ export function CrystalAR({
         return t;
       });
 
-      // Tap a model → toggle its info card (closing any other). Tap a card → dismiss.
+      // Tapping, in priority order: close an open info card → transform a
+      // not-yet-revealed crystal into its humanoid → toggle a model's info card.
       const raycaster = new THREE.Raycaster();
       const pointer = new THREE.Vector2();
       const onPointerDown = (e: PointerEvent) => {
@@ -634,6 +632,14 @@ export function CrystalAR({
         }
         for (const t of tracked) {
           if (t.model && raycaster.intersectObject(t.model, true).length) {
+            // First tap on a two-stage crystal starts the dissolve into the
+            // humanoid (the dissolve itself runs in the animation loop); it does
+            // NOT open the info card. Info becomes tappable once revealed.
+            if (t.el.reveal && !t.done && !t.revealing && t.humanoid) {
+              t.revealing = true;
+              playChime();
+              return;
+            }
             const open = !(t.infoPanel?.visible ?? false);
             tracked.forEach((o) => { if (o.infoPanel) o.infoPanel.visible = false; });
             if (t.infoPanel) t.infoPanel.visible = open;
@@ -700,7 +706,6 @@ export function CrystalAR({
       const prevCleanup = cleanupRef.current;
       cleanupRef.current = () => {
         resizeTimers.forEach((t) => window.clearTimeout(t));
-        revealTimers.forEach((t) => window.clearTimeout(t));
         window.removeEventListener("orientationchange", nudgeResize);
         document.removeEventListener("fullscreenchange", nudgeResize);
         window.visualViewport?.removeEventListener("resize", nudgeResize);
