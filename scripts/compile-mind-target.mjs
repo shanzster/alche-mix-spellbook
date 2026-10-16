@@ -58,6 +58,7 @@ async function main() {
     inputs = [
       "public/image-trigger/image-trigger-alchemix.png",
       "public/image-trigger/image-trigger-helium.png",
+      "public/image-trigger/image-trigger-hydrogen.png",
     ];
     out = "public/targets.mind";
   } else {

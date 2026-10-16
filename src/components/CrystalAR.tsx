@@ -36,6 +36,14 @@ export interface ARElement {
   facts: string[];
   /** The physical card's AR trigger artwork — doubles as the Grimoire card front. */
   image?: string;
+  /** Explicit single-model path; defaults to `/3d-models/<key>/scene.gltf`. */
+  model?: string;
+  /**
+   * Two-stage reveal: the `crystal` model rises first, then cross-dissolves into
+   * `humanoid` `delayMs` (default 2000) after the card is first found. Overrides
+   * `model` when present.
+   */
+  reveal?: { crystal: string; humanoid: string; delayMs?: number };
 }
 
 /** Anchor index = position here = compile order of the trigger images. */
@@ -68,9 +76,65 @@ export const AR_ELEMENTS: ARElement[] = [
     ],
     image: "/image-trigger/image-trigger-helium.png",
   },
+  {
+    key: "hydrogen",
+    symbol: "H",
+    name: "Hydrogen",
+    number: 1,
+    mass: "1.008",
+    category: "Reactive Nonmetal",
+    facts: [
+      "State: Colorless, odorless gas",
+      "Lightest and most abundant element",
+      "Burns in air to form water (H₂O)",
+    ],
+    image: "/image-trigger/image-trigger-hydrogen.png",
+    reveal: {
+      crystal: "/3d-models/hydrogen/hydrogen-crystal.glb",
+      humanoid: "/3d-models/hydrogen/hydrogen-humanoid.glb",
+      delayMs: 2000,
+    },
+  },
 ];
 
-const modelSrc = (el: ARElement) => `/3d-models/${el.key}/scene.gltf`;
+/** The element's single/base model, when it doesn't use a two-stage reveal. */
+const baseModelSrc = (el: ARElement) => el.model ?? `/3d-models/${el.key}/scene.gltf`;
+
+/**
+ * Seats a loaded GLTF scene so its base rests dead-centre on the card and its
+ * natural "up" (+Y) points out of the card (+Z). Returns a self-contained
+ * holder the caller drops into the spinner. Because each holder seats itself
+ * (lifts by half its OWN height), models of different heights — e.g. a short
+ * crystal and a taller humanoid sharing one anchor — both rest on the card.
+ */
+function seatModel(model: THREE.Object3D): THREE.Group {
+  const holder = new THREE.Group();
+  holder.add(model);
+  const box = new THREE.Box3().setFromObject(model);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  model.position.sub(center); // geometric centre → holder origin
+  const scale = MODEL_SIZE / (Math.max(size.x, size.y, size.z) || 1);
+  holder.scale.setScalar(scale);
+  holder.rotation.x = Math.PI / 2;          // model up (+Y) → out of the card (+Z)
+  holder.position.z = (size.y * scale) / 2; // lift so the base rests on the card
+  return holder;
+}
+
+/** Fade an entire model (all meshes) to an opacity, toggling transparency. */
+function setModelOpacity(obj: THREE.Object3D, o: number) {
+  obj.traverse((n) => {
+    const mesh = n as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    mats.forEach((m) => {
+      const mat = m as THREE.Material & { opacity: number };
+      mat.transparent = o < 0.99;
+      mat.opacity = o;
+      mat.depthWrite = o >= 0.99;
+    });
+  });
+}
 
 // Builds the floating info card as a canvas-textured plane that lives in AR
 // space (anchored to the card, billboarded toward the camera). Client-only —
@@ -449,60 +513,76 @@ export function CrystalAR({
       interface Tracked {
         el: ARElement;
         spinner: THREE.Group;
-        model: THREE.Object3D | null;
+        model: THREE.Object3D | null; // the currently-tappable model
         infoPanel: THREE.Mesh | null;
         summoned: boolean; // first-find latch (per scan session)
+        // Two-stage reveal (crystal → humanoid). Holders are the seated wrappers
+        // so we can show/hide them; `humanoid` is the scene we raycast against
+        // once revealed. The dissolve itself runs in the animation loop.
+        crystalHolder: THREE.Group | null;
+        humanoidHolder: THREE.Group | null;
+        humanoid: THREE.Object3D | null;
+        revealing: boolean; // dissolve in progress
+        revealT: number;    // 0..1 dissolve progress
+        done: boolean;      // humanoid fully shown
       }
+      const REVEAL_DUR = 0.8; // seconds for the crystal → humanoid cross-dissolve
       const loader = new GLTFLoader();
       const visibleAnchors = new Set<number>();
+      const revealTimers: number[] = [];
       const tracked: Tracked[] = AR_ELEMENTS.map((el, i) => {
         const anchor = mindar.addAnchor(i);
         const spinner = new THREE.Group(); // turntable wrapper (spins the model)
         anchor.group.add(spinner);
-        const t: Tracked = { el, spinner, model: null, infoPanel: null, summoned: false };
+        const t: Tracked = {
+          el, spinner, model: null, infoPanel: null, summoned: false,
+          crystalHolder: null, humanoidHolder: null, humanoid: null,
+          revealing: false, revealT: 0, done: false,
+        };
 
-        loader.load(
-          modelSrc(el),
-          (gltf: { scene: THREE.Group }) => {
-            const model = gltf.scene;
+        // The floating info card is added to the anchor (not the spinner) so it
+        // doesn't turntable-spin; it billboards toward the camera. Added once,
+        // when the first model seats (its seated height positions the panel).
+        const addInfoPanel = (seatedHeight: number) => {
+          if (t.infoPanel) return;
+          const infoPanel = makeInfoPanel(el);
+          infoPanel.position.set(0.6, 0, seatedHeight * 0.9);
+          anchor.group.add(infoPanel);
+          t.infoPanel = infoPanel;
+        };
+        const onLoadErr = (err: unknown) => {
+          console.error(`[CrystalAR] ${el.key} model load failed`, err);
+          setError(`Could not load the 3D model for ${el.name}.`);
+          setStatus("error");
+        };
 
-            // ── Seat the model dead-centre on the card ──
-            // The anchor's origin IS the centre of the card. Centre the raw
-            // geometry inside a holder first (offset applied *before* the
-            // holder's rotation/scale, so it stays exact for any model pivot),
-            // then stand the holder up and lift it by half its height so the
-            // base rests precisely on the card's centre.
-            const holder = new THREE.Group();
-            holder.add(model);
-            const box = new THREE.Box3().setFromObject(model);
-            const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3());
-            model.position.sub(center); // geometric centre → holder origin
-
-            const scale = MODEL_SIZE / (Math.max(size.x, size.y, size.z) || 1);
-            holder.scale.setScalar(scale);
-            holder.rotation.x = Math.PI / 2; // model's up (+Y) → out of the card (+Z)
+        if (el.reveal) {
+          // Stage one: the crystal, shown immediately.
+          loader.load(el.reveal.crystal, (gltf: { scene: THREE.Group }) => {
+            const holder = seatModel(gltf.scene);
             t.spinner.add(holder);
-
-            const height = size.y * scale; // extent along +Z after standing up
-            t.spinner.position.set(0, 0, height / 2);
-
-            // Floating info card — added to the anchor (not the spinner) so it
-            // does not turntable-spin; it billboards toward the camera.
-            const infoPanel = makeInfoPanel(el);
-            infoPanel.position.set(0.6, 0, height * 0.9);
-            anchor.group.add(infoPanel);
-
-            t.model = model;
-            t.infoPanel = infoPanel;
-          },
-          undefined,
-          (err: unknown) => {
-            console.error(`[CrystalAR] ${el.key} model load failed`, err);
-            setError(`Could not load the 3D model for ${el.name}.`);
-            setStatus("error");
-          },
-        );
+            t.crystalHolder = holder;
+            t.model = gltf.scene;
+            addInfoPanel(holder.position.z * 2); // position.z === height / 2
+          }, undefined, onLoadErr);
+          // Stage two: the humanoid, staged hidden until the dissolve begins.
+          loader.load(el.reveal.humanoid, (gltf: { scene: THREE.Group }) => {
+            const holder = seatModel(gltf.scene);
+            holder.visible = false;
+            setModelOpacity(gltf.scene, 0);
+            t.spinner.add(holder);
+            t.humanoidHolder = holder;
+            t.humanoid = gltf.scene;
+          }, undefined, onLoadErr);
+        } else {
+          // Single model (the original behaviour).
+          loader.load(baseModelSrc(el), (gltf: { scene: THREE.Group }) => {
+            const holder = seatModel(gltf.scene);
+            t.spinner.add(holder);
+            t.model = gltf.scene;
+            addInfoPanel(holder.position.z * 2);
+          }, undefined, onLoadErr);
+        }
 
         anchor.onTargetFound = () => {
           visibleAnchors.add(i);
@@ -516,6 +596,14 @@ export function CrystalAR({
             spawnBurst(anchor.group, 0x34d399, 70);  // emerald sparks
             playChime();
             onFound?.(el.key);
+            // Arm the crystal → humanoid reveal (dissolve runs in the loop).
+            if (el.reveal && !t.revealing && !t.done) {
+              revealTimers.push(
+                window.setTimeout(() => {
+                  if (t.humanoid && !t.done) t.revealing = true;
+                }, el.reveal.delayMs ?? 2000),
+              );
+            }
           }
         };
         anchor.onTargetLost = () => {
@@ -612,6 +700,7 @@ export function CrystalAR({
       const prevCleanup = cleanupRef.current;
       cleanupRef.current = () => {
         resizeTimers.forEach((t) => window.clearTimeout(t));
+        revealTimers.forEach((t) => window.clearTimeout(t));
         window.removeEventListener("orientationchange", nudgeResize);
         document.removeEventListener("fullscreenchange", nudgeResize);
         window.visualViewport?.removeEventListener("resize", nudgeResize);
@@ -620,9 +709,27 @@ export function CrystalAR({
       };
 
       const camWorld = new THREE.Vector3();
+      const clock = new THREE.Clock();
       renderer.setAnimationLoop(() => {
+        const dt = clock.getDelta();
         tracked.forEach((t) => { t.spinner.rotation.z += SPIN_SPEED; });
         updateBursts();
+        // Crystal → humanoid cross-dissolve: fade the crystal out as the
+        // humanoid fades in over REVEAL_DUR, then hand tapping over to it.
+        tracked.forEach((t) => {
+          if (!t.revealing || t.done) return;
+          if (t.humanoidHolder && !t.humanoidHolder.visible) t.humanoidHolder.visible = true;
+          t.revealT = Math.min(1, t.revealT + dt / REVEAL_DUR);
+          const p = t.revealT;
+          if (t.crystalHolder) setModelOpacity(t.crystalHolder, 1 - p);
+          if (t.humanoid) setModelOpacity(t.humanoid, p);
+          if (p >= 1) {
+            t.revealing = false;
+            t.done = true;
+            if (t.crystalHolder) t.crystalHolder.visible = false;
+            if (t.humanoid) { setModelOpacity(t.humanoid, 1); t.model = t.humanoid; }
+          }
+        });
         tracked.forEach((t) => {
           if (t.infoPanel?.visible) {
             t.infoPanel.lookAt(camera.getWorldPosition(camWorld)); // billboard to camera
