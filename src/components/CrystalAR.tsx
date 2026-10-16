@@ -265,6 +265,9 @@ type Status = "idle" | "starting" | "scanning" | "found" | "error";
 // REAL element cards go through the chemistry combiner instead (see startMix).
 const MIX_FORGED_ID = "3rd_card";
 const MIX_FORGED_IMAGE = "/other_cards/3rd_card.png";
+// Shown when a pair refuses to bond (e.g. a noble gas): spins in, then flips to
+// explain why the mixture is inert.
+const INERT_CARD_IMAGE = "/image-trigger/inert-card.png";
 
 // What the ceremony resolved to — decided when the button is pressed, shown
 // when the swirl ends.
@@ -309,6 +312,8 @@ export function CrystalAR({
   // or refused (the mixture chemically refuses — a teaching moment).
   const [mixPhase, setMixPhase] = useState<"idle" | "swirling" | "revealed" | "refused">("idle");
   const [mixOutcome, setMixOutcome] = useState<MixOutcome>({ kind: "mythic" });
+  // The inert reveal shows the card face first; tapping flips it to the reason.
+  const [inertFlipped, setInertFlipped] = useState(false);
   const mixTimerRef = useRef<number | null>(null);
   // Symbols of the targets currently on screen — read when the mix starts.
   const visibleSymbolsRef = useRef<Set<string>>(new Set());
@@ -396,6 +401,7 @@ export function CrystalAR({
       mixTimerRef.current = null;
     }
     setMixPhase("idle");
+    setInertFlipped(false);
   };
 
   const start = async () => {
@@ -980,20 +986,40 @@ export function CrystalAR({
         </div>
       )}
 
-      {/* ── Mix ceremony: the mixture refuses — a teaching moment, not an error ── */}
+      {/* ── Mix ceremony: the mixture refuses — the inert card spins in, then ──
+          flips to explain why. A teaching moment, not an error. */}
       {mixPhase === "refused" && mixOutcome.kind === "refused" && (
-        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 bg-slate-sunken/90 p-6 backdrop-blur">
-          <div
-            className="flex w-full max-w-xs flex-col items-center gap-3 rounded-2xl p-6 text-center"
-            style={{
-              background: "color-mix(in oklab, var(--color-gold) 8%, transparent)",
-              border: "1px solid color-mix(in oklab, var(--color-gold) 35%, transparent)",
-            }}
-          >
-            <FlaskConical className="h-8 w-8 text-gold" />
-            <p className="font-display text-lg text-spectral">The mixture refuses</p>
-            <p className="text-sm text-parchment/80">{mixOutcome.reason}</p>
-          </div>
+        <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-6 bg-slate-sunken/90 p-6 backdrop-blur">
+          {!inertFlipped ? (
+            <>
+              <button
+                onClick={() => setInertFlipped(true)}
+                className="appearance-none border-0 bg-transparent p-0"
+                aria-label="Reveal why this mixture is inert"
+              >
+                <img
+                  src={INERT_CARD_IMAGE}
+                  alt="Inert — this element refuses to bond"
+                  className="animate-card-spin-in max-h-[60vh] w-auto rounded-2xl shadow-2xl"
+                />
+              </button>
+              <p className="flex items-center gap-1.5 text-sm text-gold text-glow-teal">
+                <Sparkles className="h-4 w-4" /> Inert — tap the card to learn why
+              </p>
+            </>
+          ) : (
+            <div
+              className="animate-card-pop flex w-full max-w-xs flex-col items-center gap-3 rounded-2xl p-6 text-center"
+              style={{
+                background: "color-mix(in oklab, var(--color-gold) 8%, transparent)",
+                border: "1px solid color-mix(in oklab, var(--color-gold) 35%, transparent)",
+              }}
+            >
+              <FlaskConical className="h-8 w-8 text-gold" />
+              <p className="font-display text-lg text-spectral">The mixture refuses</p>
+              <p className="text-sm text-parchment/80">{mixOutcome.reason}</p>
+            </div>
+          )}
           <button
             onClick={resetMix}
             className="inline-flex items-center gap-2 rounded-full border border-parchment/25 bg-slate-sunken/70 px-5 py-2.5 text-parchment transition hover:bg-parchment/10"
