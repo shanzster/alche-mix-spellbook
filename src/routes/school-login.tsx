@@ -1,14 +1,14 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { SchoolDoor } from "../components/SchoolDoor";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-/** School-code sign-in — `?code=ABC123` from a teacher's share link autofills. */
+/**
+ * There is no "sign in with a class code" door any more. A class code belongs
+ * to REGISTRATION only (/school-signup) — once a student has an account it is
+ * already connected to their school, so they sign in through the normal door
+ * (/login) and are routed to their class by role. This route now just forwards
+ * there, so any old links or bookmarks keep working.
+ */
 export const Route = createFileRoute("/school-login")({
-  validateSearch: (s: Record<string, unknown>): { code?: string } =>
-    typeof s.code === "string" && s.code.length > 0 ? { code: s.code } : {},
-  component: SchoolLoginPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/login" });
+  },
 });
-
-function SchoolLoginPage() {
-  const { code } = Route.useSearch();
-  return <SchoolDoor mode="login" initialCode={code} />;
-}

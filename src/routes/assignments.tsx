@@ -3,6 +3,7 @@ import { useState } from "react";
 import {
   ClipboardList, CheckCircle2, Circle, Check, X, Lightbulb, ChevronLeft,
   ChevronRight, Layers, ListChecks, Loader2, ScrollText, Sparkles, RotateCcw,
+  Megaphone, Pin,
 } from "lucide-react";
 import { StudentShell } from "../components/StudentShell";
 import { PageHeader } from "../components/PageHeader";
@@ -258,7 +259,7 @@ function MissionCard({ mission, profile }: { mission: MissionDef; profile: Stude
 function AssignmentsPage() {
   const { uid, profile, loading: profileLoading } = useUserProfile();
   const classId = profile?.classId ?? null;
-  const { quizzes, missions, className, loading: classLoading } = useClassAssignments(classId);
+  const { quizzes, missions, announcements, className, loading: classLoading } = useClassAssignments(classId);
   const [taking, setTaking] = useState<QuizDef | null>(null);
 
   const loading = profileLoading || (classId != null && classLoading);
@@ -289,6 +290,32 @@ function AssignmentsPage() {
               cta={<Link to="/app" className="btn-arcane btn-arcane-hover inline-flex">Go to my dashboard</Link>} />
           ) : (
             <div className="space-y-10">
+              {/* Bulletin — notices posted by the teacher (pinned first) */}
+              {announcements.length > 0 && (
+                <section>
+                  <h2 className="font-ui font-medium text-lg mb-1 inline-flex items-center gap-2">
+                    <Megaphone className="h-4 w-4" style={{ color: GOLD }} /> From the noticeboard
+                  </h2>
+                  <p className="text-xs text-parchment/55 mb-4">Notices from your teacher for {className ?? "your class"}.</p>
+                  <div className="space-y-3">
+                    {announcements.map((a) => (
+                      <div key={a.id} className="rounded-2xl p-4" style={{
+                        ...cardStyle,
+                        ...(a.pinned ? { border: "1px solid color-mix(in oklab, var(--color-gold) 35%, transparent)" } : {}),
+                      }}>
+                        {a.pinned && (
+                          <span className="mb-1 inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.14em] text-gold">
+                            <Pin className="h-3 w-3" /> Pinned
+                          </span>
+                        )}
+                        <p className="whitespace-pre-wrap text-sm leading-relaxed text-parchment">{a.body}</p>
+                        <p className="mt-1.5 text-[11px] text-parchment/45">{new Date(a.createdAt).toLocaleDateString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
               {/* Quizzes */}
               <section>
                 <h2 className="font-ui font-medium text-lg mb-1 inline-flex items-center gap-2">

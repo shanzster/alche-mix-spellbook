@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Info, Atom, BookOpen, Compass, School, Layers, LogIn, LogOut, UserPlus } from "lucide-react";
+import { Info, Atom, BookOpen, Compass, School, Layers, LogIn, LogOut, UserPlus, Menu, X } from "lucide-react";
 import { onAuthChange, signOut, type User } from "../lib/auth";
 import { ThemeToggle } from "./ThemeToggle";
 
@@ -127,18 +127,29 @@ function AuthPill({ user, bare = false }: { user: User | null; bare?: boolean })
 export function FloatingNav() {
   const [user, setUser] = useState<User | null>(null);
   const [authReady, setAuthReady] = useState(false);
+  // Mobile: the six content links collapse behind this menu button so the pill
+  // never overflows a narrow phone (icons + logo + theme + auth alone fit).
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthChange((u) => { setUser(u); setAuthReady(true); });
     return unsub;
   }, []);
 
+  // Esc closes the mobile menu.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setMenuOpen(false); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menuOpen]);
+
   return (
-    <header className="fixed top-4 left-0 right-0 z-50 pointer-events-none">
+    <header className="fixed top-3 md:top-4 left-0 right-0 z-50 pointer-events-none">
       {/* Centred nav pill — the logo orb is a real item, seated in the middle. */}
-      <div className="flex justify-center">
+      <div className="flex justify-center px-3">
         <nav
-          className="pointer-events-auto flex items-center gap-1 h-14 rounded-full backdrop-blur-xl px-2"
+          className="pointer-events-auto flex max-w-[calc(100vw-1.5rem)] items-center gap-1 h-14 rounded-full backdrop-blur-xl px-2"
           style={{
             background: "color-mix(in oklab, var(--color-slate-sunken) 88%, transparent)",
             border: "1px solid var(--color-border)",
@@ -146,8 +157,20 @@ export function FloatingNav() {
           }}
           aria-label="Primary"
         >
-          {/* Left wing — three links */}
-          {NAV_LINKS.slice(0, 3).map((l) => <NavLink key={l.href} {...l} />)}
+          {/* Mobile: a single menu button stands in for the six links. */}
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            aria-label={menuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={menuOpen}
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-parchment transition-colors hover:bg-teal/10 hover:text-foreground md:hidden"
+          >
+            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+
+          {/* Left wing — three links (desktop only) */}
+          <span className="hidden items-center gap-1 md:flex">
+            {NAV_LINKS.slice(0, 3).map((l) => <NavLink key={l.href} {...l} />)}
+          </span>
 
           {/* Logo orb — seated inside the pill, vertically centred (no overlap) */}
           <Link
@@ -167,8 +190,10 @@ export function FloatingNav() {
             />
           </Link>
 
-          {/* Right wing — three links */}
-          {NAV_LINKS.slice(3).map((l) => <NavLink key={l.href} {...l} />)}
+          {/* Right wing — three links (desktop only) */}
+          <span className="hidden items-center gap-1 md:flex">
+            {NAV_LINKS.slice(3).map((l) => <NavLink key={l.href} {...l} />)}
+          </span>
 
           {/* Mobile: theme + auth live inside the pill so nothing overlaps. */}
           <span className="flex items-center gap-1.5 md:hidden">
@@ -178,6 +203,45 @@ export function FloatingNav() {
           </span>
         </nav>
       </div>
+
+      {/* Mobile menu sheet — the six links as a tidy list under the pill. */}
+      {menuOpen && (
+        <>
+          <div
+            className="pointer-events-auto fixed inset-0 md:hidden"
+            onClick={() => setMenuOpen(false)}
+            aria-hidden
+          />
+          <div className="pointer-events-auto relative z-10 mx-auto mt-2 w-[min(20rem,calc(100vw-1.5rem))] md:hidden">
+            <div
+              className="flyout-in grid grid-cols-2 gap-1 rounded-2xl p-2 backdrop-blur-xl"
+              style={{
+                background: "color-mix(in oklab, var(--color-slate-sunken) 94%, transparent)",
+                border: "1px solid var(--color-border)",
+                boxShadow: "0 18px 40px -16px color-mix(in oklab, var(--color-wraith) 35%, transparent)",
+              }}
+            >
+              {NAV_LINKS.map((l) => (
+                <Link
+                  key={l.href}
+                  to={l.href as any}
+                  onClick={() => setMenuOpen(false)}
+                  className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-parchment transition-colors hover:bg-teal/10 hover:text-foreground"
+                  activeProps={{
+                    style: {
+                      color: "var(--color-emerald-elixir)",
+                      background: "color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent)",
+                    },
+                  }}
+                >
+                  <l.icon className="h-4 w-4 flex-shrink-0" />
+                  <span className="font-ui text-[13px] font-semibold tracking-[0.04em]">{l.label}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Desktop: controls pinned right, vertically centred to the pill. */}
       <div className="pointer-events-auto absolute right-4 top-0 hidden h-14 items-center gap-2 md:flex">

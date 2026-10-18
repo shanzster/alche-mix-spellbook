@@ -1,16 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  Grid3x3, Search, Orbit, Box, Check, FlaskConical,
-  Palette, Thermometer, TrendingUp, History, Link2, X, ScrollText,
+  Grid3x3, Search, Palette, Thermometer, TrendingUp, History,
 } from "lucide-react";
 import { ModuleShell } from "../components/ModuleShell";
 import { RequireAuth } from "../components/RequireAuth";
-import { BohrModel3D } from "../components/BohrModel3D";
-import { ConceptCard, DidYouKnow } from "../components/Learn";
 import { useUserProfile, logPractice } from "../lib/profile";
-import { loreFor } from "../lib/element-lore";
-import { electronConfig } from "../lib/electron-config";
 import {
   PERIODIC_ELEMENTS, type TableElement,
 } from "../lib/periodic-table-data";
@@ -113,116 +108,19 @@ function isKnownBy(el: TableElement, year: number): boolean {
   return el.ancient === true || (el.discoveryYear !== undefined && el.discoveryYear <= year);
 }
 
-// ── Rich, education-first content (the curated elements get a full study page) ─
-interface RichInfo {
-  state: "Solid" | "Liquid" | "Gas";
-  uses: string[];
-  examples: string;
-  note: string;
-}
-const RICH: Record<number, RichInfo> = {
-  1: { state: "Gas", uses: ["Rocket fuel", "Making ammonia for fertiliser", "Hydrogen fuel cells"],
-    examples: "Bonded with oxygen it makes every drop of water (H₂O).",
-    note: "The lightest and most abundant element in the universe — stars are mostly hydrogen." },
-  2: { state: "Gas", uses: ["Filling balloons & airships", "Cooling MRI magnets", "Deep-sea diving gas mixes"],
-    examples: "The gas that makes party balloons float and your voice go squeaky.",
-    note: "So light it escapes Earth's gravity — and it was first discovered in the Sun, not on Earth." },
-  3: { state: "Solid", uses: ["Rechargeable batteries", "Mood-stabilising medicine", "Heat-resistant glass"],
-    examples: "Powers your phone, laptop and electric cars.",
-    note: "The lightest metal — soft enough to cut with a knife and light enough to float on water." },
-  6: { state: "Solid", uses: ["Making steel", "Diamonds & pencil 'lead'", "The backbone of all living things"],
-    examples: "Every living thing — you included — is built around carbon.",
-    note: "The same element forms both diamond (hardest natural material) and soft, slippery graphite." },
-  7: { state: "Gas", uses: ["Fertilisers", "Preserving packaged food", "Liquid nitrogen for freezing"],
-    examples: "Makes up 78% of the air you breathe.",
-    note: "Its molecules are so unreactive it's pumped into crisp packets to keep them fresh." },
-  8: { state: "Gas", uses: ["Breathing & hospital medicine", "Making steel", "Rocket propellant"],
-    examples: "Every breath you take and every fire that burns needs it.",
-    note: "Reactive enough to rust iron and power your cells — about 21% of the air is oxygen." },
-  9: { state: "Gas", uses: ["Fluoride in toothpaste", "Non-stick coatings (Teflon)", "Refrigerant gases"],
-    examples: "Added to toothpaste and tap water to protect your teeth.",
-    note: "The most reactive element of all — it reacts with almost everything, even glass." },
-  10: { state: "Gas", uses: ["Glowing signs", "High-voltage indicators", "Some lasers"],
-    examples: "The red-orange glow of classic 'neon' signs.",
-    note: "A full outer shell makes it completely unreactive — it simply glows when electrified." },
-  11: { state: "Solid", uses: ["Table salt (with chlorine)", "Orange street lamps", "Soap making"],
-    examples: "Half of the salt on your food is sodium.",
-    note: "So reactive that pure sodium bursts into flame in water — yet it's essential for your nerves." },
-  12: { state: "Solid", uses: ["Lightweight alloys", "Fireworks & flares", "Dietary supplements"],
-    examples: "Burns with a brilliant white light in fireworks and flares.",
-    note: "It sits at the centre of chlorophyll — without it, plants couldn't photosynthesise." },
-  13: { state: "Solid", uses: ["Drink cans & foil", "Aircraft bodies", "Power lines"],
-    examples: "Drink cans, kitchen foil and aeroplane fuselages.",
-    note: "The most abundant metal in Earth's crust — light, strong and endlessly recyclable." },
-  14: { state: "Solid", uses: ["Computer chips", "Solar panels", "Glass & ceramics"],
-    examples: "The 'silicon' in Silicon Valley — it runs every computer.",
-    note: "A semiconductor: it conducts electricity just enough to switch signals on and off." },
-  16: { state: "Solid", uses: ["Making sulfuric acid", "Vulcanising rubber for tyres", "Gunpowder & matches"],
-    examples: "The yellow crust around volcanoes and hot springs.",
-    note: "It gives rotten eggs their smell — and the acid made from it is the world's most-produced chemical." },
-  17: { state: "Gas", uses: ["Disinfecting water & pools", "Household bleach", "Making PVC plastic"],
-    examples: "Keeps swimming pools and drinking water safe.",
-    note: "A toxic green gas on its own, but bonded with sodium it becomes harmless table salt." },
-  19: { state: "Solid", uses: ["Fertilisers", "Salt substitutes", "Nerve & muscle signals"],
-    examples: "Bananas are famous for being rich in it.",
-    note: "Vital for your heartbeat and nerves — its symbol K comes from the Latin 'kalium'." },
-  20: { state: "Solid", uses: ["Cement & concrete", "Building bones & teeth", "Antacid tablets"],
-    examples: "Builds your bones and teeth; found in milk and cheese.",
-    note: "The most abundant metal in your body — and the main ingredient of chalk, marble and seashells." },
-  26: { state: "Solid", uses: ["Steel for buildings & cars", "Tools & machinery", "Carrying oxygen in your blood"],
-    examples: "Steel skyscrapers, cars — and the haemoglobin in your blood.",
-    note: "The most common element on Earth by mass, and the reason your blood is red." },
-  29: { state: "Solid", uses: ["Electrical wiring", "Water pipes", "Coins & bronze"],
-    examples: "The wires in your walls and the pipes under your sink.",
-    note: "One of the first metals humans used — it slowly turns green as it weathers, like the Statue of Liberty." },
-  79: { state: "Solid", uses: ["Jewellery", "Electronics connectors", "Dentistry"],
-    examples: "Rings, medals and the gold contacts inside phones.",
-    note: "So unreactive it never tarnishes — gold buried for thousands of years comes out still shining." },
-};
-
-// ── 2D Bohr diagram (SVG, self-animating) ───────────────────────────────────
-function BohrSVG({ shells, color, symbol, name }: { shells: string; color: string; symbol: string; name: string }) {
-  const rings = shells.split(",").map(Number);
-  const size = 260, cx = size / 2, cy = size / 2, nucleusR = 22;
-  const maxR = size / 2 - 16;
-  const step = rings.length ? (maxR - nucleusR - 6) / rings.length : 0;
-
-  return (
-    <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full" aria-label={`Bohr diagram of ${name}`}>
-      {rings.map((count, i) => {
-        const r = nucleusR + 6 + step * (i + 1);
-        return (
-          <g key={i}>
-            <circle cx={cx} cy={cy} r={r} fill="none" stroke={color} strokeWidth="1" opacity="0.3" />
-            <g>
-              <animateTransform attributeName="transform" type="rotate" from={`0 ${cx} ${cy}`} to={`${i % 2 ? -360 : 360} ${cx} ${cy}`} dur={`${9 + i * 3}s`} repeatCount="indefinite" />
-              {Array.from({ length: Math.min(count, 32) }).map((_, e) => {
-                const a = (2 * Math.PI * e) / Math.min(count, 32);
-                return <circle key={e} cx={cx + r * Math.cos(a)} cy={cy + r * Math.sin(a)} r="4.5" fill={color} style={{ filter: `drop-shadow(0 0 3px ${color})` }} />;
-              })}
-            </g>
-          </g>
-        );
-      })}
-      <circle cx={cx} cy={cy} r={nucleusR} fill={`color-mix(in oklab, ${color} 35%, transparent)`} stroke={color} strokeWidth="2" />
-      <text x={cx} y={cy} textAnchor="middle" dominantBaseline="central" fontFamily="var(--font-sans)" fontSize="20" fontWeight="600" fill="var(--color-spectral)">{symbol}</text>
-    </svg>
-  );
-}
-
 function PeriodicTable() {
   const { uid } = useUserProfile();
   const { element: elementParam } = Route.useSearch();
   const navigate = useNavigate();
 
+  // Deep-link highlight only: ?element=Fe lights up that tile. There is NO
+  // modal any more — tapping an element opens its own page (/element/$symbol).
   const [selectedNum, setSelectedNum] = useState<number | null>(
-    () => numberForSymbol(elementParam) ?? 6, // Carbon by default
+    () => numberForSymbol(elementParam) ?? null,
   );
-  const [view, setView] = useState<"bohr" | "3d">("3d");
   const [search, setSearch] = useState("");
-  const [copied, setCopied] = useState(false);
 
-  // Traditional (the familiar classroom chart, default) vs Interactive (the
+  // Simplified (the familiar classroom chart, default) vs Interactive (the
   // lensed exploration) — adviser P0 item 3: "Pwede siyang pagpiliin."
   const [mode, setMode] = useState<"traditional" | "interactive">("traditional");
 
@@ -232,64 +130,17 @@ function PeriodicTable() {
   const [trendKey, setTrendKey] = useState<TrendKey>("electronegativity");
   const [year, setYear] = useState(2016);
 
-  const copyTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
   useEffect(() => { if (uid) logPractice(uid, "periodic-table"); }, [uid]);
 
-  // Modal behaviours: Esc closes; the page behind stops scrolling while open.
+  // Keep the highlight in sync if the URL changes underneath us.
   useEffect(() => {
-    if (selectedNum === null) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") closeDetail();
-    };
-    window.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedNum]);
-
-  // Keep the selection in sync if the URL changes underneath us.
-  useEffect(() => {
-    const num = numberForSymbol(elementParam);
-    if (num !== undefined) setSelectedNum(num);
+    setSelectedNum(numberForSymbol(elementParam) ?? null);
   }, [elementParam]);
 
-  useEffect(() => () => clearTimeout(copyTimer.current), []);
-
+  // A tap opens the element's dedicated study page — no modal.
   const selectElement = (el: TableElement) => {
-    setSelectedNum(el.number);
-    setCopied(false);
-    navigate({ to: "/periodic-table", search: { element: el.symbol }, replace: true });
+    navigate({ to: "/element/$symbol", params: { symbol: el.symbol } });
   };
-
-  const closeDetail = () => {
-    setSelectedNum(null);
-    setCopied(false);
-    navigate({ to: "/periodic-table", search: {}, replace: true });
-  };
-
-  const copyLink = async (symbol: string) => {
-    const url = `${window.location.origin}/periodic-table?element=${symbol}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      clearTimeout(copyTimer.current);
-      copyTimer.current = setTimeout(() => setCopied(false), 1800);
-    } catch {
-      // Clipboard unavailable (permissions / non-secure context) — no feedback.
-    }
-  };
-
-  const selected = useMemo(
-    () => (selectedNum === null ? undefined : PERIODIC_ELEMENTS.find((e) => e.number === selectedNum)),
-    [selectedNum],
-  );
-  const rich = selected ? RICH[selected.number] : undefined;
-  const lore = selected ? loreFor(selected.symbol) : undefined;
-  const color = selected ? CATEGORY_COLORS[selected.category] : MISSING_COLOR;
 
   // Search dims non-matching cells (keeps the grid's spatial layout intact).
   const q = search.trim().toLowerCase();
@@ -345,12 +196,12 @@ function PeriodicTable() {
       eyebrow="Element Codex"
       icon={Grid3x3}
       accent="var(--color-wraith)"
-      subtitle="The Modern Periodic Table of the Elements. Tap any element to study it — see it in 3D or as a Bohr diagram."
+      subtitle="The Modern Periodic Table of the Elements. Tap any element to open its own study page — atom in 3D, properties, lore and the things it's found in."
     >
       {/* Traditional ⇄ Interactive — defaults to the chart students know */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <div className="inline-flex rounded-full p-1" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }}>
-          {([["traditional", "Traditional"], ["interactive", "Interactive"]] as const).map(([key, label]) => (
+          {([["traditional", "Simplified"], ["interactive", "Interactive"]] as const).map(([key, label]) => (
             <button key={key} onClick={() => setMode(key)}
               className="rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] transition sm:px-5"
               style={mode === key ? { background: "color-mix(in oklab, var(--color-wraith) 25%, transparent)", color: "var(--color-wraith)" } : { color: "var(--color-parchment)" }}>
@@ -466,188 +317,6 @@ function PeriodicTable() {
         look={look}
       />
 
-      {/* ── Element detail — a modal over the table ── */}
-      {selected && (
-      <div
-        className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto p-4 md:items-center md:p-8"
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${selected.name} details`}
-      >
-        <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={closeDetail}
-          aria-hidden
-        />
-        <div className="glass-strong sheet-up scroll-slim relative z-10 my-auto max-h-[calc(100vh-3rem)] w-full max-w-5xl overflow-y-auto rounded-2xl p-5 md:p-6">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        {/* Viewer */}
-        <div>
-          <div className="mb-4 flex items-start gap-4">
-            <div className="flex h-16 w-16 flex-shrink-0 flex-col items-center justify-center rounded-xl font-sans"
-              style={{ background: `color-mix(in oklab, ${color} 16%, transparent)`, border: `2px solid color-mix(in oklab, ${color} 55%, transparent)`, boxShadow: `0 0 24px -8px ${color}`, color }}>
-              <span className="text-2xl font-semibold leading-none">{selected.symbol}</span>
-              <span className="mt-0.5 text-[10px] opacity-70">{selected.number}</span>
-            </div>
-            <div className="min-w-0">
-              <h2 className="flex items-center gap-3 font-display text-2xl">
-                {selected.name}
-                {lore?.alchemySymbol && (
-                  <span
-                    className="text-3xl leading-none"
-                    style={{ color: "var(--color-gold)", textShadow: "0 0 14px color-mix(in oklab, var(--color-gold) 55%, transparent)" }}
-                    title="Alchemical symbol"
-                    aria-label="Alchemical symbol"
-                  >
-                    {lore.alchemySymbol}
-                  </span>
-                )}
-              </h2>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.12em]">
-                <span className="rounded-full px-2 py-0.5" style={{ color, background: `color-mix(in oklab, ${color} 12%, transparent)`, border: `1px solid color-mix(in oklab, ${color} 30%, transparent)` }}>{selected.category}</span>
-                {rich && <span className="text-parchment/60">{rich.state}</span>}
-                <span className="text-parchment/60">{selected.mass} u</span>
-              </div>
-            </div>
-            <div className="ml-auto flex flex-shrink-0 items-center gap-2">
-              <button
-                onClick={() => copyLink(selected.symbol)}
-                className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] uppercase tracking-[0.12em] transition hover:brightness-125"
-                style={{
-                  background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)",
-                  border: "1px solid var(--color-border)",
-                  color: copied ? "var(--color-teal)" : "var(--color-parchment)",
-                }}
-                title={`Copy a link to ${selected.name}`}
-              >
-                {copied ? <Check className="h-3.5 w-3.5" /> : <Link2 className="h-3.5 w-3.5" />}
-                <span className="hidden sm:inline">{copied ? "Copied" : "Copy link"}</span>
-              </button>
-              <button
-                onClick={closeDetail}
-                aria-label="Close element details"
-                className="rounded-full p-1.5 text-parchment/60 transition hover:text-spectral"
-                style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }}
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* View toggle */}
-          <div className="mb-3 inline-flex rounded-full p-1" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 70%, transparent)", border: "1px solid var(--color-border)" }}>
-            {([["3d", "3D View", Box], ["bohr", "Bohr Model", Orbit]] as const).map(([key, label, Icon]) => (
-              <button key={key} onClick={() => setView(key)}
-                className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs uppercase tracking-[0.1em] transition"
-                style={view === key ? { background: `color-mix(in oklab, ${color} 20%, transparent)`, color } : { color: "var(--color-parchment)" }}>
-                <Icon className="h-3.5 w-3.5" /> {label}
-              </button>
-            ))}
-          </div>
-
-          <div className="relative h-[340px] overflow-hidden rounded-2xl"
-            style={{ background: `radial-gradient(ellipse at 50% 40%, color-mix(in oklab, ${color} 20%, transparent), color-mix(in oklab, var(--color-slate-sunken) 82%, transparent))`, border: `1px solid color-mix(in oklab, ${color} 30%, transparent)` }}>
-            {view === "3d" ? (
-              <BohrModel3D key={selected.symbol} interactive electrons={selected.shells} color={color} nucleusColor="#fbbf24" label={selected.symbol} />
-            ) : (
-              <div className="flex h-full items-center justify-center p-6"><BohrSVG shells={selected.shells} color={color} symbol={selected.symbol} name={selected.name} /></div>
-            )}
-            <span className="pointer-events-none absolute bottom-2 left-1/2 -translate-x-1/2 text-[10px] uppercase tracking-[0.2em] text-parchment/50">
-              {view === "3d" ? "drag to spin ⟳" : `Shells: ${selected.shells}`}
-            </span>
-          </div>
-        </div>
-
-        {/* Educational content */}
-        <div className="space-y-4">
-          {/* The standard data card — EVERY element, no exceptions (adviser
-              P0 item 4: "kulang ng information"). */}
-          <div className="rounded-xl p-5" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <Stat label="Atomic number" value={String(selected.number)} />
-              <Stat label="Atomic mass" value={`${selected.mass} u`} />
-              <Stat label="Family" value={selected.category} />
-              <Stat label="Electron shells" value={selected.shells} />
-              <Stat label="Melting point" value={selected.meltK !== undefined ? `${Math.round(selected.meltK)} K · ${Math.round(selected.meltK - 273.15)} °C` : "Not established"} />
-              <Stat label="Boiling point" value={selected.boilK !== undefined ? `${Math.round(selected.boilK)} K · ${Math.round(selected.boilK - 273.15)} °C` : "Not established"} />
-              <Stat label="Electronegativity" value={selected.electronegativity !== undefined ? selected.electronegativity.toFixed(2) : "No accepted value"} />
-              <Stat label="Discovered" value={selected.ancient ? "Known since antiquity" : String(selected.discoveryYear ?? "—")} />
-              <div className="col-span-2">
-                <Stat label="Electron configuration" value={electronConfig(selected.number)} />
-              </div>
-            </div>
-          </div>
-
-          {rich ? (
-            <>
-              <div className="rounded-xl p-4" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-                <div className="mb-3 flex items-center gap-2 text-teal">
-                  <FlaskConical className="h-3.5 w-3.5" />
-                  <span className="font-ui font-medium text-[10px] uppercase tracking-[0.2em]">What it's used for</span>
-                </div>
-                <ul className="grid gap-2 sm:grid-cols-2">
-                  {rich.uses.map((u) => (
-                    <li key={u} className="flex items-start gap-2 text-sm text-parchment">
-                      <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-teal" /> {u}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <DidYouKnow>{rich.examples}</DidYouKnow>
-              <ConceptCard title={selected.name}>{rich.note}</ConceptCard>
-            </>
-          ) : (
-            <ConceptCard title={`About ${selected.name}`}>
-              {`${selected.name} (${selected.symbol}) is a ${selected.category.toLowerCase()} — element ${selected.number} of the periodic table${selected.ypos <= 7 ? `, in period ${selected.ypos}` : ""}, with an atomic mass of ${selected.mass} u.`}
-            </ConceptCard>
-          )}
-
-          {/* ── Lore: etymology, history, and the alchemist's tradition ── */}
-          {lore && (
-            <div className="rounded-xl p-4" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-              <div className="mb-3 flex items-center gap-2" style={{ color }}>
-                <ScrollText className="h-3.5 w-3.5" />
-                <span className="font-ui font-medium text-[10px] uppercase tracking-[0.2em]">Lore</span>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <div className="mb-1 text-[10px] uppercase tracking-[0.25em] text-parchment/60">The Name</div>
-                  <p className="text-sm leading-relaxed text-parchment">{lore.etymology}</p>
-                </div>
-                <div>
-                  <div className="mb-1 text-[10px] uppercase tracking-[0.25em] text-parchment/60">The History</div>
-                  <p className="text-sm leading-relaxed text-parchment">{lore.history}</p>
-                </div>
-                {lore.alchemy && (
-                  <div className="flex items-start gap-3 rounded-lg p-3"
-                    style={{ background: "color-mix(in oklab, var(--color-gold) 8%, transparent)", border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)" }}>
-                    {lore.alchemySymbol && (
-                      <span className="mt-0.5 flex-shrink-0 text-2xl leading-none"
-                        style={{ color: "var(--color-gold)" }} aria-hidden="true">{lore.alchemySymbol}</span>
-                    )}
-                    <div>
-                      <div className="mb-1 text-[10px] uppercase tracking-[0.25em] text-gold">The Alchemist's Eye</div>
-                      <p className="text-sm leading-relaxed text-parchment">{lore.alchemy}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-        </div>
-      </div>
-      )}
     </ModuleShell>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-[10px] uppercase tracking-[0.15em] text-parchment/45">{label}</div>
-      <div className="mt-0.5 text-spectral">{value}</div>
-    </div>
   );
 }

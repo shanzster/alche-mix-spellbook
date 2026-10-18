@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   type User,
@@ -88,6 +89,11 @@ export async function signUpWithEmail(
   const result = await createUserWithEmailAndPassword(auth, email, password);
   await ensureUserProfile(result.user, { role, schoolId: extra?.schoolId, names: extra?.names });
   return result.user;
+}
+
+/** Send a Firebase password-reset email. Throws with an `auth/*` code on failure. */
+export async function sendPasswordReset(email: string): Promise<void> {
+  await sendPasswordResetEmail(auth, email.trim());
 }
 
 export async function signInWithEmail(email: string, password: string) {

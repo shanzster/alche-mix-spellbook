@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { Mail, Lock, Eye, EyeOff, LogIn, School, ArrowRight, GraduationCap, FlaskConical } from "lucide-react";
-import { fetchRole, homeForRole, signInWithEmail } from "../lib/auth";
+import { Mail, Lock, Eye, EyeOff, LogIn, School, ArrowRight, GraduationCap, FlaskConical, CheckCircle2 } from "lucide-react";
+import { fetchRole, homeForRole, signInWithEmail, sendPasswordReset } from "../lib/auth";
 import { AuthLayout } from "./AuthLayout";
 
 /**
@@ -18,6 +18,8 @@ export function AuthDoor({ educator = false }: { educator?: boolean }) {
   const [showPw, setShowPw]     = useState(false);
   const [loading, setLoading]   = useState(false);
   const [error, setError]       = useState("");
+  const [resetBusy, setResetBusy] = useState(false);
+  const [resetSent, setResetSent] = useState("");
 
   const accent = educator ? "var(--color-gold)" : "var(--color-wraith)";
 
@@ -28,13 +30,27 @@ export function AuthDoor({ educator = false }: { educator?: boolean }) {
 
   const handleEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(""); setLoading(true);
+    setError(""); setResetSent(""); setLoading(true);
     try {
       const user = await signInWithEmail(email, password);
       await settle(user.uid);
     } catch (err: any) {
       setError(friendlyError(err.code));
     } finally { setLoading(false); }
+  };
+
+  // Forgot password — sends Firebase's reset email to whatever's in the Email
+  // field (so the student fills it in first, then taps the link).
+  const handleReset = async () => {
+    setError(""); setResetSent("");
+    if (!email.trim()) { setError("Enter your email above first, then tap “Forgot password?”."); return; }
+    setResetBusy(true);
+    try {
+      await sendPasswordReset(email);
+      setResetSent(`A reset link is on its way to ${email.trim()}. Check your inbox (and spam).`);
+    } catch (err: any) {
+      setError(friendlyError(err.code));
+    } finally { setResetBusy(false); }
   };
 
   const inputStyle = {
@@ -65,9 +81,11 @@ export function AuthDoor({ educator = false }: { educator?: boolean }) {
         </div>
       </div>
 
-      {/* School-code students have their own door (consultation feedback). */}
+      {/* New school students join with a class code — but a code is only ever
+          needed to REGISTER. Once they have an account they just sign in here
+          and land in their class, so this points at the sign-up door. */}
       {!educator && (
-        <Link to="/school-login"
+        <Link to="/school-signup"
           className="group mb-5 flex items-center gap-3 rounded-lg px-4 py-3 transition-all duration-200 hover:-translate-y-0.5"
           style={{
             background: "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)",
@@ -75,8 +93,8 @@ export function AuthDoor({ educator = false }: { educator?: boolean }) {
           }}>
           <School className="h-5 w-5 flex-shrink-0 text-teal" />
           <span className="flex-1 text-sm">
-            <span className="font-semibold text-teal">Have a Class Code ready?</span>{" "}
-            <span className="text-parchment/70">Sign in through the School Door to join your class.</span>
+            <span className="font-semibold text-teal">New, with a class code?</span>{" "}
+            <span className="text-parchment/70">Join your class through the School Door when you sign up.</span>
           </span>
           <ArrowRight className="h-4 w-4 flex-shrink-0 text-teal transition-transform duration-200 group-hover:translate-x-0.5" />
         </Link>
@@ -95,7 +113,13 @@ export function AuthDoor({ educator = false }: { educator?: boolean }) {
         </div>
 
         <div>
-          <label className="block text-xs tracking-[0.2em] uppercase text-parchment/60 mb-1.5">Password</label>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="block text-xs tracking-[0.2em] uppercase text-parchment/60">Password</label>
+            <button type="button" onClick={handleReset} disabled={resetBusy}
+              className="text-[11px] font-medium text-parchment/55 transition hover:text-spectral disabled:opacity-50">
+              {resetBusy ? "Sending…" : "Forgot password?"}
+            </button>
+          </div>
           <div className="relative">
             <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-parchment/40" />
             <input type={showPw ? "text" : "password"} required value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••"
@@ -110,6 +134,12 @@ export function AuthDoor({ educator = false }: { educator?: boolean }) {
 
         {error && (
           <p className="text-xs text-crimson bg-crimson/10 border border-crimson/30 rounded-lg px-3 py-2">{error}</p>
+        )}
+        {resetSent && (
+          <p className="flex items-start gap-2 text-xs text-teal rounded-lg px-3 py-2"
+            style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 30%, transparent)" }}>
+            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 flex-shrink-0" /> {resetSent}
+          </p>
         )}
 
         <button type="submit" disabled={loading}

@@ -51,10 +51,10 @@ function useScrollY() {
 // ── Section heading — eyebrow + display title, the page's recurring voice ───
 function SectionHead({ eyebrow, title, sub }: { eyebrow: string; title: React.ReactNode; sub?: string }) {
   return (
-    <Reveal className="text-center mb-14">
-      <p className="text-xs tracking-[0.4em] text-gold uppercase mb-3">{eyebrow}</p>
-      <h2 className="font-display text-4xl md:text-5xl">{title}</h2>
-      {sub && <p className="font-serif italic text-parchment mt-4 text-lg max-w-2xl mx-auto">{sub}</p>}
+    <Reveal className="text-center mb-10 md:mb-14">
+      <p className="text-[10px] sm:text-xs tracking-[0.3em] sm:tracking-[0.4em] text-gold uppercase mb-3">{eyebrow}</p>
+      <h2 className="font-display text-3xl sm:text-4xl md:text-5xl">{title}</h2>
+      {sub && <p className="font-serif italic text-parchment mt-4 text-base sm:text-lg max-w-2xl mx-auto">{sub}</p>}
     </Reveal>
   );
 }
@@ -261,12 +261,12 @@ function HeroScene() {
       </div>
 
       {/* The proclamation — centred over the ceremony */}
-      <div className="pointer-events-none relative z-10 flex min-h-screen flex-col items-center px-6 pb-[5vh] pt-28 text-center">
+      <div className="pointer-events-none relative z-10 flex min-h-screen flex-col items-center px-5 pb-[5vh] pt-24 text-center sm:px-6 sm:pt-28">
         <div ref={headRef} className="will-change-transform relative">
-          <p className="mb-4 text-[11px] uppercase tracking-[0.45em] text-gold" style={{ textShadow: "0 1px 10px color-mix(in oklab, var(--color-mist) 90%, transparent), 0 0 4px color-mix(in oklab, var(--color-mist) 70%, transparent)" }}>
+          <p className="mb-4 text-[10px] uppercase tracking-[0.32em] text-gold sm:text-[11px] sm:tracking-[0.45em]" style={{ textShadow: "0 1px 10px color-mix(in oklab, var(--color-mist) 90%, transparent), 0 0 4px color-mix(in oklab, var(--color-mist) 70%, transparent)" }}>
             ✦ The Alchemist's Grimoire ✦
           </p>
-          <h1 className="font-display text-5xl leading-[1.05] md:text-6xl lg:text-7xl">
+          <h1 className="font-display text-[2.6rem] leading-[1.07] sm:text-5xl md:text-6xl lg:text-7xl">
             Where <span className="aurora-gradient animate-aurora">Elements</span>
             <br /> Whisper Their <span className="text-wraith text-glow-violet">Secrets.</span>
           </h1>
@@ -275,7 +275,7 @@ function HeroScene() {
         <div className="relative mt-auto">
           {/* Frosted band so the tagline reads over the robes */}
           <div
-            className="absolute -inset-x-24 -inset-y-5 -z-10"
+            className="absolute -inset-x-10 -inset-y-5 sm:-inset-x-24 -z-10"
             style={{
               background: "color-mix(in oklab, var(--color-mist) 82%, transparent)",
               maskImage: "radial-gradient(ellipse 58% 80% at 50% 50%, black 52%, transparent 84%)",
@@ -283,7 +283,7 @@ function HeroScene() {
             }}
             aria-hidden
           />
-          <p className="mx-auto max-w-xl font-serif text-lg italic leading-relaxed text-parchment">
+          <p className="mx-auto max-w-xl font-serif text-base italic leading-relaxed text-parchment sm:text-lg">
             Real chemistry, bound in a grimoire. Scan the cards, mix the
             elements, and forge what the old masters only dreamed of.
           </p>
@@ -394,8 +394,8 @@ function DeckBox() {
 
 function ChronicleScroll() {
   return (
-    <section id="chronicle" className="relative scroll-mt-24 overflow-hidden py-20" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 760px" }}>
-      <div className="mx-auto grid max-w-6xl items-center gap-12 px-6 lg:grid-cols-2">
+    <section id="chronicle" className="relative scroll-mt-24 overflow-hidden py-14 md:py-20" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 760px" }}>
+      <div className="mx-auto grid max-w-6xl items-center gap-10 px-5 sm:px-6 md:gap-12 lg:grid-cols-2">
         {/* The words */}
         <Reveal>
           <p className="mb-3 text-xs uppercase tracking-[0.4em] text-gold">Chapter I — The Chronicle</p>
@@ -543,7 +543,7 @@ function ForgeRite() {
   };
 
   return (
-    <section className="relative overflow-hidden py-20" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 1400px" }}>
+    <section className="relative overflow-hidden py-14 md:py-20" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 1400px" }}>
       {/* Bench backdrop — a warm pool of candlelight grounds the altar so the
           rite reads as a lit workbench, not a floating card. Pure decoration. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-0">
@@ -552,7 +552,7 @@ function ForgeRite() {
           style={{ background: "radial-gradient(ellipse, color-mix(in oklab, var(--color-gold) 13%, transparent), transparent 70%)" }}
         />
       </div>
-      <div className="relative z-10 mx-auto max-w-5xl px-6">
+      <div className="relative z-10 mx-auto max-w-5xl px-5 sm:px-6">
         <SectionHead
           eyebrow="Chapter II — The Rite"
           title="How does it work?"
@@ -714,8 +714,8 @@ function Marginalia() {
     { n: "VI", title: "Rites that Build Habits", body: "Daily starter questions with streaks, spaced review that remembers what you forget, and trials that award stars — motivation, never grades." },
   ];
   return (
-    <section className="relative z-10 py-20" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 1100px" }}>
-      <div className="mx-auto max-w-6xl px-6">
+    <section className="relative z-10 py-14 md:py-20" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 1100px" }}>
+      <div className="mx-auto max-w-6xl px-5 sm:px-6">
         <SectionHead
           eyebrow="Chapter III — Marginalia"
           title="Noted in the margins."
@@ -768,11 +768,11 @@ function Marginalia() {
 // ── Final summons ────────────────────────────────────────────────────────────
 function FinalSummons() {
   return (
-    <section className="relative overflow-hidden py-24" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 700px" }}>
-      <Reveal className="relative mx-auto max-w-3xl px-6">
+    <section className="relative overflow-hidden py-16 md:py-24" style={{ contentVisibility: "auto", containIntrinsicSize: "auto 700px" }}>
+      <Reveal className="relative mx-auto max-w-3xl px-5 sm:px-6">
         {/* The summons plate — double gold rule, a revolving transmutation
             seal turning slowly behind the words (dark mode only). */}
-        <div className="ink-panel relative overflow-hidden px-6 py-16 text-center md:px-14">
+        <div className="ink-panel relative overflow-hidden px-6 py-14 text-center md:px-14 md:py-16">
           <div className="pointer-events-none absolute left-1/2 top-1/2 hidden aspect-square w-[560px] -translate-x-1/2 -translate-y-1/2 dark:block">
             <div
               className="animate-spin-slower h-full w-full"

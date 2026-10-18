@@ -195,7 +195,7 @@ export function useAllUsers() {
   return { users, loading };
 }
 
-export interface AdminClass { id: string; name: string; teacherId: string; teacherName?: string | null }
+export interface AdminClass { id: string; name: string; teacherId: string; teacherName?: string | null; archived?: boolean }
 
 export function useAllClasses() {
   const [classes, setClasses] = useState<AdminClass[]>([]);
@@ -203,4 +203,24 @@ export function useAllClasses() {
     setClasses(snap.docs.map((d) => ({ id: d.id, ...(d.data() as Omit<AdminClass, "id">) })));
   }, (err) => console.error("useAllClasses:", err)), []);
   return classes;
+}
+
+/** Super-admin class edits — rename and archive/restore (the owning teacher's
+ *  roster, grades and assignments are left untouched). */
+export async function updateClassAdmin(id: string, patch: { name?: string; archived?: boolean }): Promise<void> {
+  const clean: Record<string, unknown> = {};
+  if (patch.name !== undefined) clean.name = patch.name;
+  if (patch.archived !== undefined) clean.archived = patch.archived;
+  if (Object.keys(clean).length === 0) return;
+  await updateDoc(doc(db, "classes", id), clean);
+  await logAudit("class.update", { type: "class", id, label: patch.name }, clean);
+}
+
+/**
+ * Delete a class document. Note: the roster / requests subcollections are not
+ * cascaded from the client (same Admin-SDK limit as `deleteUserProfile`).
+ */
+export async function deleteClassAdmin(id: string, label?: string): Promise<void> {
+  await deleteDoc(doc(db, "classes", id));
+  await logAudit("class.delete", { type: "class", id, label });
 }

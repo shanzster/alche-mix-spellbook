@@ -1,6 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useRef, useState } from "react";
-import { School as SchoolIcon, Copy, Check, X, LogOut, Upload, GraduationCap, IdCard, Camera, KeyRound } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useRef, useState, type ComponentType } from "react";
+import {
+  School as SchoolIcon, Copy, Check, X, LogOut, Upload, GraduationCap, IdCard,
+  Camera, KeyRound, LayoutDashboard, BookOpen, Clock, Archive, Loader2,
+} from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { ArcaneField } from "../components/ArcaneField";
 import { RequireRole } from "../components/RequireRole";
@@ -30,12 +33,168 @@ const INPUT = {
   border: "1px solid color-mix(in oklab, var(--color-parchment) 22%, transparent)",
 } as const;
 
-/** School Admin dashboard (Phase 2 — see docs/SCHOOL_MULTITENANCY.md). */
+// School-admin accent — amber, the console's signature (matches the branding
+// accent default and the PageHeader). Gold stays the ornament colour.
+const ACCENT = "var(--color-amber-scry)";
+
+type SchoolTab = "overview" | "school" | "teachers" | "classes";
+
+/** Hover name chip for the console rail — same language as the student/teacher rails. */
+function RailChip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="glass-strong pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-x-1 -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1 text-[11px] font-medium text-spectral opacity-0 transition-all duration-150 group-hover:translate-x-0 group-hover:opacity-100">
+      {children}
+    </span>
+  );
+}
+
+function StatTile({ icon: Icon, label, value, tone = ACCENT, hint }: {
+  icon: ComponentType<{ className?: string }>; label: string; value: React.ReactNode; tone?: string; hint?: string;
+}) {
+  return (
+    <div className="rounded-2xl p-4" style={{ background: `color-mix(in oklab, ${tone} 8%, transparent)`, border: `1px solid color-mix(in oklab, ${tone} 25%, transparent)` }}>
+      <div className="mb-2 flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `color-mix(in oklab, ${tone} 14%, transparent)`, color: tone }}>
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="text-[10px] uppercase tracking-[0.14em] text-parchment/60">{label}</span>
+      </div>
+      <p className="font-display text-3xl leading-none" style={{ color: tone }}>{value}</p>
+      {hint && <p className="mt-1.5 text-[11px] text-parchment/55">{hint}</p>}
+    </div>
+  );
+}
+
+// ── Overview — the school at a glance ───────────────────────────────────────
+function SchoolOverview({ school, onJump }: { school: School; onJump: (t: SchoolTab) => void }) {
+  const { teachers } = useSchoolTeachers(school.id);
+  const classes = useSchoolClasses(school.id);
+  const [copied, setCopied] = useState(false);
+  const pending = teachers.filter((t) => (t.status ?? "pending") === "pending").length;
+  const activeClasses = classes.filter((c) => !c.archived).length;
+
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(school.code); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <StatTile icon={GraduationCap} label="Teachers" value={teachers.length} tone={ACCENT}
+          hint={pending > 0 ? `${pending} awaiting approval` : "all approved"} />
+        <StatTile icon={BookOpen} label="Classes" value={classes.length} tone="var(--color-emerald-elixir)"
+          hint={`${activeClasses} active`} />
+        <StatTile icon={KeyRound} label="School code" value={<span className="tracking-[0.12em]">{school.code}</span>} tone="var(--color-gold)"
+          hint="teachers join with this" />
+      </div>
+
+      {pending > 0 && (
+        <button onClick={() => onJump("teachers")}
+          className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-left transition hover:-translate-y-0.5"
+          style={{ background: "color-mix(in oklab, var(--color-gold) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)" }}>
+          <Clock className="h-5 w-5 flex-shrink-0 text-gold" />
+          <span className="flex-1 text-sm">
+            <span className="font-semibold text-gold">{pending} teacher{pending === 1 ? "" : "s"} waiting for approval.</span>{" "}
+            <span className="text-parchment/70">Review their ID and approve in the Teachers tab.</span>
+          </span>
+        </button>
+      )}
+
+      <div className="rounded-2xl p-7" style={{ ...CARD, borderColor: "color-mix(in oklab, var(--color-gold) 30%, transparent)" }}>
+        <p className="mb-2 text-[10px] uppercase tracking-[0.3em] text-gold/80">Share your school code</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="font-ui text-4xl font-bold tracking-[0.2em] text-spectral">{school.code}</span>
+          <button onClick={copy} aria-label="Copy code" className="flex h-9 w-9 items-center justify-center rounded-full text-parchment/70 transition hover:text-spectral"
+            style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 80%, transparent)", border: "1px solid var(--color-border)" }}>
+            {copied ? <Check className="h-4 w-4 text-teal" /> : <Copy className="h-4 w-4" />}
+          </button>
+        </div>
+        <p className="mt-3 text-sm text-parchment/70">
+          Teachers enter this code when they sign up to join <span className="font-semibold text-spectral">{school.name}</span>.
+          Each teacher then gets their own class code to share with students.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Classes — read-only oversight of every class in the school ──────────────
+function ClassRow({ cls, teacherName }: { cls: ReturnType<typeof useSchoolClasses>[number]; teacherName: string }) {
+  const [copied, setCopied] = useState(false);
+  const code = cls.joinCode ?? cls.id;
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* ignore */ }
+  };
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3" style={CARD}>
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-spectral">
+          {cls.name}
+          {cls.archived && <span className="ml-2 rounded-full px-2 py-0.5 text-[9px] uppercase tracking-[0.12em] text-parchment/60" style={{ border: "1px solid var(--color-border)" }}>Archived</span>}
+        </p>
+        <p className="mt-0.5 inline-flex items-center gap-1.5 text-xs text-parchment/55"><GraduationCap className="h-3.5 w-3.5" /> {teacherName}</p>
+      </div>
+      <button onClick={copy} title="Class join code — students enter this"
+        className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] text-teal transition hover:brightness-110"
+        style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 30%, transparent)" }}>
+        <KeyRound className="h-3 w-3" /> <span className="font-ui font-bold tracking-[0.15em]">{code}</span>
+        {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3 opacity-60" />}
+      </button>
+    </div>
+  );
+}
+
+function ClassesOversight({ school }: { school: School }) {
+  const classes = useSchoolClasses(school.id);
+  const { teachers } = useSchoolTeachers(school.id);
+  const nameOf = (uid: string) => {
+    const t = teachers.find((x) => x.uid === uid);
+    return t?.displayName ?? t?.email ?? "Unknown teacher";
+  };
+  const active = classes.filter((c) => !c.archived);
+  const archived = classes.filter((c) => c.archived);
+
+  if (classes.length === 0) {
+    return (
+      <div className="rounded-2xl px-5 py-10 text-center" style={CARD}>
+        <span className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl" style={{ background: `color-mix(in oklab, ${ACCENT} 12%, transparent)`, color: ACCENT }}>
+          <BookOpen className="h-5 w-5" />
+        </span>
+        <h3 className="font-display text-base mb-1">No classes yet</h3>
+        <p className="text-sm text-parchment/60">Classes appear here as your teachers create them under {school.name}.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <p className="text-xs text-parchment/55">
+        Every class under {school.name}. Read-only — teachers manage their own rosters, grades and assignments.
+        Student counts live in each teacher's console.
+      </p>
+      <div className="space-y-2">
+        {active.map((c) => <ClassRow key={c.id} cls={c} teacherName={nameOf(c.teacherId)} />)}
+      </div>
+      {archived.length > 0 && (
+        <div>
+          <p className="mb-2 inline-flex items-center gap-1.5 text-xs uppercase tracking-[0.2em] text-parchment/50"><Archive className="h-3.5 w-3.5" /> Archived</p>
+          <div className="space-y-2">
+            {archived.map((c) => <ClassRow key={c.id} cls={c} teacherName={nameOf(c.teacherId)} />)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** School Admin console — same shell as the teacher side (see DESIGN_DIRECTION §7b). */
 function SchoolDashboard() {
   const { profile } = useUserProfile();
+  const navigate = useNavigate();
   const schoolId = profile?.schoolId;
   const [school, setSchool] = useState<School | null>(null);
   const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState<SchoolTab>("overview");
 
   useEffect(() => {
     let alive = true;
@@ -44,43 +203,102 @@ function SchoolDashboard() {
     return () => { alive = false; };
   }, [schoolId]);
 
+  const handleSignOut = async () => { await signOut(); navigate({ to: "/" }); };
+
+  const TABS = [
+    { key: "overview", label: "Overview", icon: LayoutDashboard },
+    { key: "school", label: "School", icon: SchoolIcon },
+    { key: "teachers", label: "Teachers", icon: GraduationCap },
+    { key: "classes", label: "Classes", icon: BookOpen },
+  ] as const;
+
+  const body = loading ? (
+    <div className="mt-10 flex items-center justify-center gap-2 text-sm text-parchment/60"><Loader2 className="h-4 w-4 animate-spin" /> Loading your school…</div>
+  ) : !school ? (
+    <p className="mt-10 text-center text-parchment/60">No school is linked to this account yet. Ask a super admin to assign you to a school.</p>
+  ) : (
+    <>
+      {tab === "overview" && <SchoolOverview school={school} onJump={setTab} />}
+      {tab === "school" && <div className="space-y-6"><CodeCard school={school} /><BrandingCard school={school} onSaved={(s) => setSchool(s)} /></div>}
+      {tab === "teachers" && <TeachersCard school={school} />}
+      {tab === "classes" && <ClassesOversight school={school} />}
+    </>
+  );
+
   return (
     <div className="grimoire-display bg-arcane min-h-screen text-spectral">
       <ArcaneField />
-      <div className="relative z-10 mx-auto max-w-4xl px-6 pt-8 pb-24">
-        <PageHeader
-          eyebrow="School Admin"
-          title={school?.name ?? "Your School"}
-          subtitle="Manage your school's details and share the code with your teachers."
-          icon={SchoolIcon}
-          accent="var(--color-amber-scry)"
-          home="/school"
-          hideNav
-          right={
-            <div className="flex items-center gap-2">
-              <ThemeToggle />
-              <button onClick={() => signOut()} className="flex h-9 items-center gap-1.5 rounded-full px-3 text-xs text-parchment transition hover:text-crimson"
-                style={{ background: "color-mix(in oklab, var(--color-crimson) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--color-crimson) 30%, transparent)" }}>
-                <LogOut className="h-3.5 w-3.5" /> Sign out
-              </button>
-            </div>
-          }
-        />
 
-        {loading ? (
-          <p className="mt-10 text-center text-parchment/60">Loading your school…</p>
-        ) : !school ? (
-          <p className="mt-10 text-center text-parchment/60">
-            No school is linked to this account yet. Ask a super admin to assign you to a school.
-          </p>
-        ) : (
-          <div className="mt-8 space-y-6">
-            <CodeCard school={school} />
-            <BrandingCard school={school} onSaved={(s) => setSchool(s)} />
-            <TeachersCard school={school} />
-          </div>
-        )}
+      {/* ── Desktop rail ── */}
+      <nav aria-label="Console sections" className="glass-strong hidden md:flex fixed left-3 top-1/2 z-40 -translate-y-1/2 flex-col items-center gap-1 rounded-2xl p-1.5">
+        <Link to="/" aria-label="AlcheMix home" className="group relative flex h-11 w-10 flex-shrink-0 items-center justify-center">
+          <img src="/images/logo-outline.png" alt="" className="h-7 w-7 object-contain transition-transform duration-200 group-hover:scale-110" />
+          <RailChip>AlcheMix · School Admin</RailChip>
+        </Link>
+        <div className="my-1 h-px w-6 flex-shrink-0" style={{ background: "var(--color-border)" }} />
+        {TABS.map((t) => {
+          const active = tab === t.key;
+          return (
+            <button key={t.key} onClick={() => setTab(t.key)} aria-label={t.label}
+              className="group relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-amber-scry/10"
+              style={{ color: active ? ACCENT : "var(--color-parchment)", background: active ? `color-mix(in oklab, ${ACCENT} 10%, transparent)` : undefined }}>
+              {active && <span className="absolute left-0 h-5 w-0.5 rounded-full" style={{ background: ACCENT }} />}
+              <t.icon className="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
+              <RailChip>{t.label}</RailChip>
+            </button>
+          );
+        })}
+        <div className="my-1 h-px w-6 flex-shrink-0" style={{ background: "var(--color-border)" }} />
+        <div className="group relative flex-shrink-0">
+          <ThemeToggle className="!h-10 !w-10 !rounded-xl !border-0 !bg-transparent" />
+          <RailChip>Theme</RailChip>
+        </div>
+        <button onClick={handleSignOut} aria-label="Sign out"
+          className="group relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl text-parchment/60 transition-colors hover:bg-crimson/10 hover:text-crimson">
+          <LogOut className="h-4 w-4 transition-transform duration-200 group-hover:scale-110" />
+          <RailChip>Sign out</RailChip>
+        </button>
+      </nav>
+
+      {/* ── Mobile top bar ── */}
+      <header className="glass-strong md:hidden fixed top-2 inset-x-2 z-40 flex h-14 items-center justify-between rounded-2xl px-4">
+        <Link to="/" className="flex items-center gap-2">
+          <img src="/images/logo-outline.png" alt="" className="h-7 w-7 object-contain" />
+          <span className="font-ui text-sm font-medium tracking-[0.12em]">AlcheMix <span style={{ color: ACCENT }}>School</span></span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <ThemeToggle className="!h-8 !w-8" />
+          <button onClick={handleSignOut} aria-label="Sign out" className="flex h-8 w-8 items-center justify-center rounded-full text-parchment/60 transition-colors hover:bg-crimson/10 hover:text-crimson">
+            <LogOut className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </header>
+
+      {/* ── Content ── */}
+      <div className="relative z-10 px-5 pt-20 pb-28 md:pl-24 md:pr-8 md:pt-10 md:pb-12">
+        <div className="mx-auto max-w-5xl">
+          <PageHeader home="/school" hideNav eyebrow="School Admin" title={school?.name ?? "Your School"}
+            subtitle="Your school's code and branding, your teacher roster, and every class under your school."
+            icon={SchoolIcon} accent={ACCENT} />
+          {body}
+        </div>
       </div>
+
+      {/* ── Mobile section bar (four tabs) ── */}
+      <nav aria-label="Console sections" className="glass-strong md:hidden fixed bottom-2 inset-x-2 z-50 flex h-16 items-stretch justify-around overflow-hidden rounded-2xl">
+        {TABS.map((t) => {
+          const active = tab === t.key;
+          return (
+            <button key={t.key} onClick={() => setTab(t.key)} aria-label={t.label} aria-current={active ? "page" : undefined}
+              className="relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors"
+              style={{ color: active ? ACCENT : "var(--color-parchment)" }}>
+              {active && <span className="absolute top-0 h-0.5 w-8 rounded-full" style={{ background: ACCENT }} />}
+              <t.icon className="h-5 w-5" />
+              <span className="text-[10px] font-medium">{t.label}</span>
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }

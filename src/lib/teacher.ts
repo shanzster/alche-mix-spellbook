@@ -389,6 +389,21 @@ export interface MissionDef {
   createdAt: number;
 }
 
+/**
+ * A class notice. Lives on the class doc exactly like quizzes/missions, so the
+ * same Firestore rules apply (owning teacher writes; `allow get` lets the
+ * enrolled student read). Pinned notices sort to the top on the student side.
+ */
+export interface AnnouncementDef {
+  id: string;
+  /** The notice body (plain text). */
+  body: string;
+  /** Pinned notices show first on the student's Assignments page. */
+  pinned?: boolean;
+  /** Epoch millis (serverTimestamp can't live inside array elements). */
+  createdAt: number;
+}
+
 /** A module a mission can point at. `practiceKey` matches what the module logs via `logPractice`. */
 export interface ModuleCatalogEntry {
   id: string;
@@ -461,20 +476,27 @@ export function validateMission(title: string, targets: MissionTarget[]): string
 export function useClassAssignments(classId: string | null) {
   const [quizzes, setQuizzes] = useState<QuizDef[]>([]);
   const [missions, setMissions] = useState<MissionDef[]>([]);
+  const [announcements, setAnnouncements] = useState<AnnouncementDef[]>([]);
   const [className, setClassName] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    if (!classId) { setQuizzes([]); setMissions([]); setClassName(null); setLoading(false); return; }
+    if (!classId) { setQuizzes([]); setMissions([]); setAnnouncements([]); setClassName(null); setLoading(false); return; }
     setLoading(true);
     return onSnapshot(doc(db, "classes", classId), (snap) => {
       const data = snap.data();
       setQuizzes(((data?.quizzes as QuizDef[]) ?? []).slice().sort((a, b) => b.createdAt - a.createdAt));
       setMissions(((data?.missions as MissionDef[]) ?? []).slice().sort((a, b) => b.createdAt - a.createdAt));
+      // Pinned first, then newest — the order both the teacher and student see.
+      setAnnouncements(
+        ((data?.announcements as AnnouncementDef[]) ?? [])
+          .slice()
+          .sort((a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.createdAt - a.createdAt),
+      );
       setClassName((data?.name as string) ?? null);
       setLoading(false);
     }, (err) => { console.error("useClassAssignments:", err); setLoading(false); });
   }, [classId]);
-  return { quizzes, missions, className, loading };
+  return { quizzes, missions, announcements, className, loading };
 }
 
 /** Read-modify-write one array field on the class doc (create or replace by id). */
@@ -524,6 +546,21 @@ export async function saveMission(classId: string, mission: MissionDef): Promise
 
 export async function deleteMission(classId: string, missionId: string): Promise<void> {
   await removeClassArrayItem(classId, "missions", missionId);
+}
+
+/** Create or update a class notice. Pinned flag omitted (not stored) when false. */
+export async function saveAnnouncement(classId: string, a: AnnouncementDef): Promise<void> {
+  const clean: AnnouncementDef = {
+    id: a.id,
+    body: a.body.trim(),
+    createdAt: a.createdAt,
+    ...(a.pinned ? { pinned: true } : {}),
+  };
+  await upsertClassArrayItem(classId, "announcements", clean);
+}
+
+export async function deleteAnnouncement(classId: string, id: string): Promise<void> {
+  await removeClassArrayItem(classId, "announcements", id);
 }
 
 // ── Class analytics (Performance Matrix) ────────────────────────────────────
@@ -623,4 +660,84 @@ export function aggregateConceptTrouble(
   return Object.values(byId)
     .filter((t) => t.lapses > 0 || t.overdue > 0)
     .sort((a, b) => b.overdue - a.overdue || b.lapses - a.lapses);
+}
+
+// ── Engagement aggregates (Overview / Daily Starters / Collections) ──────────
+
+/** Local YYYY-MM-DD key — matches the format starters write to `lastDay`. */
+export function todayKey(d: Date = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** Whether a student's Starters streak is live today, lapsed, or never begun. */
+export type StreakState = "today" | "yesterday" | "lapsed" | "none";
+export function starterStreakState(
+  streak: StudentProfile["starterStreak"],
+  today = todayKey(),
+): StreakState {
+  if (!streak || streak.count <= 0 || !streak.lastDay) return "none";
+  if (streak.lastDay === today) return "today";
+  const yesterday = todayKey(new Date(Date.parse(`${today}T12:00:00`) - 86_400_000));
+  if (streak.lastDay === yesterday) return "yesterday";
+  return "lapsed";
+}
+
+/** Count of rostered students active today (by their last-activity timestamp). */
+export function activeTodayCount(profiles: (StudentProfile | null)[], today = todayKey()): number {
+  return profiles.filter((p) => {
+    const ms = lastActiveMillis(p?.practice);
+    return ms != null && todayKey(new Date(ms)) === today;
+  }).length;
+}
+
+/** Students with no recorded activity in the last `days` days (idle watch). */
+export function idleStudents(
+  profiles: StudentSnapshot[],
+  days = 7,
+  now = Date.now(),
+): StudentSnapshot[] {
+  const cutoff = now - days * 86_400_000;
+  return profiles.filter((s) => {
+    const ms = lastActiveMillis(s.data?.practice);
+    return ms == null || ms < cutoff;
+  });
+}
+
+/** Roster-wide tally of each mastery level across every graded topic. */
+export function masteryTally(profiles: (StudentProfile | null)[]): Record<Mastery, number> {
+  const tally: Record<Mastery, number> = { "not-started": 0, developing: 0, proficient: 0, mastered: 0 };
+  for (const p of profiles) {
+    for (const level of Object.values(p?.mastery ?? {})) {
+      if (level in tally) tally[level as Mastery] += 1;
+    }
+  }
+  return tally;
+}
+
+/** Class collection totals — cards scanned, compounds forged, forged variants. */
+export interface CollectionTotals { cards: number; compounds: number; forged: number }
+export function classCollectionTotals(profiles: (StudentProfile | null)[]): CollectionTotals {
+  return profiles.reduce<CollectionTotals>(
+    (acc, p) => ({
+      cards: acc.cards + (p?.grimoire?.length ?? 0),
+      compounds: acc.compounds + (p?.compounds?.length ?? 0),
+      forged: acc.forged + (p?.forged?.length ?? 0),
+    }),
+    { cards: 0, compounds: 0, forged: 0 },
+  );
+}
+
+/** Most-forged compound formulas across the roster, commonest first. */
+export function topForgedCompounds(
+  profiles: (StudentProfile | null)[],
+  n = 8,
+): { formula: string; count: number }[] {
+  const byFormula: Record<string, number> = {};
+  for (const p of profiles) {
+    for (const f of p?.compounds ?? []) byFormula[f] = (byFormula[f] ?? 0) + 1;
+  }
+  return Object.entries(byFormula)
+    .map(([formula, count]) => ({ formula, count }))
+    .sort((a, b) => b.count - a.count || a.formula.localeCompare(b.formula))
+    .slice(0, n);
 }

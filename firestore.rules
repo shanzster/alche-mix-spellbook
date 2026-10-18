@@ -187,6 +187,14 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // ── Database snapshots (the super admin's "Version Machine") ──
+    // Only the super admin may read, create or delete a backup snapshot.
+    // Never updated — a snapshot is immutable once taken.
+    match /backups/{snapshotId} {
+      allow read, create, delete: if isAdmin();
+      allow update: if false;
+    }
+
     // Everything else denied by default.
     match /{document=**} {
       allow read, write: if false;

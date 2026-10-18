@@ -148,3 +148,46 @@ student requests `{uid, name, email, requestedAt}`; teacher accept → moves to
 
 > Build order is deliberate: each phase is shippable and verified (`tsc` +
 > `npm run build`) before the next. Nothing below Phase N assumes Phase N+1.
+
+---
+
+## Post-phase updates
+
+### 2026-10-18 — Login flow: a code is for REGISTERING, not signing in
+
+The School Door used to offer a *sign-in with a class code* mode
+(`/school-login`). That was wrong: once a student has an account it is already
+linked to their school, so re-entering a code to log in made no sense (and the
+old flow even re-fired a join request on every login). Fixed:
+
+- **`/school-login` now redirects to `/login`** (`beforeLoad` → `redirect`).
+  Old links/bookmarks still resolve.
+- The class-code door (`/school-signup`, `SchoolDoor`) is **registration-only**.
+  Its footer now sends existing accounts to `/login` ("Already have an account?
+  Sign in").
+- The `/login` (`AuthDoor`) class-code banner now points to **`/school-signup`**
+  ("New, with a class code? Join your class when you sign up").
+- Returning users of every role sign in at `/login` (or the role doors) and are
+  routed by `homeForRole` — student → `/app` (their class), teacher → `/teacher`,
+  school_admin → `/school`, super admin → `/admin`. A code is never needed again.
+
+### 2026-10-18 — `/school` rebuilt as a full console
+
+The school-admin dashboard was a single scrolling page. It now wears the same
+shell as the student/teacher consoles (desktop floating rail + mobile floating
+top bar + fixed bottom tab bar; see `DESIGN_DIRECTION.md` §7b), accent amber,
+with four tabs:
+
+- **Overview** — teacher/class stat tiles, a pending-teacher-approval callout
+  (jumps to Teachers), and the shareable school code.
+- **School** — the code card + branding editor (name, logo, brand colour).
+- **Teachers** — provision teacher accounts, roster, Approve/Reject + Review-ID
+  (unchanged behaviour, reused).
+- **Classes** — read-only oversight of every class under the school (name,
+  teacher, join code, archived state) from `useSchoolClasses`.
+
+**Honest limits:** no Students tab — students don't reliably carry `schoolId`,
+and Firestore rules don't let a school admin read class rosters (only the class
+teacher can). So per-class student counts live in each teacher's console, and
+Classes oversight shows class-doc fields only. Lifting that would need a rules
+change (school-admin roster read) + a redeploy.

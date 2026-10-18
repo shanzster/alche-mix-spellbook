@@ -7,6 +7,134 @@
 
 ---
 
+## 2026-10-18 (Saturday)
+
+> Mobile-responsiveness pass + teacher/student shell parity.
+
+### 1 · Teacher console — student shell's mobile logic ported
+
+The teacher console already shared the student's desktop floating rail, but its
+mobile nav was an in-content horizontal-scroll tab strip. Replaced it with the
+same **fixed bottom tab bar** the student shell uses (`glass-strong`,
+`bottom-2 inset-x-2`, one tab per section, teal active top-marker), with short
+labels (Classes/Grades/Evidence/Stats/Quizzes/Missions). Content bottom padding
+bumped to `pb-28` on mobile so the bar never overlaps the last row.
+`src/routes/teacher.tsx`.
+
+### 2 · Landing `FloatingNav` — mobile overflow fixed
+
+The centred nav pill crammed six links + logo + theme + auth into one row and
+overflowed narrow phones (the right-pinned auth got clipped). The six content
+links now collapse behind a **hamburger menu button** on mobile (opens a
+two-column glass sheet under the pill; Esc / outside-click closes); logo, theme
+and auth stay in the pill. Desktop is unchanged. Pill is now width-capped
+(`max-w-[calc(100vw-1.5rem)]`). `src/components/FloatingNav.tsx`.
+
+### 3 · Landing page — small-screen rhythm
+
+Hero headline scales from `2.6rem` on phones; eyebrow/tagline tracking and the
+frosted tagline band tighten under `sm`; section vertical padding is
+`py-14 md:py-20` (summons `py-16 md:py-24`); `SectionHead` and gutters shrink on
+mobile. `src/routes/index.tsx`.
+
+### 4 · Teacher modules — the console grown to mirror the student side
+
+New catalogue `docs/teacher-modules.md` maps every student surface to its
+teacher counterpart (shipped + gaps). Built the four gaps, all mirroring a
+student module and reading the same live data:
+
+- **Overview** (new console home) — active-today / needs-review / compounds
+  stat tiles, a mastery-pulse bar, daily-rite rollups, and a needs-attention
+  panel (struggling concepts + students quiet 7+ days). Read-only aggregate.
+- **Daily Starters** — per-class streak leaderboard + state (brewed today /
+  due / lapsed), over `starterStreak`/`starterHistory`. Engagement, not a grade.
+- **Collections** — Grimoire/Codex oversight: cards scanned, compounds &
+  forged per student + most-forged-compound tally.
+- **Bulletin** — teacher posts dated/pinnable notices stored as
+  `classes/{id}.announcements[]` (same pattern as missions); students see them
+  at the top of `/assignments`.
+
+Data layer (`src/lib/teacher.ts`): `AnnouncementDef` + `saveAnnouncement`/
+`deleteAnnouncement`, `useClassAssignments` now returns `announcements`
+(pinned-first), and aggregation helpers `todayKey`, `starterStreakState`,
+`activeTodayCount`, `idleStudents`, `masteryTally`, `classCollectionTotals`,
+`topForgedCompounds`.
+
+Console nav grew from 6 → 10 sections: the desktop rail now scrolls; the mobile
+bottom bar shows four primary slots + a **More** sheet for the rest (new
+precedent in `DESIGN_DIRECTION.md` §7b). `DATA_INVENTORY.md` D4 + §1 and
+`SCOPE.md` updated for the `announcements` field and the new tabs.
+
+### 5 · Login — a class code belongs to REGISTRATION only
+
+Owner noticed students could *sign in* with a school/class code, which is
+wrong: an existing account is already linked to its school. Fixed so the code
+only appears when registering. `/school-login` → redirects to `/login`; the
+`SchoolDoor` (now registration-only) footer sends existing accounts to `/login`;
+the `/login` banner points at `/school-signup` instead of a code sign-in.
+Returning users of every role sign in normally and are routed by `homeForRole`
+(student → `/app`/their class, school_admin → `/school`, etc.).
+`src/routes/school-login.tsx`, `src/components/AuthDoor.tsx`,
+`src/components/SchoolDoor.tsx`.
+
+### 8 · Periodic Table — element modal → dedicated study pages
+
+Owner feedback: the signed-in periodic table auto-opened a Carbon modal on load,
+and tapping an element opened a modal. Reworked to pages:
+
+- **No more auto-modal.** Default selection is now `null` (was Carbon/6); the
+  whole modal was removed. `?element=Fe` now only *highlights* a tile.
+- **Tap → page.** Clicking an element navigates to a new **`/element/{symbol}`**
+  study page (`src/routes/element.$symbol.tsx`, RequireAuth + ModuleShell): a
+  big reference-style tile, the atom in 3D/Bohr (toggle), the full data card
+  (incl. electron config), a **"Sample items — where you'll find it"** section
+  (real applications + the everyday example), and lore. Prev/Next pager + copy
+  link + back to the table.
+- **"Simplified" toggle.** The default poster view (clean family-coloured tiles
+  — number, symbol, name, mass, like a wall chart) is now labelled **Simplified**
+  (was "Traditional"); **Interactive** keeps the lenses.
+- Shared extractions so the two surfaces never drift:
+  `src/lib/element-rich.ts` (`RICH` + `richFor`) and
+  `src/components/ElementViewer.tsx` (`BohrSVG` + the 3D/2D viewer).
+
+`SCOPE.md` + `DATA_INVENTORY.md` updated with the new `/element/{symbol}` surface.
+
+### 7 · System Admin — full CRUD + Data & Backups (Version Machine)
+
+The super-admin console gained a **Data & Backups** tab (`src/lib/backup.ts` +
+a new tab in `src/routes/admin.tsx`):
+
+- **Export** — reads the chosen collections (schools/users/classes, optionally
+  verifications/auditLog) into a **Timestamp-safe** JSON file (Timestamps encode
+  to a `{__ts__:[s,n]}` sentinel and revive on restore) and downloads it.
+- **Version Machine** — each snapshot's metadata (+ the full payload inline when
+  ≤ 700 KB, under Firestore's 1 MB doc cap) is stored in `backups/{id}`,
+  newest-first; download, roll back, or delete each.
+- **Import / Rollback** — upload a backup file or pick a snapshot → preview its
+  contents → **type RESTORE** → writes back doc-by-doc (merge). Honest limits:
+  `schools` round-trips fully; `users`/`classes`/`verifications` merge existing
+  docs, and docs the rules won't let the client recreate are **skipped and
+  reported**, never silently lost (recreating deleted docs needs the Admin SDK).
+
+Also: **Classes** tab is now full CRUD (search + rename + archive/restore +
+delete, via `updateClassAdmin`/`deleteClassAdmin`). Every backup/restore/class
+action writes to the audit log (**D14**). New store **D15 `backups`** +
+`firestore.rules` entry (super-admin read/create/delete, no update) — needs
+`firebase deploy --only firestore:rules` to work against live Firestore.
+
+### 6 · School Admin console — rebuilt with the shared shell
+
+`/school` was one long scrolling page; it now wears the student/teacher console
+shell (desktop rail + mobile top bar + fixed bottom tab bar, accent amber) with
+four tabs: **Overview** (teacher/class stat tiles + pending-approval callout +
+shareable code), **School** (code + branding editor), **Teachers** (provision +
+roster + approve/reject + review-ID, reused), **Classes** (read-only oversight
+of every class under the school). No Students tab — students don't carry
+`schoolId` and rules block school-admin roster reads; noted in
+`SCHOOL_MULTITENANCY.md`. `src/routes/school.tsx`.
+
+---
+
 ## 2026-10-14 (Tuesday)
 
 > Working-tree changes (uncommitted at time of writing).

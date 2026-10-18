@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState, type ComponentType } from "react";
+import { useMemo, useRef, useState, type ComponentType } from "react";
 import {
   ShieldCheck, Check, X, LogOut, IdCard, Camera, Inbox, ScanFace,
   LayoutDashboard, Users, GraduationCap, BookOpen, Search, UserCog,
   School, Plus, ArrowUpRight, Pencil, Trash2, UserPlus, ScrollText,
+  Database, Download, Upload, Save, RotateCcw, AlertTriangle, Archive, FileJson,
 } from "lucide-react";
 import { RequireRole } from "../components/RequireRole";
 import { ArcaneField } from "../components/ArcaneField";
@@ -14,8 +15,14 @@ import {
   usePendingVerifications, useAllUsers, useAllClasses,
   approveTeacher, rejectTeacher, setTeacherStatus,
   updateUserAdmin, deleteUserProfile, createUserAdmin,
+  updateClassAdmin, deleteClassAdmin, type AdminClass,
   type Verification,
 } from "../lib/admin";
+import {
+  BACKUP_COLLECTIONS, DEFAULT_BACKUP, exportDatabase, serializeBackup, parseBackup,
+  downloadJson, countDocs, createSnapshot, useSnapshots, getSnapshotPayload,
+  deleteSnapshot, restoreBackup, type BackupPayload, type SnapshotMeta, type RestoreReport,
+} from "../lib/backup";
 import {
   useSchools, createSchoolWithAdmin, createSchoolAdminAccount,
   regenerateSchoolCode, backfillIntoDefaultSchool, updateSchool, deleteSchool,
@@ -31,7 +38,7 @@ export const Route = createFileRoute("/admin")({
   ),
 });
 
-type TabKey = "overview" | "schools" | "verifications" | "teachers" | "users" | "classes" | "audit";
+type TabKey = "overview" | "schools" | "verifications" | "teachers" | "users" | "classes" | "data" | "audit";
 
 const ACCENT = "var(--color-wraith)";
 
@@ -432,24 +439,289 @@ function UsersTab({ users }: { users: StudentProfile[] }) {
   );
 }
 
-function ClassesTab({ classes }: { classes: { id: string; name: string; teacherName?: string | null }[] }) {
+function ClassEditModal({ cls, onClose }: { cls: AdminClass; onClose: () => void }) {
+  const [name, setName] = useState(cls.name);
+  const [archived, setArchived] = useState(!!cls.archived);
+  const [busy, setBusy] = useState(false);
+  const save = async () => {
+    if (!name.trim()) return;
+    setBusy(true);
+    try { await updateClassAdmin(cls.id, { name: name.trim(), archived }); onClose(); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Modal title="Edit class" onClose={onClose}>
+      <div className="space-y-4">
+        <Field label="Class name"><input value={name} onChange={(e) => setName(e.target.value)} className={INPUT} /></Field>
+        <label className="flex items-center gap-2 text-sm text-parchment/80">
+          <input type="checkbox" checked={archived} onChange={(e) => setArchived(e.target.checked)} style={{ accentColor: "var(--color-wraith)" }} />
+          Archived (hidden from the teacher's working tabs, refuses new joins)
+        </label>
+        <p className="text-[11px] text-parchment/45">Join code <span className="font-ui font-bold tracking-[0.2em] text-teal">{cls.id}</span> · teacher {cls.teacherName ?? cls.teacherId}</p>
+        <button onClick={save} disabled={busy || !name.trim()} className={PRIMARY_BTN} style={{ background: "var(--color-emerald-elixir)" }}>
+          {busy ? "Saving…" : "Save changes"}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function ClassesTab({ classes }: { classes: AdminClass[] }) {
+  const [q, setQ] = useState("");
+  const [editing, setEditing] = useState<AdminClass | null>(null);
+  const filtered = classes.filter((c) =>
+    !q.trim() || c.name.toLowerCase().includes(q.toLowerCase()) || c.id.toLowerCase().includes(q.toLowerCase()) || (c.teacherName ?? "").toLowerCase().includes(q.toLowerCase()));
+
+  const del = async (c: AdminClass) => {
+    if (!window.confirm(`Delete “${c.name}”? The class document is removed (its roster/requests subdocs are not cascaded from here). This cannot be undone.`)) return;
+    await deleteClassAdmin(c.id, c.name);
+  };
+
   return (
     <div>
-      <SectionHead eyebrow="Rosters" title="Classes" sub="Every class created by a teacher, with its join code." />
-      {classes.length === 0 ? (
-        <EmptyState icon={BookOpen} title="No classes yet" sub="Classes teachers create will be listed here." />
+      <SectionHead eyebrow="Rosters" title="Classes" sub="Every class created by a teacher. Rename, archive, or delete — the owning teacher keeps managing rosters, grades and assignments." />
+      <div className="relative mb-4 max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-parchment/40" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search classes…" className={INPUT + " pl-9"} />
+      </div>
+      {filtered.length === 0 ? (
+        <EmptyState icon={BookOpen} title="No classes" sub="Classes teachers create will be listed here." />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {classes.map((c) => (
-            <div key={c.id} className="glass flex items-center justify-between rounded-xl px-4 py-3.5">
+          {filtered.map((c) => (
+            <div key={c.id} className="glass flex items-center justify-between gap-3 rounded-xl px-4 py-3.5">
               <div className="min-w-0">
-                <div className="text-sm font-semibold leading-tight truncate">{c.name}</div>
-                <div className="text-xs text-parchment/50 truncate">{c.teacherName ?? "—"}</div>
+                <div className="flex items-center gap-2 text-sm font-semibold leading-tight">
+                  <span className="truncate">{c.name}</span>
+                  {c.archived && <span className="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-[0.12em] text-parchment/60" style={{ border: "1px solid var(--color-border)" }}>Archived</span>}
+                </div>
+                <div className="text-xs text-parchment/50 truncate">{c.teacherName ?? "—"} · <span className="font-ui font-bold tracking-[0.2em] text-teal">{c.id}</span></div>
               </div>
-              <span className="font-ui font-bold tracking-[0.25em] text-teal text-sm flex-shrink-0 pl-3">{c.id}</span>
+              <div className="flex flex-shrink-0 items-center gap-1.5">
+                <button onClick={() => setEditing(c)} aria-label="Edit class" className="flex h-8 w-8 items-center justify-center rounded-lg text-parchment/70 transition hover:bg-wraith/10 hover:text-spectral" style={{ border: "1px solid var(--color-border)" }}><Pencil className="h-3.5 w-3.5" /></button>
+                <button onClick={() => del(c)} aria-label="Delete class" className="flex h-8 w-8 items-center justify-center rounded-lg text-crimson/80 transition hover:bg-crimson/10 hover:text-crimson" style={{ border: "1px solid color-mix(in oklab, var(--color-crimson) 30%, transparent)" }}><Trash2 className="h-3.5 w-3.5" /></button>
+              </div>
             </div>
           ))}
         </div>
+      )}
+      {editing && <ClassEditModal cls={editing} onClose={() => setEditing(null)} />}
+    </div>
+  );
+}
+
+// ── Data & Backups (export · version machine · import/rollback) ─────────────
+function prettyBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function fmtSnapTime(at?: SnapshotMeta["createdAt"]): string {
+  if (!at?.seconds) return "just now";
+  try { return new Date(at.seconds * 1000).toLocaleString(); } catch { return ""; }
+}
+
+function RestoreConfirm({ payload, label, busy, onCancel, onConfirm }: {
+  payload: BackupPayload; label: string; busy: boolean; onCancel: () => void; onConfirm: () => void;
+}) {
+  const [typed, setTyped] = useState("");
+  return (
+    <Modal title="Confirm rollback" onClose={busy ? () => {} : onCancel}>
+      <div className="space-y-4">
+        <div className="flex items-start gap-2 rounded-lg px-3 py-2.5 text-xs" style={{ background: "color-mix(in oklab, var(--color-crimson) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--color-crimson) 30%, transparent)" }}>
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-crimson" />
+          <span className="text-parchment/85">
+            This writes <span className="font-semibold">{label}</span> back over the live database (merge). Existing documents are overwritten.
+            Deleted <span className="font-mono">users</span>/<span className="font-mono">classes</span> can't be recreated from here — those are skipped and counted.
+          </span>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {Object.entries(payload.collections).map(([k, arr]) => (
+            <span key={k} className="rounded-full px-2.5 py-1 text-[11px] text-parchment/75" style={{ border: "1px solid var(--color-border)" }}>
+              {k} <span className="font-ui font-bold text-spectral">{arr.length}</span>
+            </span>
+          ))}
+        </div>
+        <Field label='Type RESTORE to confirm'>
+          <input value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="RESTORE" className={INPUT} autoFocus />
+        </Field>
+        <div className="flex items-center justify-end gap-2">
+          <button onClick={onCancel} disabled={busy} className="rounded-lg px-4 py-2 text-xs text-parchment/70 transition hover:text-spectral disabled:opacity-50" style={{ border: "1px solid var(--color-border)" }}>Cancel</button>
+          <button onClick={onConfirm} disabled={busy || typed !== "RESTORE"} className={PRIMARY_BTN} style={{ background: "var(--color-crimson)" }}>
+            {busy ? "Restoring…" : "Roll back now"}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function DataTab() {
+  const { snapshots, loading } = useSnapshots();
+  const [sel, setSel] = useState<string[]>(DEFAULT_BACKUP);
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ payload: BackupPayload; label: string } | null>(null);
+  const [report, setReport] = useState<RestoreReport | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const toggle = (name: string) => setSel((s) => (s.includes(name) ? s.filter((x) => x !== name) : [...s, name]));
+
+  const stamp = () => new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+
+  const doExport = async (alsoSnapshot: boolean) => {
+    if (sel.length === 0) { setMsg("Pick at least one collection to back up."); return; }
+    setBusy(alsoSnapshot ? "snapshot" : "export"); setMsg(null); setReport(null);
+    try {
+      const payload = await exportDatabase(sel);
+      downloadJson(`alchemix-backup-${stamp()}.json`, serializeBackup(payload));
+      if (alsoSnapshot) await createSnapshot(note || `Backup ${stamp()}`, payload);
+      setMsg(`Backed up ${countDocs(payload)} documents${alsoSnapshot ? " and saved a snapshot" : ""}.`);
+      setNote("");
+    } catch (e) { setMsg(e instanceof Error ? e.message : "Export failed."); }
+    finally { setBusy(null); }
+  };
+
+  const onFile = async (f?: File) => {
+    if (!f) return;
+    setBusy("import"); setMsg(null); setReport(null);
+    try { setPending({ payload: parseBackup(await f.text()), label: f.name }); }
+    catch (e) { setMsg(e instanceof Error ? e.message : "Couldn't read that file."); }
+    finally { setBusy(null); if (fileRef.current) fileRef.current.value = ""; }
+  };
+
+  const loadSnapshot = async (s: SnapshotMeta) => {
+    setBusy(s.id); setMsg(null); setReport(null);
+    try { setPending({ payload: await getSnapshotPayload(s.id), label: s.note || "snapshot" }); }
+    catch (e) { setMsg(e instanceof Error ? e.message : "Couldn't load snapshot."); }
+    finally { setBusy(null); }
+  };
+
+  const runRestore = async () => {
+    if (!pending) return;
+    setBusy("restore");
+    try {
+      const rep = await restoreBackup(pending.payload);
+      setReport(rep);
+      setMsg(`Rollback complete — ${rep.restored} restored, ${rep.skipped} skipped.`);
+      setPending(null);
+    } catch (e) { setMsg(e instanceof Error ? e.message : "Restore failed."); }
+    finally { setBusy(null); }
+  };
+
+  const removeSnap = async (s: SnapshotMeta) => {
+    if (!window.confirm("Delete this snapshot from the Version Machine? The downloaded file (if any) is unaffected.")) return;
+    await deleteSnapshot(s.id);
+  };
+
+  return (
+    <div className="space-y-6">
+      <SectionHead eyebrow="Operations" title="Data & Backups"
+        sub="Export the database, keep restorable snapshots (the Version Machine), and roll back from a snapshot or file. Every action is written to the audit log." />
+
+      {msg && (
+        <div className="rounded-xl px-4 py-2.5 text-sm" style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 30%, transparent)" }}>
+          {msg}
+        </div>
+      )}
+      {report && (report.skipped > 0 || report.restored > 0) && (
+        <div className="rounded-xl px-4 py-3 text-xs" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
+          <p className="mb-1 font-semibold text-spectral">Restore report</p>
+          {Object.entries(report.byCollection).map(([k, v]) => (
+            <p key={k} className="text-parchment/70">{k}: <span className="text-teal">{v.restored} restored</span>{v.skipped > 0 && <span className="text-amber-scry"> · {v.skipped} skipped</span>}</p>
+          ))}
+          {report.firstError && <p className="mt-1 text-parchment/50">First skip reason: {report.firstError}</p>}
+        </div>
+      )}
+
+      {/* Export / Backup */}
+      <div className="glass rounded-2xl p-5">
+        <h3 className="mb-1 inline-flex items-center gap-2 font-display text-lg"><Download className="h-4 w-4 text-wraith" /> Export a backup</h3>
+        <p className="mb-4 text-xs text-parchment/55">Reads the selected collections into a Timestamp-safe JSON file. Download it, and optionally keep a snapshot in the Version Machine.</p>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {BACKUP_COLLECTIONS.map((c) => {
+            const on = sel.includes(c.name);
+            return (
+              <button key={c.name} onClick={() => toggle(c.name)} title={c.note}
+                className="rounded-full px-3 py-1.5 text-xs transition"
+                style={on
+                  ? { background: "color-mix(in oklab, var(--color-wraith) 16%, transparent)", color: "var(--color-wraith)", border: "1px solid color-mix(in oklab, var(--color-wraith) 35%, transparent)" }
+                  : { color: "var(--color-parchment)", border: "1px solid var(--color-border)" }}>
+                {on ? <Check className="mr-1 inline h-3 w-3 -mt-px" /> : <Plus className="mr-1 inline h-3 w-3 -mt-px" />}{c.label}
+              </button>
+            );
+          })}
+        </div>
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Snapshot note (optional) — e.g. “before term reset”" className={INPUT + " mb-3"} />
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => doExport(false)} disabled={!!busy} className={PRIMARY_BTN} style={{ background: "var(--color-wraith)" }}>
+            <Download className="mr-1 inline h-3.5 w-3.5 -mt-px" /> {busy === "export" ? "Exporting…" : "Download backup"}
+          </button>
+          <button onClick={() => doExport(true)} disabled={!!busy}
+            className="rounded-lg px-4 py-2 text-xs font-semibold text-teal transition hover:-translate-y-0.5 disabled:opacity-50"
+            style={{ border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 40%, transparent)" }}>
+            <Save className="mr-1 inline h-3.5 w-3.5 -mt-px" /> {busy === "snapshot" ? "Saving…" : "Download + save snapshot"}
+          </button>
+        </div>
+      </div>
+
+      {/* Version Machine */}
+      <div className="glass rounded-2xl p-5">
+        <h3 className="mb-1 inline-flex items-center gap-2 font-display text-lg"><Database className="h-4 w-4 text-wraith" /> Version Machine</h3>
+        <p className="mb-4 text-xs text-parchment/55">Saved snapshots, newest first. Small snapshots keep a restorable copy inline; larger ones are metadata-only — restore those from a downloaded file.</p>
+        {loading ? (
+          <p className="text-sm text-parchment/60">Loading snapshots…</p>
+        ) : snapshots.length === 0 ? (
+          <EmptyState icon={Archive} title="No snapshots yet" sub="Use “Download + save snapshot” above to capture a restorable version." />
+        ) : (
+          <div className="space-y-2">
+            {snapshots.map((s) => (
+              <div key={s.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl px-4 py-3" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px solid var(--color-border)" }}>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-spectral">{s.note || "Untitled snapshot"}</p>
+                  <p className="text-[11px] text-parchment/55">
+                    {fmtSnapTime(s.createdAt)} · {s.totalDocs} docs · {prettyBytes(s.sizeBytes)}
+                    {!s.hasPayload && <span className="text-amber-scry"> · metadata only</span>}
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {Object.entries(s.counts).map(([k, n]) => (
+                      <span key={k} className="rounded-full px-2 py-0.5 text-[10px] text-parchment/60" style={{ border: "1px solid var(--color-border)" }}>{k} {n}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-shrink-0 items-center gap-1.5">
+                  {s.hasPayload && (
+                    <button onClick={() => void (async () => { try { const p = await getSnapshotPayload(s.id); downloadJson(`alchemix-snapshot-${s.id}.json`, serializeBackup(p)); } catch (e) { setMsg(e instanceof Error ? e.message : "Download failed."); } })()}
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-parchment/70 transition hover:bg-wraith/10 hover:text-spectral" style={{ border: "1px solid var(--color-border)" }} aria-label="Download snapshot"><FileJson className="h-3.5 w-3.5" /></button>
+                  )}
+                  <button onClick={() => loadSnapshot(s)} disabled={!s.hasPayload || !!busy} title={s.hasPayload ? "Roll back to this snapshot" : "No inline payload — restore from a file"}
+                    className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition hover:-translate-y-0.5 disabled:opacity-40"
+                    style={{ color: "var(--color-wraith)", border: "1px solid color-mix(in oklab, var(--color-wraith) 35%, transparent)" }}>
+                    <RotateCcw className="h-3 w-3" /> {busy === s.id ? "…" : "Roll back"}
+                  </button>
+                  <button onClick={() => removeSnap(s)} aria-label="Delete snapshot" className="flex h-8 w-8 items-center justify-center rounded-lg text-crimson/80 transition hover:bg-crimson/10 hover:text-crimson" style={{ border: "1px solid color-mix(in oklab, var(--color-crimson) 30%, transparent)" }}><Trash2 className="h-3.5 w-3.5" /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Import / Rollback */}
+      <div className="glass rounded-2xl p-5">
+        <h3 className="mb-1 inline-flex items-center gap-2 font-display text-lg"><Upload className="h-4 w-4 text-wraith" /> Import / rollback from a file</h3>
+        <p className="mb-4 text-xs text-parchment/55">Upload a backup <span className="font-mono">.json</span> exported here. You'll see what it contains and confirm before anything is written.</p>
+        <input ref={fileRef} type="file" accept="application/json,.json" className="hidden" onChange={(e) => onFile(e.target.files?.[0])} />
+        <button onClick={() => fileRef.current?.click()} disabled={!!busy} className={PRIMARY_BTN} style={{ background: "var(--color-wraith)" }}>
+          <Upload className="mr-1 inline h-3.5 w-3.5 -mt-px" /> {busy === "import" ? "Reading…" : "Choose backup file"}
+        </button>
+      </div>
+
+      {pending && (
+        <RestoreConfirm payload={pending.payload} label={pending.label} busy={busy === "restore"}
+          onCancel={() => setPending(null)} onConfirm={runRestore} />
       )}
     </div>
   );
@@ -746,6 +1018,7 @@ function AdminConsole() {
     { key: "teachers" as TabKey, label: "Teachers", icon: UserCog },
     { key: "users" as TabKey, label: "Users", icon: Users },
     { key: "classes" as TabKey, label: "Classes", icon: BookOpen },
+    { key: "data" as TabKey, label: "Data & Backups", icon: Database },
     { key: "audit" as TabKey, label: "Audit log", icon: ScrollText },
   ];
 
@@ -830,6 +1103,7 @@ function AdminConsole() {
           {tab === "teachers" && <TeachersTab users={users} />}
           {tab === "users" && <UsersTab users={users} />}
           {tab === "classes" && <ClassesTab classes={classes} />}
+          {tab === "data" && <DataTab />}
           {tab === "audit" && <AuditTab />}
         </div>
       </main>

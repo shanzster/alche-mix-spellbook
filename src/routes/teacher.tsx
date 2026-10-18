@@ -5,6 +5,7 @@ import {
   Layers, Sparkles, ChevronLeft, ScanSearch, Clock, X, ImageOff, Loader2,
   AlertTriangle, Award, ChevronDown, ChevronRight, Flame, FlaskConical, Star,
   ListChecks, Pencil, Trash2, ArrowUp, ArrowDown, Wand2, Download,
+  LayoutDashboard, BookMarked, Megaphone, Pin, MoreHorizontal, UserX,
 } from "lucide-react";
 import { PageHeader } from "../components/PageHeader";
 import { ArcaneField } from "../components/ArcaneField";
@@ -22,8 +23,12 @@ import {
   useClassProfiles, practiceTotal, lastActiveMillis, aggregateConceptTrouble,
   useClassAssignments, saveQuiz, deleteQuiz, saveMission, deleteMission,
   validateQuiz, validateMission, newAssignmentId, MODULE_CATALOG, moduleById,
+  saveAnnouncement, deleteAnnouncement,
+  todayKey, starterStreakState, activeTodayCount, idleStudents, masteryTally,
+  classCollectionTotals, topForgedCompounds, type StreakState,
   GRADE_TOPICS, type ClassInfo, type RosterEntry, type StudentSnapshot,
   type QuizDef, type QuizQuestion, type MissionDef, type MissionTarget,
+  type AnnouncementDef,
 } from "../lib/teacher";
 import {
   useClassEvidence, reviewEvidence, isPendingReview, type TeacherEvidenceEntry,
@@ -1164,6 +1169,325 @@ function MissionsTab({ classes }: { classes: ClassInfo[] }) {
   );
 }
 
+// ── Overview — the console home, the class at a glance ──────────────────────
+function StatTile({ icon: Icon, label, value, tone = "var(--color-emerald-elixir)", hint }: {
+  icon: typeof Users; label: string; value: React.ReactNode; tone?: string; hint?: string;
+}) {
+  return (
+    <div className="rounded-2xl p-4" style={{ background: `color-mix(in oklab, ${tone} 8%, transparent)`, border: `1px solid color-mix(in oklab, ${tone} 25%, transparent)` }}>
+      <div className="mb-2 flex items-center gap-2">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `color-mix(in oklab, ${tone} 14%, transparent)`, color: tone }}>
+          <Icon className="h-4 w-4" />
+        </span>
+        <span className="text-[10px] uppercase tracking-[0.14em] text-parchment/60">{label}</span>
+      </div>
+      <p className="font-display text-3xl leading-none" style={{ color: tone }}>{value}</p>
+      {hint && <p className="mt-1.5 text-[11px] text-parchment/55">{hint}</p>}
+    </div>
+  );
+}
+
+function OverviewTab({ classes }: { classes: ClassInfo[] }) {
+  const [classId, setClassId] = useState<string | null>(classes[0]?.id ?? null);
+  const roster = useRoster(classId);
+  const { students, loading } = useClassProfiles(roster);
+  const requests = useJoinRequests(classId);
+  const evidence = useClassEvidence(roster);
+
+  if (classes.length === 0)
+    return <p className="text-sm text-parchment/60">Create a class first to see its overview.</p>;
+
+  const profiles = students.map((s) => s.data);
+  const today = todayKey();
+  const active = activeTodayCount(profiles, today);
+  const pending = requests.length + evidence.filter(isPendingReview).length;
+  const mt = masteryTally(profiles);
+  const masterySum = mt["not-started"] + mt.developing + mt.proficient + mt.mastered;
+  const brewedToday = profiles.filter((p) => starterStreakState(p?.starterStreak, today) === "today").length;
+  const streaksLive = profiles.filter((p) => { const st = starterStreakState(p?.starterStreak, today); return st === "today" || st === "yesterday"; }).length;
+  const longest = profiles.reduce((m, p) => Math.max(m, p?.starterStreak?.count ?? 0), 0);
+  const col = classCollectionTotals(profiles);
+  const trouble = aggregateConceptTrouble(profiles).slice(0, 3);
+  const idle = idleStudents(students, 7);
+
+  const masterySeg = [
+    { k: "mastered", label: "Mastered", color: "var(--color-emerald-elixir)", n: mt.mastered },
+    { k: "proficient", label: "Proficient", color: "var(--color-gold)", n: mt.proficient },
+    { k: "developing", label: "Developing", color: "var(--color-wraith)", n: mt.developing },
+    { k: "not-started", label: "Not started", color: "color-mix(in oklab, var(--color-parchment) 40%, transparent)", n: mt["not-started"] },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <ClassPills classes={classes} classId={classId} onPick={setClassId} />
+      {roster.length === 0 ? (
+        <p className="text-sm text-parchment/50">No students enrolled in this class yet — share the join code from the Classes tab.</p>
+      ) : loading ? (
+        <div className="flex items-center justify-center gap-2 rounded-2xl py-14 text-sm text-parchment/60" style={cardStyle}><Loader2 className="h-4 w-4 animate-spin" /> Gathering class data…</div>
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatTile icon={Users} label="Enrolled" value={roster.length} tone="var(--color-emerald-elixir)" />
+            <StatTile icon={Flame} label="Active today" value={active} tone="var(--color-gold)" hint={`${Math.round((active / roster.length) * 100)}% of the class`} />
+            <StatTile icon={Clock} label="Needs review" value={pending} tone={pending > 0 ? "var(--color-gold)" : "var(--color-emerald-elixir)"} hint={pending > 0 ? "join requests + evidence" : "all clear"} />
+            <StatTile icon={FlaskConical} label="Compounds forged" value={col.compounds} tone="var(--color-wraith)" hint={`${col.cards} cards scanned`} />
+          </div>
+
+          <div className="rounded-2xl p-5" style={cardStyle}>
+            <h3 className="font-display text-base mb-3">Mastery pulse</h3>
+            {masterySum === 0 ? (
+              <p className="text-xs text-parchment/50">No mastery levels set yet — grade a topic in the Gradebook and it appears here.</p>
+            ) : (
+              <>
+                <div className="flex h-3 w-full overflow-hidden rounded-full" style={{ border: "1px solid var(--color-border)" }}>
+                  {masterySeg.filter((s) => s.n > 0).map((s) => (
+                    <span key={s.k} title={`${s.label}: ${s.n}`} style={{ width: `${(s.n / masterySum) * 100}%`, background: s.color }} />
+                  ))}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+                  {masterySeg.map((s) => (
+                    <span key={s.k} className="inline-flex items-center gap-1.5 text-[11px] text-parchment/70">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} /> {s.label} <span className="font-ui font-bold text-spectral">{s.n}</span>
+                    </span>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="rounded-2xl p-5" style={cardStyle}>
+              <h3 className="font-display text-base mb-3 inline-flex items-center gap-2"><Flame className="h-4 w-4 text-gold" /> Daily rite</h3>
+              <div className="space-y-1.5 text-sm">
+                <p className="flex justify-between"><span className="text-parchment/60">Brewed today</span> <span className="font-ui font-bold">{brewedToday}/{roster.length}</span></p>
+                <p className="flex justify-between"><span className="text-parchment/60">Streaks live</span> <span className="font-ui font-bold text-gold">{streaksLive}</span></p>
+                <p className="flex justify-between"><span className="text-parchment/60">Longest streak</span> <span className="font-ui font-bold">{longest} day{longest === 1 ? "" : "s"}</span></p>
+              </div>
+            </div>
+
+            <div className="rounded-2xl p-5" style={cardStyle}>
+              <h3 className="font-display text-base mb-3 inline-flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-gold" /> Needs attention</h3>
+              {trouble.length === 0 && idle.length === 0 ? (
+                <p className="text-xs text-parchment/50">Nothing flagged — no overdue reviews and everyone's been active this week.</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {trouble.length > 0 && (
+                    <div>
+                      <p className="mb-1 text-[10px] uppercase tracking-[0.14em] text-parchment/50">Struggling concepts</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {trouble.map((t) => { const hit = conceptById(t.conceptId); return (
+                          <span key={t.conceptId} className="rounded-full px-2.5 py-1 text-[11px]" style={{ background: "color-mix(in oklab, var(--color-crimson) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--color-crimson) 28%, transparent)" }}>{hit?.concept.title ?? prettyId(t.conceptId)}</span>
+                        ); })}
+                      </div>
+                    </div>
+                  )}
+                  {idle.length > 0 && (
+                    <div>
+                      <p className="mb-1 text-[10px] uppercase tracking-[0.14em] text-parchment/50">Quiet 7+ days</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {idle.slice(0, 8).map((s) => (
+                          <span key={s.uid} className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] text-parchment/70" style={{ border: "1px solid var(--color-border)" }}><UserX className="h-3 w-3" /> {s.name ?? "Student"}</span>
+                        ))}
+                        {idle.length > 8 && <span className="self-center text-[11px] text-parchment/50">+{idle.length - 8} more</span>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Daily Starters — streak oversight (engagement, never a grade) ───────────
+function StartersTab({ classes }: { classes: ClassInfo[] }) {
+  const [classId, setClassId] = useState<string | null>(classes[0]?.id ?? null);
+  const roster = useRoster(classId);
+  const { students, loading } = useClassProfiles(roster);
+
+  if (classes.length === 0) return <p className="text-sm text-parchment/60">Create a class first to see daily-rite engagement.</p>;
+
+  const today = todayKey();
+  const rows = students
+    .map((s) => ({ s, streak: s.data?.starterStreak, state: starterStreakState(s.data?.starterStreak, today), last: s.data?.starterHistory?.[0] }))
+    .sort((a, b) => (b.streak?.count ?? 0) - (a.streak?.count ?? 0));
+  const brewedToday = rows.filter((r) => r.state === "today").length;
+  const live = rows.filter((r) => r.state === "today" || r.state === "yesterday").length;
+  const longest = rows.reduce((m, r) => Math.max(m, r.streak?.count ?? 0), 0);
+
+  const STATE_META: Record<StreakState, { label: string; color: string }> = {
+    today: { label: "Brewed today", color: "var(--color-emerald-elixir)" },
+    yesterday: { label: "Due today", color: "var(--color-gold)" },
+    lapsed: { label: "Lapsed", color: "var(--color-crimson)" },
+    none: { label: "Not started", color: "color-mix(in oklab, var(--color-parchment) 45%, transparent)" },
+  };
+
+  return (
+    <div className="space-y-6">
+      <ClassPills classes={classes} classId={classId} onPick={setClassId} />
+      {roster.length === 0 ? (
+        <p className="text-sm text-parchment/50">No students enrolled in this class yet.</p>
+      ) : loading ? (
+        <div className="flex items-center justify-center gap-2 rounded-2xl py-14 text-sm text-parchment/60" style={cardStyle}><Loader2 className="h-4 w-4 animate-spin" /> Gathering streaks…</div>
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatTile icon={Flame} label="Brewed today" value={`${brewedToday}/${roster.length}`} tone="var(--color-emerald-elixir)" />
+            <StatTile icon={Flame} label="Streaks live" value={live} tone="var(--color-gold)" />
+            <StatTile icon={Award} label="Longest streak" value={`${longest}d`} tone="var(--color-wraith)" />
+          </div>
+          <p className="-mb-2 text-xs text-parchment/50">Engagement only — the daily rite is never a grade.</p>
+          <div className="space-y-1.5">
+            {rows.map(({ s, streak, state, last }, i) => { const m = STATE_META[state]; return (
+              <div key={s.uid} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={cardStyle}>
+                <span className="w-5 flex-shrink-0 text-center font-ui text-xs text-parchment/40">{i + 1}</span>
+                <span className="min-w-0 flex-1 truncate font-ui text-sm font-semibold">{s.name ?? "Student"}</span>
+                {last && <span className="hidden text-[11px] text-parchment/50 sm:inline">last {last.score}/{last.outOf}</span>}
+                <span className="inline-flex items-center gap-1 text-sm" style={{ color: m.color }}><Flame className="h-3.5 w-3.5" /> {streak?.count ?? 0}</span>
+                <span className="hidden text-[11px] text-parchment/50 sm:inline">best {streak?.best ?? streak?.count ?? 0}</span>
+                <span className="flex-shrink-0 rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.1em]" style={{ color: m.color, background: `color-mix(in oklab, ${m.color} 12%, transparent)` }}>{m.label}</span>
+              </div>
+            ); })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Collections — Grimoire & Compound Codex oversight ───────────────────────
+function CollectionsTab({ classes }: { classes: ClassInfo[] }) {
+  const [classId, setClassId] = useState<string | null>(classes[0]?.id ?? null);
+  const roster = useRoster(classId);
+  const { students, loading } = useClassProfiles(roster);
+
+  if (classes.length === 0) return <p className="text-sm text-parchment/60">Create a class first to see collections.</p>;
+
+  const profiles = students.map((s) => s.data);
+  const col = classCollectionTotals(profiles);
+  const top = topForgedCompounds(profiles, 10);
+  const rows = students
+    .map((s) => ({ s, cards: s.data?.grimoire?.length ?? 0, compounds: s.data?.compounds?.length ?? 0, forged: s.data?.forged?.length ?? 0 }))
+    .sort((a, b) => (b.compounds + b.cards) - (a.compounds + a.cards));
+
+  return (
+    <div className="space-y-6">
+      <ClassPills classes={classes} classId={classId} onPick={setClassId} />
+      {roster.length === 0 ? (
+        <p className="text-sm text-parchment/50">No students enrolled in this class yet.</p>
+      ) : loading ? (
+        <div className="flex items-center justify-center gap-2 rounded-2xl py-14 text-sm text-parchment/60" style={cardStyle}><Loader2 className="h-4 w-4 animate-spin" /> Gathering collections…</div>
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatTile icon={BookMarked} label="Cards scanned" value={col.cards} tone="var(--color-emerald-elixir)" />
+            <StatTile icon={FlaskConical} label="Compounds forged" value={col.compounds} tone="var(--color-gold)" />
+            <StatTile icon={Sparkles} label="Forged variants" value={col.forged} tone="var(--color-wraith)" />
+          </div>
+
+          {top.length > 0 && (
+            <div className="rounded-2xl p-5" style={cardStyle}>
+              <h3 className="font-display text-base mb-3">Most-forged compounds</h3>
+              <div className="flex flex-wrap gap-2">
+                {top.map((t) => (
+                  <span key={t.formula} className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px]" style={{ background: "color-mix(in oklab, var(--color-gold) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--color-gold) 28%, transparent)" }}>
+                    <span className="font-ui font-bold text-spectral">{t.formula}</span>
+                    <span className="text-parchment/60">×{t.count}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-1.5">
+            {rows.map(({ s, cards, compounds, forged }) => (
+              <div key={s.uid} className="flex items-center gap-3 rounded-xl px-3 py-2.5" style={cardStyle}>
+                <span className="min-w-0 flex-1 truncate font-ui text-sm font-semibold">{s.name ?? "Student"}</span>
+                <span className="inline-flex items-center gap-1 text-xs text-parchment/70" title="Element cards scanned"><BookMarked className="h-3.5 w-3.5 text-teal" /> {cards}</span>
+                <span className="inline-flex items-center gap-1 text-xs text-parchment/70" title="Compounds forged"><FlaskConical className="h-3.5 w-3.5 text-gold" /> {compounds}</span>
+                <span className="inline-flex items-center gap-1 text-xs text-parchment/70" title="Forged card variants"><Sparkles className="h-3.5 w-3.5 text-wraith" /> {forged}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Bulletin — notices the class sees on their Assignments page ─────────────
+function BulletinTab({ classes }: { classes: ClassInfo[] }) {
+  const [classId, setClassId] = useState<string | null>(classes[0]?.id ?? null);
+  const { announcements, loading } = useClassAssignments(classId);
+  const [body, setBody] = useState("");
+  const [pinned, setPinned] = useState(false);
+  const [posting, setPosting] = useState(false);
+
+  if (classes.length === 0) return <p className="text-sm text-parchment/60">Create a class first to post notices.</p>;
+
+  const post = async () => {
+    if (!classId || !body.trim()) return;
+    setPosting(true);
+    try {
+      await saveAnnouncement(classId, { id: newAssignmentId("an"), body: body.trim(), pinned, createdAt: Date.now() });
+      setBody(""); setPinned(false);
+    } catch (e) { console.error("saveAnnouncement failed:", e); }
+    setPosting(false);
+  };
+  const togglePin = async (a: AnnouncementDef) => { if (classId) await saveAnnouncement(classId, { ...a, pinned: !a.pinned }); };
+  const remove = async (a: AnnouncementDef) => { if (classId && window.confirm("Delete this notice? Students will no longer see it.")) await deleteAnnouncement(classId, a.id); };
+
+  return (
+    <div>
+      <ClassPills classes={classes} classId={classId} onPick={setClassId} />
+      <div className="mb-6 rounded-2xl p-4" style={cardStyle}>
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3}
+          placeholder="Post a notice to the class — a reminder, a nudge, a word of encouragement. Students see it at the top of their Assignments page."
+          className="w-full resize-y rounded-lg px-3 py-2.5 text-sm text-spectral placeholder:text-parchment/40 outline-none" style={fieldStyle} />
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-parchment/70">
+            <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} style={{ accentColor: T_ACCENT }} /> <Pin className="h-3.5 w-3.5" /> Pin to top
+          </label>
+          <button onClick={post} disabled={posting || !body.trim()} className="btn-arcane btn-arcane-hover ml-auto disabled:opacity-60">
+            {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Megaphone className="h-4 w-4" />} Post notice
+          </button>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center gap-2 py-10 text-sm text-parchment/60"><Loader2 className="h-4 w-4 animate-spin" /> Loading notices…</div>
+      ) : announcements.length === 0 ? (
+        <AuthorEmpty icon={Megaphone} title="No notices yet" desc="Post a notice and the whole class sees it on their Assignments page — pinned notices stay on top." />
+      ) : (
+        <div className="space-y-3">
+          {announcements.map((a) => (
+            <div key={a.id} className="rounded-2xl p-4" style={cardStyle}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  {a.pinned && <span className="mb-1 inline-flex items-center gap-1 text-[10px] uppercase tracking-[0.14em] text-gold"><Pin className="h-3 w-3" /> Pinned</span>}
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed text-parchment">{a.body}</p>
+                  <p className="mt-1.5 text-[11px] text-parchment/45">{new Date(a.createdAt).toLocaleDateString()} · {new Date(a.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
+                </div>
+                <div className="flex flex-shrink-0 items-center gap-2">
+                  <button onClick={() => togglePin(a)} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] uppercase tracking-[0.1em] transition hover:-translate-y-0.5" style={{ color: a.pinned ? "var(--color-gold)" : "var(--color-parchment)", border: `1px solid ${a.pinned ? "color-mix(in oklab, var(--color-gold) 35%, transparent)" : "var(--color-border)"}` }}>
+                    <Pin className="h-3 w-3" /> {a.pinned ? "Unpin" : "Pin"}
+                  </button>
+                  <button onClick={() => remove(a)} className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[11px] uppercase tracking-[0.1em] transition hover:-translate-y-0.5" style={{ color: "var(--color-crimson)", border: "1px solid color-mix(in oklab, var(--color-crimson) 35%, transparent)" }}>
+                    <Trash2 className="h-3 w-3" /> Delete
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Hover name chip for the console rail — same language as the student rail. */
 function RailChip({ children }: { children: React.ReactNode }) {
   return (
@@ -1173,21 +1497,39 @@ function RailChip({ children }: { children: React.ReactNode }) {
   );
 }
 
+type TeacherTab =
+  | "overview" | "classes" | "gradebook" | "matrix"
+  | "starters" | "collections" | "evidence" | "quizzes" | "missions" | "bulletin";
+
 function TeacherConsole() {
   const { uid, profile } = useUserProfile();
   const navigate = useNavigate();
-  const [tab, setTab] = useState<"classes" | "gradebook" | "evidence" | "matrix" | "quizzes" | "missions">("classes");
+  const [tab, setTabRaw] = useState<TeacherTab>("overview");
+  // The mobile "More" sheet (the tabs past the five that fit the bottom bar).
+  const [moreOpen, setMoreOpen] = useState(false);
+  const setTab = (t: TeacherTab) => { setTabRaw(t); setMoreOpen(false); };
   const { classes } = useTeacherClasses(uid);
   const name = profile?.displayName?.split(" ")[0] ?? profile?.email?.split("@")[0] ?? "Educator";
 
+  // Full section list — order doubles as the desktop rail order. `primary`
+  // marks the four that sit directly in the mobile bottom bar (the rest live
+  // behind "More"), mirroring the student shell's bottom-nav density.
   const TABS = [
-    { key: "classes", label: "Classes", icon: Users },
-    { key: "gradebook", label: "Gradebook", icon: ClipboardCheck },
-    { key: "evidence", label: "Evidence", icon: ScanSearch },
-    { key: "matrix", label: "Performance", icon: Sparkles },
-    { key: "quizzes", label: "Quiz Builder", icon: Layers },
-    { key: "missions", label: "Missions", icon: ListChecks },
+    { key: "overview", label: "Overview", short: "Overview", icon: LayoutDashboard, primary: true },
+    { key: "classes", label: "Classes", short: "Classes", icon: Users, primary: true },
+    { key: "gradebook", label: "Gradebook", short: "Grades", icon: ClipboardCheck, primary: true },
+    { key: "matrix", label: "Performance", short: "Stats", icon: Sparkles, primary: true },
+    { key: "starters", label: "Daily Starters", short: "Starters", icon: Flame, primary: false },
+    { key: "collections", label: "Collections", short: "Cards", icon: BookMarked, primary: false },
+    { key: "evidence", label: "Evidence", short: "Evidence", icon: ScanSearch, primary: false },
+    { key: "quizzes", label: "Quiz Builder", short: "Quizzes", icon: Layers, primary: false },
+    { key: "missions", label: "Missions", short: "Missions", icon: ListChecks, primary: false },
+    { key: "bulletin", label: "Bulletin", short: "Bulletin", icon: Megaphone, primary: false },
   ] as const;
+
+  const primaryTabs = TABS.filter((t) => t.primary);
+  const overflowTabs = TABS.filter((t) => !t.primary);
+  const inMore = overflowTabs.some((t) => t.key === tab);
 
   const handleSignOut = async () => {
     await signOut();
@@ -1201,7 +1543,7 @@ function TeacherConsole() {
       {/* ── Desktop rail — the console's only chrome, like the student side ── */}
       <nav
         aria-label="Console sections"
-        className="glass-strong hidden md:flex fixed left-3 top-1/2 z-40 -translate-y-1/2 flex-col items-center gap-1 rounded-2xl p-1.5"
+        className="glass-strong scroll-slim hidden md:flex fixed left-3 top-1/2 z-40 max-h-[calc(100vh-4rem)] -translate-y-1/2 flex-col items-center gap-1 overflow-y-auto overflow-x-hidden rounded-2xl p-1.5"
       >
         <Link to="/" aria-label="AlcheMix home" className="group relative flex h-11 w-10 flex-shrink-0 items-center justify-center">
           <img src="/images/logo-outline.png" alt="" className="h-7 w-7 object-contain transition-transform duration-200 group-hover:scale-110" />
@@ -1217,7 +1559,7 @@ function TeacherConsole() {
               key={t.key}
               onClick={() => setTab(t.key)}
               aria-label={t.label}
-              className="group relative flex h-10 w-10 items-center justify-center rounded-xl transition-colors hover:bg-teal/10"
+              className="group relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-teal/10"
               style={{
                 color: active ? "var(--color-emerald-elixir)" : "var(--color-parchment)",
                 background: active ? "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)" : undefined,
@@ -1271,31 +1613,93 @@ function TeacherConsole() {
         </div>
       </header>
 
-      <div className="relative z-10 px-5 pt-20 pb-12 md:pl-24 md:pr-8 md:pt-10">
+      <div className="relative z-10 px-5 pt-20 pb-28 md:pl-24 md:pr-8 md:pt-10 md:pb-12">
         <div className="mx-auto max-w-6xl">
           <PageHeader home="/teacher" hideNav eyebrow="Educator Console" title={`Welcome, ${name}.`} subtitle="Set up classes, enrol students with a join code, and grade their progress." icon={GraduationCap} />
 
-          {/* Mobile tabs — the rail's phone projection */}
-          <div className="glass-strong scroll-slim md:hidden -mt-2 mb-6 flex gap-1 overflow-x-auto rounded-2xl p-1">
-            {TABS.map((t) => (
-              <button key={t.key} onClick={() => setTab(t.key)}
-                className="flex flex-shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-medium transition-colors"
-                style={tab === t.key ? { background: "color-mix(in oklab, var(--color-emerald-elixir) 14%, transparent)", color: "var(--color-emerald-elixir)" } : { color: "var(--color-parchment)" }}>
-                <t.icon className="h-3.5 w-3.5" /> {t.label}
-              </button>
-            ))}
-          </div>
-
           {/* Working tabs see only active classes; the Classes tab manages
               archived ones too. */}
+          {tab === "overview" && <OverviewTab classes={classes.filter((c) => !c.archived)} />}
           {tab === "classes" && <ClassesTab teacherId={uid ?? ""} teacherName={profile?.displayName ?? profile?.email ?? null} schoolId={profile?.schoolId ?? null} classes={classes} />}
           {tab === "gradebook" && <GradebookTab classes={classes.filter((c) => !c.archived)} />}
-          {tab === "evidence" && <EvidenceTab classes={classes.filter((c) => !c.archived)} />}
           {tab === "matrix" && <MatrixTab classes={classes.filter((c) => !c.archived)} />}
+          {tab === "starters" && <StartersTab classes={classes.filter((c) => !c.archived)} />}
+          {tab === "collections" && <CollectionsTab classes={classes.filter((c) => !c.archived)} />}
+          {tab === "evidence" && <EvidenceTab classes={classes.filter((c) => !c.archived)} />}
           {tab === "quizzes" && <QuizBuilderTab classes={classes.filter((c) => !c.archived)} />}
           {tab === "missions" && <MissionsTab classes={classes.filter((c) => !c.archived)} />}
+          {tab === "bulletin" && <BulletinTab classes={classes.filter((c) => !c.archived)} />}
         </div>
       </div>
+
+      {/* ── Mobile "More" sheet — the overflow sections, as a bottom sheet
+          (mirrors the student shell's chapter sheet) ── */}
+      {moreOpen && (
+        <div className="md:hidden">
+          <div className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={() => setMoreOpen(false)} />
+          <div className="glass-strong sheet-up fixed bottom-[5rem] inset-x-3 z-50 rounded-2xl p-2.5 pb-3">
+            <p className="px-2.5 pb-1 pt-2 text-[10px] uppercase tracking-[0.16em] text-parchment/55">More sections</p>
+            <ul className="grid grid-cols-2 gap-x-1 gap-y-0.5">
+              {overflowTabs.map((t, i) => {
+                const active = tab === t.key;
+                return (
+                  <li key={t.key} className="orb-in" style={{ animationDelay: `${i * 18}ms` }}>
+                    <button
+                      onClick={() => setTab(t.key)}
+                      className="group flex w-full items-center gap-2.5 rounded-xl px-2 py-1.5"
+                      style={{
+                        color: active ? "var(--color-emerald-elixir)" : "var(--color-spectral)",
+                        background: active ? "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)" : undefined,
+                      }}
+                    >
+                      <span className={`orb-rune h-8 w-8 ${active ? "orb-rune-active" : ""}`}>
+                        <t.icon className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="min-w-0 truncate text-[12px] font-medium">{t.label}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* ── Mobile section bar — the desktop rail, laid flat (mirrors the
+          student shell's bottom tab nav). Five slots: four primary + More. ── */}
+      <nav
+        aria-label="Console sections"
+        className="glass-strong md:hidden fixed bottom-2 inset-x-2 z-50 flex h-16 items-stretch justify-around overflow-hidden rounded-2xl"
+      >
+        {primaryTabs.map((t) => {
+          const active = tab === t.key;
+          return (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              aria-label={t.label}
+              aria-current={active ? "page" : undefined}
+              className="relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors"
+              style={{ color: active ? "var(--color-emerald-elixir)" : "var(--color-parchment)" }}
+            >
+              {active && <span className="absolute top-0 h-0.5 w-8 rounded-full" style={{ background: "var(--color-emerald-elixir)" }} />}
+              <t.icon className="h-5 w-5" />
+              <span className="text-[10px] font-medium">{t.short}</span>
+            </button>
+          );
+        })}
+        <button
+          onClick={() => setMoreOpen((o) => !o)}
+          aria-label="More sections"
+          aria-expanded={moreOpen}
+          className="relative flex flex-1 flex-col items-center justify-center gap-1 transition-colors"
+          style={{ color: moreOpen || inMore ? "var(--color-emerald-elixir)" : "var(--color-parchment)" }}
+        >
+          {inMore && <span className="absolute top-0 h-0.5 w-8 rounded-full" style={{ background: "var(--color-emerald-elixir)" }} />}
+          <MoreHorizontal className="h-5 w-5" />
+          <span className="text-[10px] font-medium">More</span>
+        </button>
+      </nav>
     </div>
   );
 }

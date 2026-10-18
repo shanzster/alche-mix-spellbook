@@ -107,6 +107,29 @@ mode fills the page as a circle from the toggle (View Transitions API in
 - Chemistry interactions stay REAL: the landing forge demo runs the actual
   `combine()` valence engine; impossible mixes get the Alchemist's counsel.
 
+## 7b · App-shell navigation (student = the reference)
+
+The student shell (`StudentShell.tsx`) is the canonical app-shell chrome; the
+teacher and admin consoles mirror it so the whole product feels like one book.
+
+- **Desktop:** a slim floating `glass-strong` rail pinned left-centre (crest →
+  section runes with a teal active spine-marker → contents/theme/sign-out),
+  no top bar. Hover name-chips.
+- **Mobile:** a floating `glass-strong` top bar (logo + title + theme) **and a
+  fixed `glass-strong` bottom tab bar** (`bottom-2 inset-x-2 h-16`,
+  `justify-around`) — one tab per section, a 2px teal top-marker on the active
+  tab, `text-[10px]` labels. Thumb-reachable; never an in-content scroll strip.
+  Pages reserve `pb-28` on mobile so nothing hides behind the bar.
+- **Overflow (>5 sections, e.g. the teacher console):** the bar shows the first
+  few primary sections + a **“More”** slot that opens a bottom sheet (same
+  `sheet-up` + `orb-rune` language as the student chapter sheet) with the rest;
+  “More” carries the active top-marker when the current section lives inside it.
+  On desktop the rail just scrolls (`scroll-slim`, `overflow-y-auto`).
+- **Guest `FloatingNav` (landing/marketing)** is a DIFFERENT pattern — a single
+  centred pill with the logo orb seated in its middle. On mobile the six links
+  collapse behind a hamburger (glass sheet under the pill); the pill keeps only
+  logo + theme + auth so it can't overflow a narrow phone.
+
 ## 8 · Technical guardrails (learned the hard way)
 
 - `mix-blend-mode` must live on the SAME element as any transform —

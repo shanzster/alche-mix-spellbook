@@ -27,7 +27,8 @@
 | School Door (school-code signup/login, split from the general pages) | `/school-signup`, `/school-login` · `src/components/SchoolDoor.tsx` | Firebase Auth **D1**; live code lookup on `classes/{CODE}` **D4**; enrols via roster entry **D5** + stamps `users/{uid}.classId/.className` |
 | Role gating (student / teacher / admin) | `src/lib/auth.ts`, `src/lib/admin.ts` | reads `users/{uid}.role`, `.status`; admin allowlist is hardcoded (`ADMIN_EMAILS`) |
 | Teacher ID + face-match verification | `/teacher` onboarding · `src/lib/admin.ts`, `src/lib/facematch.ts` | writes `verifications/{uid}` **D7** (downscaled ID + selfie JPEGs as data URLs); admin approval flips `users/{uid}.status` |
-| Admin console (user/class management, verification review) | `/admin` · `src/lib/admin.ts` | reads all of **D2**, **D4**, **D7**; writes `status` fields |
+| Admin console (full user + class + school CRUD, verification review) | `/admin` · `src/lib/admin.ts` | reads/writes **D2**, **D4**, **D7**, **D11**; audits to **D14** |
+| Admin · Data & Backups (export · Version Machine · import/rollback) | `/admin` → Data tab · `src/lib/backup.ts` | reads D2/D4/D7/D11/D14 → JSON; snapshots to **D15**; restore writes back where rules allow; audits to **D14** |
 
 ### 1.2 Student learning modules
 
@@ -43,7 +44,8 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 | /starters | Daily Starters (3 AI-written questions/day via `aiStarterQuiz` (E3), bank fallback; Ledger of past runs; broken-cauldron streak state; Mending Trial restores a lapsed streak only after passing 4/5 bank questions) | `recordStarterRun()` → `starterStreak` (+`best`), `starterHistory` (capped 60); `restoreStarterStreak()` → `starterStreak` on `users/{uid}` **D2**; feeds SM-2 `reviews`; same-day question cache in localStorage **D8** |
 | /lab-safety | Lab Safety (GHS study + scenario trials) | — |
 | /atomic-builder | Atomic Builder (Bohr, Z ≤ 20) | — |
-| /periodic-table | Periodic Table (118 elements, 4 lenses) | deep links `?element=Fe`; static data **D9** |
+| /periodic-table | Periodic Table (Simplified poster view + Interactive lenses) | tap → `/element/{symbol}`; static data **D9**; practice counter on **D2** |
+| /element/{symbol} | Element study page (atom, data, sample items, lore) | static data **D9** (`periodic-table-data`, `element-lore`, `element-rich`); practice counter on **D2** |
 | /table-game | Placement Trials | — |
 | /states | States of Matter | — |
 | /study | The Study (5 topics × 3 concepts, learn→practise→assess) | `pathProgress` (gated path), `reviews` (SM-2) via `src/lib/learning.ts` |
@@ -90,8 +92,12 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 | Quiz Builder (+ curriculum seeding, live results) | `/teacher` | quizzes stored as an **array field on the class doc** (`classes/{id}.quizzes[]`); results read from students' `assignmentResults` |
 | Mission Configurator | `/teacher` | `classes/{id}.missions[]`; completion proven by students' `practice.*` counters |
 | Performance tab (matrix, drill-downs, radar) | `/teacher` | read-only fan-in over every rostered student's `users/{uid}` doc |
+| Overview tab (class dashboard — active today, mastery pulse, needs-attention) | `/teacher` | read-only aggregate over roster **D5** + every student **D2** (+ pending join requests & evidence **D3**) |
+| Daily Starters tab (streak oversight / leaderboard) | `/teacher` | read-only over students' `starterStreak`, `starterHistory` **D2** |
+| Collections tab (Grimoire & Codex oversight) | `/teacher` | read-only over students' `grimoire`, `compounds`, `forged` **D2** |
+| Bulletin (teacher posts notices the class sees) | `/teacher` → `/assignments` | writes `classes/{id}.announcements[]` **D4**; students read them on `/assignments` |
 | Scavenger evidence review inbox | `/teacher` | reads/updates **D3** (`teacherApproved`) |
-| Assignments (student side) | `/assignments` | reads class doc **D4**; writes own `assignmentResults` |
+| Assignments (student side) | `/assignments` | reads class doc **D4** (quizzes, missions, **announcements**); writes own `assignmentResults` |
 
 ### 1.6 Cross-cutting
 
@@ -157,9 +163,11 @@ leave the working teacher tabs and refuse joins).
 Other fields: name, teacherId, teacherName, createdAt, **quizzes[]**
 (`QuizDef`: id, title, questions[{prompt, choices×4, answer, hint?}],
 createdAt-ms), **missions[]** (`MissionDef`: id, title, note?,
-targets[{moduleId, label, practiceKey}], createdAt-ms). Teacher-authored
-content lives on this doc — there are deliberately no separate
-quiz/mission collections.
+targets[{moduleId, label, practiceKey}], createdAt-ms), **announcements[]**
+(`AnnouncementDef`: id, body, pinned?, createdAt-ms — the Bulletin; teacher
+writes via `saveAnnouncement`, students read them at the top of `/assignments`,
+pinned first). Teacher-authored content lives on this doc — there are
+deliberately no separate quiz/mission/announcement collections.
 Code lookup order (`resolveClassByCode`): doc-id get first (works pre-auth
 for original codes), then a signed-in `where("joinCode"==…)` query for
 regenerated codes; "expired" is a distinct result so the UI can say "ask
@@ -226,6 +234,23 @@ state.
 > request). **Roles** now: `admin` (= super admin) · `school_admin` · `teacher`
 > · `student`. **New routes:** `/school` (school-admin console), `/teacher/login`
 > (educator door). **`classes` (D4)** gained a `schoolId` field.
+
+### D14 — Firestore `auditLog/{autoId}`
+Owner: `src/lib/audit.ts`. Append-only, tamper-evident record of every
+privileged mutation `{at, actorUid, actorEmail, action (dotted verb),
+targetType?, targetId?, targetLabel?, details?}`. Written best-effort by the
+school/user/verification/class/backup helpers; **readable by the super admin
+only**; never updated or deleted (rules enforce it).
+
+### D15 — Firestore `backups/{autoId}` (the super admin's "Version Machine")
+Owner: `src/lib/backup.ts`. One doc per saved snapshot `{createdAt,
+createdByEmail, note, counts (per collection), totalDocs, sizeBytes, hasPayload,
+payload?}`. `payload` is the full Timestamp-safe backup JSON stored inline **only
+when ≤ 700 KB** (Firestore's 1 MB doc cap) — larger backups keep metadata only
+and are restored from the downloaded file. Super-admin read/create/delete only;
+never updated (immutable). Export reads D2/D4/D7/D11/D14; restore writes back
+where rules allow (`schools` fully; `users`/`classes`/`verifications` merge
+existing docs — deleted docs can't be recreated from the client, by design).
 
 ### D9 — Static in-code datasets (read-only "reference stores")
 Not databases, but they appear on DFDs as the content source every module

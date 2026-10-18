@@ -72,7 +72,8 @@ Gemini (`GEMINI_API_KEY`, server-only via `createServerFn`) · Nitro/Cloudflare.
 | /starters | Daily Starters | Duolingo-style daily rite: 3 AI-written questions (bank fallback), wrong answers teach the correct one, streak + best + run Ledger, cauldron cracks when a streak lapses; a lapsed streak (≥2 days, broken ≤7 days ago) is restored only by PASSING the Mending Trial (4/5 bank questions); feeds SM-2 |
 | /lab-safety | Lab Safety | GHS/apparatus study + 10 fail-safely scenario trials |
 | /atomic-builder | Atomic Builder | Bohr builder (Z ≤ 20), missions + 15-challenge trial |
-| /periodic-table | Periodic Table | 118 elements, 4 lenses: family / state-vs-temperature slider / trend heat-maps / discovery timeline |
+| /periodic-table | Periodic Table | 118 elements · **Simplified** poster view (clean family-coloured tiles) + **Interactive** lenses (family / state-vs-temperature slider / trend heat-maps / discovery timeline); tapping an element opens its study page |
+| /element/{symbol} | Element study page | Full per-element detail (atom in 3D/Bohr, properties, electron config, real-world "sample items", lore). Reached by tapping a periodic-table tile — replaced the old modal |
 | /table-game | Placement Trials | 3-difficulty placement game (name → symbol → riddles) |
 | /states | States of Matter | Particle phases, 4 substances (CO₂ sublimes), heating curve |
 | /study | The Study | 5 topics × 3 concepts, learn→practise→assess + SM-2 review |
@@ -105,14 +106,27 @@ persistent Trials (`profile.trials`, stars) · aurum currency with The Emporium
 as its sink · starter streaks · daily drop vessels on module pages (the Alembic
 on /molecules, the Phial on /atomic-builder — 1 drop/day, 300 cap, same
 surprise; `DropVessel`) · badges · offline service worker (public/sw.js,
-conservative caching) · periodic-table deep links (`?element=Fe`) with lore in
-the detail panel.
+conservative caching) · per-element **study pages** at `/element/{symbol}`
+(e.g. `/element/Fe`) — atom in 3D/Bohr, full data, real-world "sample items",
+and lore; the periodic table navigates there on tap (no modal).
 
-**Teacher:** classes/join codes · gradebook (5 topics) · scavenger evidence
-review · **Performance tab** (class matrix, drill-downs, struggling-concepts
-radar) · **Quiz Builder** (with curriculum seeding + live class results) ·
-**Mission Configurator** — all authored content stored on the class doc.
-**Admin:** teacher ID + face-match verification, user/class management.
+**Teacher:** an **Overview** dashboard (active-today, mastery pulse,
+needs-attention) · classes/join codes · gradebook (5 topics) · **Performance
+tab** (class matrix, drill-downs, struggling-concepts radar) · **Daily
+Starters** streak oversight · **Collections** (Grimoire/Codex oversight) ·
+scavenger evidence review · **Quiz Builder** (with curriculum seeding + live
+class results) · **Mission Configurator** · **Bulletin** (notices the class
+sees on their Assignments page) — every teacher module mirrors a student
+surface and reads the same live data; all authored content stored on the class
+doc. Catalogue: `docs/teacher-modules.md`.
+**Admin (super admin):** teacher ID + face-match verification; full CRUD over
+users, classes and schools; an append-only audit log; and a **Data & Backups**
+console — export (Timestamp-safe JSON), a **Version Machine** of restorable
+snapshots (`backups/{id}`), and import/rollback with a type-to-confirm guard.
+Restore writes back where the rules allow (schools fully; users/classes/
+verifications merge existing docs — recreating deleted docs needs the Admin SDK
+server-side). Needs `firebase deploy --only firestore:rules` for the `backups`
+rule to take effect live.
 
 **Key libs:** `profile.ts` (data model + `recordTrial`/`earnAurum`/
 `recordStarterRun`) · `curriculum.ts` + `learning.ts` (content + SM-2 + paths)

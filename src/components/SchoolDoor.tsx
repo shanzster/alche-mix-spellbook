@@ -236,17 +236,11 @@ export function SchoolDoor({ mode, initialCode }: { mode: "signup" | "login"; in
         </button>
       </form>
 
-      {/* Footer links */}
+      {/* Footer links — a class code is only needed to register. Once you have
+          an account you're already linked to your school, so sign in normally. */}
       <p className="text-center text-sm text-parchment/60 mt-6">
-        {isSignup ? (
-          <>Already have an account?{" "}
-            <Link to="/school-login" className="text-teal hover:text-spectral transition font-display tracking-wide">Sign in with your code</Link>
-          </>
-        ) : (
-          <>No account yet?{" "}
-            <Link to="/school-signup" className="text-teal hover:text-spectral transition font-display tracking-wide">Sign up with your code</Link>
-          </>
-        )}
+        Already have an account?{" "}
+        <Link to="/login" className="text-teal hover:text-spectral transition font-display tracking-wide">Sign in</Link>
       </p>
       <p className="text-center text-sm text-parchment/60 mt-2">
         <Link to={isSignup ? "/signup" : "/login"} className="text-parchment/60 hover:text-spectral transition">
