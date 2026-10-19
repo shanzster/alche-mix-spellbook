@@ -136,7 +136,7 @@ function ElementDetail() {
             </div>
           </div>
 
-          <ElementViewer shells={el.shells} color={color} symbol={el.symbol} name={el.name} />
+          <ElementViewer shells={el.shells} color={color} symbol={el.symbol} name={el.name} number={el.number} mass={el.mass} />
         </div>
 
         {/* Right: the data + stories */}

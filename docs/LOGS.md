@@ -7,6 +7,22 @@
 
 ---
 
+## 2026-10-19 (Sunday)
+
+> Element detail: labelled "Element Card" anatomy view (prof request).
+
+- **`ElementViewer` gains a third view — "Element Card".** Prof asked that the
+  detail view first show the annotated element card (leader lines labelling
+  Atomic number, Element symbol, Element name, Atomic mass — the textbook
+  diagram) before the atom models. New `AnatomyCard` renders a single
+  family-coloured tile with dashed leader lines + dots pointing from each
+  label to the matching part. The toggle is now **Element Card / 3D View /
+  Bohr Model**, defaulting to Element Card. `ElementViewer` now takes
+  `number` and `mass` props (passed from `element.$symbol.tsx`).
+  Files: `src/components/ElementViewer.tsx`, `src/routes/element.$symbol.tsx`.
+
+---
+
 ## 2026-10-18 (Saturday)
 
 > Mobile-responsiveness pass + teacher/student shell parity.
