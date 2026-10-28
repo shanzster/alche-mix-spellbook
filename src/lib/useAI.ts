@@ -17,6 +17,7 @@ import {
   aiIdentifyItems,
   aiScanFrame,
   aiStarterQuiz,
+  aiClassInsights,
   aiStatus,
   aiVerifyMission,
   type GeneratedProblem,
@@ -26,6 +27,8 @@ import {
   type StarterQuizResult,
   type TutorResult,
   type VerifyResult,
+  type ClassInsightsInput,
+  type ClassInsightsResult,
 } from "./ai";
 
 export function useAI() {
@@ -90,5 +93,6 @@ export function useAI() {
     askAlchemist: run<{ question: string; context?: string }, TutorResult>(
       aiAskAlchemist,
     ),
+    classInsights: run<ClassInsightsInput, ClassInsightsResult>(aiClassInsights),
   };
 }

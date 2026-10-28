@@ -205,7 +205,14 @@ export async function joinClass(student: { uid: string; name: string | null; ema
   await setDoc(doc(db, "classes", cls.id, "roster", student.uid), {
     uid: student.uid, name: student.name, email: student.email, joinedAt: serverTimestamp(),
   });
-  await updateDoc(doc(db, "users", student.uid), { classId: cls.id, className: cls.name });
+  // Stamp the student's schoolId too (from the class) so their school admin can
+  // see them in the school-wide directory/analytics (Firestore rules gate
+  // school-admin reads on a matching schoolId).
+  const classSchoolId = (cls as { schoolId?: string }).schoolId;
+  await updateDoc(doc(db, "users", student.uid), {
+    classId: cls.id, className: cls.name,
+    ...(classSchoolId ? { schoolId: classSchoolId } : {}),
+  });
   return res;
 }
 

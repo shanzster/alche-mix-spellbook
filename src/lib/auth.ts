@@ -65,16 +65,31 @@ export async function ensureUserProfile(user: User, opts?: { role?: Role; school
         practice: {},
       });
     } else {
-      const data = snap.data() as { role?: string; schoolId?: string };
+      const data = snap.data() as { role?: string; schoolId?: string; classId?: string };
       const promoteAdmin = admin && data.role !== "admin";
       const promoteSchoolAdmin = !admin && !!invitedSchoolId && data.role !== "admin" && data.role !== "school_admin";
       const promoteTeacher = !admin && !invitedSchoolId && !!invitedTeacherSchoolId
         && (data.role == null || data.role === "student");
+
+      // Self-heal: a student who joined a class before schoolId was stamped (or
+      // was enrolled by a teacher, who can't write the student's schoolId) picks
+      // it up from their class here, on their own next sign-in. This is what
+      // makes them visible to their school admin's directory/analytics.
+      let healSchoolId: string | undefined;
+      if (!data.schoolId && (data.role == null || data.role === "student") && data.classId) {
+        try {
+          const c = await getDoc(doc(db, "classes", data.classId));
+          const sid = (c.data() as { schoolId?: string } | undefined)?.schoolId;
+          if (sid) healSchoolId = sid;
+        } catch { /* non-fatal */ }
+      }
+
       await updateDoc(ref, {
         lastLoginAt: serverTimestamp(),
         ...(promoteAdmin ? { role: "admin" } : {}),
         ...(promoteSchoolAdmin ? { role: "school_admin", schoolId: invitedSchoolId } : {}),
         ...(promoteTeacher ? { role: "teacher", schoolId: invitedTeacherSchoolId, status: "approved" } : {}),
+        ...(healSchoolId ? { schoolId: healSchoolId } : {}),
       });
     }
   } catch (err) {

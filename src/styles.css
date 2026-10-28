@@ -293,6 +293,12 @@
    that rotates; its child orb is offset by a radius, so it traces a circle.
    Blurred + low-opacity so content stays legible; frozen under reduced motion. */
 @keyframes arcane-spin { to { transform: rotate(360deg); } }
+/* 404 crystal bob — uses the independent translate/rotate props so it composes
+   with the inline `transform` pointer-parallax on the same element. */
+@keyframes nf-float {
+  0%, 100% { translate: 0 0; rotate: -3deg; }
+  50% { translate: 0 -16px; rotate: 3deg; }
+}
 .arcane-field {
   position: fixed;
   inset: 0;
@@ -828,9 +834,9 @@ html:not(.dark) .text-glow-teal {
   font-size: 1.0625rem;
 }
 .grimoire-skin :is(h1, .font-display) {
-  font-family: "UnifrakturMaguntia", "Cyberjunkies", serif;
-  font-weight: 400;
-  letter-spacing: 0.01em;
+  font-family: "Cinzel", "Cyberjunkies", serif;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 /* Buttons and small UI chrome join the serif voice of the study */
 .grimoire-skin :is(.btn-arcane, .btn-ghost-arcane, .font-ui) {
@@ -876,9 +882,9 @@ html:not(.dark) .text-glow-teal {
    module UIs keep their readability. elements-readable still outranks this
    for element symbols. */
 .grimoire-display :is(h1, .font-display) {
-  font-family: "UnifrakturMaguntia", "Cyberjunkies", serif;
-  font-weight: 400;
-  letter-spacing: 0.01em;
+  font-family: "Cinzel", "Cyberjunkies", serif;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 /* Blackletter is for BIG display text only. Small headings that carry

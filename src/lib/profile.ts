@@ -66,6 +66,14 @@ export interface StudentProfile {
   grades?: Record<string, TopicGrade>;
   /** Mastery level per topic, set by the teacher. */
   mastery?: Record<string, Mastery>;
+  /**
+   * DepEd-style weighted raw scores, entered by the teacher.
+   * Shape: weightedScores[classId][quarter][itemId] = raw score (points).
+   * The per-item "highest possible" + component weights live on the class
+   * doc's `grading` config (see lib/grading.ts); this holds only each
+   * student's raw marks so the quarterly/final grade can be auto-computed.
+   */
+  weightedScores?: Record<string, Record<string, Record<string, number>>>;
   /** App-recorded practice engagement (counts only — never a grade). */
   practice?: Record<string, number>;
   /** Element-card symbols the student has scanned into their Grimoire. */

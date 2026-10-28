@@ -26,13 +26,14 @@ NOT: flat SaaS, generic icon grids, neon gamer UI, anything that reads
 
 | Role | Font | Rules |
 |---|---|---|
-| Display | **UnifrakturMaguntia** (blackletter) | Title-Case ONLY, never all-caps. LARGE sizes only (h1/h2, hero text). Small headings fall back to Crimson Pro semibold — tiny blackletter is unreadable. |
+| Display | **Cinzel** (engraved Roman inscription serif) | Title-Case or small-caps feel. LARGE sizes only (h1/h2, hero text), weight 600. Small headings fall back to Crimson Pro semibold. Replaced blackletter UnifrakturMaguntia on 2026-10-28 — adviser flagged the blackletter as unreadable for kids; Cinzel keeps the engraved-manuscript voice while staying legible. |
 | Body / serif voice | **Crimson Pro** (with EB Garamond fallback) | Paragraphs, buttons, taglines on marketing pages. Italic for flavour lines. |
 | Data strings | UI sans, bold | Join codes, element symbols, formulas — anywhere character ambiguity matters. Chemical casing is sacred: `NaCl`, never `NACL`. |
 | App interior | `--font-sans` body + blackletter page titles | See the two skins below. |
 
 Loaded via Google Fonts in `src/routes/__root.tsx`. Cyberjunkies remains the
-fallback brand font.
+fallback brand font. (Blackletter touchstone below is historical — the shipped
+display voice is now Cinzel.)
 
 **The two skins** (in `src/styles.css`):
 - `.grimoire-skin` — full voice (serif body + blackletter display + gold

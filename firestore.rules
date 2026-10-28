@@ -60,8 +60,8 @@ service cloud.firestore {
                     // A school admin may approve/reject teachers in their own school.
                     || (isSchoolAdmin() && resource.data.schoolId == me().schoolId
                         && changedKeys().hasOnly(['status']))
-                    || (request.auth.uid == userId && !changedKeys().hasAny(['grades', 'mastery', 'role', 'status']))
-                    || (isApprovedTeacher() && changedKeys().hasOnly(['grades', 'mastery', 'classId', 'className', 'pendingClassId', 'pendingClassName']));
+                    || (request.auth.uid == userId && !changedKeys().hasAny(['grades', 'mastery', 'weightedScores', 'role', 'status']))
+                    || (isApprovedTeacher() && changedKeys().hasOnly(['grades', 'mastery', 'weightedScores', 'classId', 'className', 'pendingClassId', 'pendingClassName']));
 
       // Super admin may delete a user's profile doc (user management).
       allow delete: if isAdmin();

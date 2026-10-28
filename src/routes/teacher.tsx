@@ -12,11 +12,10 @@ import { ArcaneField } from "../components/ArcaneField";
 import { RequireRole } from "../components/RequireRole";
 import { ThemeToggle } from "../components/ThemeToggle";
 import { signOut } from "../lib/auth";
-import { useUserProfile, type Mastery, type PathProgress, type PathStage } from "../lib/profile";
+import { useUserProfile, type PathProgress, type PathStage } from "../lib/profile";
 import { CURRICULUM, conceptById } from "../lib/curriculum";
 import {
-  createClass, useTeacherClasses, useRoster, getStudentGrades, setStudentGrade,
-  buildClassGradesCsv, downloadCsv,
+  createClass, useTeacherClasses, useRoster,
   activeJoinCode, joinCodeExpired, joinCodeMillisLeft, regenerateJoinCode,
   setClassArchived, removeStudentFromClass,
   useJoinRequests, acceptJoinRequest, rejectJoinRequest, type JoinRequest,
@@ -26,7 +25,7 @@ import {
   saveAnnouncement, deleteAnnouncement,
   todayKey, starterStreakState, activeTodayCount, idleStudents, masteryTally,
   classCollectionTotals, topForgedCompounds, type StreakState,
-  GRADE_TOPICS, type ClassInfo, type RosterEntry, type StudentSnapshot,
+  type ClassInfo, type RosterEntry, type StudentSnapshot,
   type QuizDef, type QuizQuestion, type MissionDef, type MissionTarget,
   type AnnouncementDef,
 } from "../lib/teacher";
@@ -34,6 +33,7 @@ import {
   useClassEvidence, reviewEvidence, isPendingReview, type TeacherEvidenceEntry,
 } from "../lib/scavenger";
 import { CRAFTS, TIERS } from "../lib/craft";
+import { WeightedGradebook } from "../components/WeightedGradebook";
 
 export const Route = createFileRoute("/teacher")({
   component: () => (
@@ -42,13 +42,6 @@ export const Route = createFileRoute("/teacher")({
     </RequireRole>
   ),
 });
-
-const MASTERY_OPTS: { value: Mastery; label: string }[] = [
-  { value: "not-started", label: "Not started" },
-  { value: "developing", label: "Developing" },
-  { value: "proficient", label: "Proficient" },
-  { value: "mastered", label: "Mastered" },
-];
 
 // ── Roster + join code for one class ────────────────────────────────────────
 // Adviser items 5–6: the code is regenerable and expires; students can be
@@ -224,120 +217,10 @@ function ClassesTab({ teacherId, teacherName, schoolId, classes }: { teacherId: 
   );
 }
 
-// ── Gradebook ───────────────────────────────────────────────────────────────
-function StudentGradePanel({ student, onBack }: { student: RosterEntry; onBack: () => void }) {
-  const [grades, setGrades] = useState<Record<string, { score: number; outOf: number }>>({});
-  const [mastery, setMastery] = useState<Record<string, Mastery>>({});
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    getStudentGrades(student.uid).then(({ grades, mastery }) => {
-      const g: Record<string, { score: number; outOf: number }> = {};
-      for (const [k, v] of Object.entries(grades)) g[k] = { score: v.score, outOf: v.outOf };
-      setGrades(g);
-      setMastery(mastery);
-    });
-  }, [student.uid]);
-
-  const save = async () => {
-    for (const topic of GRADE_TOPICS) {
-      const g = grades[topic];
-      await setStudentGrade(student.uid, topic, g && g.outOf ? g : null, mastery[topic]);
-    }
-    setSaved(true); setTimeout(() => setSaved(false), 1600);
-  };
-
-  return (
-    <div>
-      <button onClick={onBack} className="inline-flex items-center gap-1.5 text-xs tracking-[0.15em] uppercase text-parchment/60 hover:text-teal transition mb-4">
-        <ChevronLeft className="h-3.5 w-3.5" /> Back to roster
-      </button>
-      <h3 className="font-display text-xl mb-1">{student.name ?? student.email}</h3>
-      <p className="text-xs text-parchment/50 mb-5">Set a score and mastery level per topic. Students see these in their "My Progress".</p>
-
-      <div className="space-y-3">
-        {GRADE_TOPICS.map((topic) => (
-          <div key={topic} className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-xl p-3" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-            <span className="font-ui font-semibold text-sm flex-1">{topic}</span>
-            <div className="flex items-center gap-2">
-              <input type="number" min={0} placeholder="score" value={grades[topic]?.score ?? ""}
-                onChange={(e) => setGrades((p) => ({ ...p, [topic]: { score: Number(e.target.value), outOf: p[topic]?.outOf ?? 0 } }))}
-                className="w-16 rounded-md px-2 py-1.5 text-sm text-center text-spectral outline-none" style={{ background: "color-mix(in oklab, var(--color-mist) 60%, transparent)", border: "1px solid var(--color-border)" }} />
-              <span className="text-parchment/50">/</span>
-              <input type="number" min={0} placeholder="out of" value={grades[topic]?.outOf || ""}
-                onChange={(e) => setGrades((p) => ({ ...p, [topic]: { score: p[topic]?.score ?? 0, outOf: Number(e.target.value) } }))}
-                className="w-16 rounded-md px-2 py-1.5 text-sm text-center text-spectral outline-none" style={{ background: "color-mix(in oklab, var(--color-mist) 60%, transparent)", border: "1px solid var(--color-border)" }} />
-            </div>
-            <select value={mastery[topic] ?? "not-started"} onChange={(e) => setMastery((p) => ({ ...p, [topic]: e.target.value as Mastery }))}
-              className="rounded-md px-2 py-1.5 text-sm text-spectral outline-none" style={{ background: "color-mix(in oklab, var(--color-mist) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-              {MASTERY_OPTS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-            </select>
-          </div>
-        ))}
-      </div>
-
-      <button onClick={save} disabled={saved} className="btn-arcane btn-arcane-hover mt-5 disabled:opacity-60">
-        {saved ? <><Check className="h-4 w-4" /> Grades saved</> : <><ClipboardCheck className="h-4 w-4" /> Save grades</>}
-      </button>
-    </div>
-  );
-}
-
-function GradebookTab({ classes }: { classes: ClassInfo[] }) {
-  const [classId, setClassId] = useState<string | null>(classes[0]?.id ?? null);
-  const [student, setStudent] = useState<RosterEntry | null>(null);
-  const [exporting, setExporting] = useState(false);
-  const roster = useRoster(classId);
-
-  if (classes.length === 0) return <p className="text-sm text-parchment/60">Create a class first to grade students.</p>;
-  if (student) return <StudentGradePanel student={student} onBack={() => setStudent(null)} />;
-
-  const selectedClass = classes.find((c) => c.id === classId);
-
-  const exportCsv = async () => {
-    if (!selectedClass || roster.length === 0) return;
-    setExporting(true);
-    try {
-      const csv = await buildClassGradesCsv(selectedClass.name, roster);
-      const safe = selectedClass.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
-      downloadCsv(`alchemix-grades-${safe}.csv`, csv);
-    } finally { setExporting(false); }
-  };
-
-  return (
-    <div>
-      <div className="mb-5 flex flex-wrap items-center gap-2">
-        {classes.map((c) => (
-          <button key={c.id} onClick={() => { setClassId(c.id); setStudent(null); }}
-            className="rounded-full px-4 py-1.5 text-xs tracking-[0.1em] uppercase transition"
-            style={classId === c.id ? { background: "color-mix(in oklab, var(--color-emerald-elixir) 18%, transparent)", color: "var(--color-emerald-elixir)" } : { color: "var(--color-parchment)", border: "1px solid var(--color-border)" }}>
-            {c.name}
-          </button>
-        ))}
-        <button onClick={exportCsv} disabled={exporting || roster.length === 0}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold text-teal transition hover:-translate-y-0.5 disabled:opacity-40"
-          style={{ border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 40%, transparent)" }}
-          title="Download this class's gradebook as a CSV">
-          <Download className="h-3.5 w-3.5" /> {exporting ? "Exporting…" : "Export CSV"}
-        </button>
-      </div>
-      {roster.length === 0 ? (
-        <p className="text-sm text-parchment/50">No students enrolled in this class yet.</p>
-      ) : (
-        <div className="space-y-2">
-          {roster.map((s) => (
-            <button key={s.uid} onClick={() => setStudent(s)}
-              className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left transition hover:bg-teal/5"
-              style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 60%, transparent)", border: "1px solid var(--color-border)" }}>
-              <span className="font-ui font-semibold text-sm">{s.name ?? s.email}</span>
-              <span className="text-xs tracking-[0.15em] uppercase text-teal">Grade →</span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+// ── Gradebook — the DepEd weighted gradebook now lives in a dedicated
+//    component (src/components/WeightedGradebook.tsx): per-quarter score entry
+//    with automatic grade computation, a class record (4 quarters + final), and
+//    a per-student report-card preview. Rendered for the "gradebook" tab below.
 
 // ── Evidence review inbox (AI Scavenger Hunt) ───────────────────────────────
 const T_ACCENT = "var(--color-emerald-elixir)";
@@ -1621,7 +1504,7 @@ function TeacherConsole() {
               archived ones too. */}
           {tab === "overview" && <OverviewTab classes={classes.filter((c) => !c.archived)} />}
           {tab === "classes" && <ClassesTab teacherId={uid ?? ""} teacherName={profile?.displayName ?? profile?.email ?? null} schoolId={profile?.schoolId ?? null} classes={classes} />}
-          {tab === "gradebook" && <GradebookTab classes={classes.filter((c) => !c.archived)} />}
+          {tab === "gradebook" && <WeightedGradebook classes={classes.filter((c) => !c.archived)} />}
           {tab === "matrix" && <MatrixTab classes={classes.filter((c) => !c.archived)} />}
           {tab === "starters" && <StartersTab classes={classes.filter((c) => !c.archived)} />}
           {tab === "collections" && <CollectionsTab classes={classes.filter((c) => !c.archived)} />}

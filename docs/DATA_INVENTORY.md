@@ -13,7 +13,7 @@
 > the diagram rather than inventing new collections). If code and this file
 > disagree, the code wins — update this file in the same commit.
 >
-> Last verified against the code: 2026-09-04.
+> Last verified against the code: 2026-10-28.
 
 ---
 
@@ -23,12 +23,13 @@
 
 | Feature | Route / file | Data touchpoints |
 |---|---|---|
-| Sign up / login (email+password, Google popup) | `/login`, `/signup` · `src/lib/auth.ts` | Firebase Auth **D1**; creates/merges `users/{uid}` **D2** |
+| Sign up / login (email+password, Google popup) | `/login`, `/signup` · `src/lib/auth.ts` | Firebase Auth **D1**; creates/merges `users/{uid}` **D2**; email signups go **verify-before-create** via `src/lib/email-verify.ts` → Brevo (**E7**) — stateless (HMAC token, no store), account only created after the 6-digit code checks out |
 | School Door (school-code signup/login, split from the general pages) | `/school-signup`, `/school-login` · `src/components/SchoolDoor.tsx` | Firebase Auth **D1**; live code lookup on `classes/{CODE}` **D4**; enrols via roster entry **D5** + stamps `users/{uid}.classId/.className` |
 | Role gating (student / teacher / admin) | `src/lib/auth.ts`, `src/lib/admin.ts` | reads `users/{uid}.role`, `.status`; admin allowlist is hardcoded (`ADMIN_EMAILS`) |
 | Teacher ID + face-match verification | `/teacher` onboarding · `src/lib/admin.ts`, `src/lib/facematch.ts` | writes `verifications/{uid}` **D7** (downscaled ID + selfie JPEGs as data URLs); admin approval flips `users/{uid}.status` |
 | Admin console (full user + class + school CRUD, verification review) | `/admin` · `src/lib/admin.ts` | reads/writes **D2**, **D4**, **D7**, **D11**; audits to **D14** |
 | Admin · Data & Backups (export · Version Machine · import/rollback) | `/admin` → Data tab · `src/lib/backup.ts` | reads D2/D4/D7/D11/D14 → JSON; snapshots to **D15**; restore writes back where rules allow; audits to **D14** |
+| School-admin console (Overview, Teachers, Classes, Students, Analytics, School) | `/school` · `src/routes/school.tsx`, `src/lib/schools.ts` | scoped to **one** school. Reads teachers (`useSchoolTeachers`, D2 where `schoolId`+`role=teacher`), classes (`useSchoolClasses`, D4 where `schoolId`), and now **students school-wide** (`useSchoolStudents`, D2 where `schoolId`); computes grades via D4 `grading` + D2 `weightedScores` (lib/grading.ts). Writes: provision teachers (`createTeacherAccount` → D2+D4), approve/revoke (`setTeacherStatus`, D2 `status`), branding (D11 name/logo/brandColor). School-wide **AI analytics** via `aiClassInsights` (**E3**, keyless fallback). All reads gated by matching `schoolId` (firestore.rules). |
 
 ### 1.2 Student learning modules
 
@@ -87,8 +88,9 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 | Feature | Route / file | Data touchpoints |
 |---|---|---|
 | Class creation + join codes | `/teacher` · `src/lib/teacher.ts` | creates `classes/{CODE}` **D4** (the join code IS the doc id) |
-| Student joins a class | `/app` join dialog · School Door (`/school-signup`, `/school-login`) | writes roster entry **D5** + stamps `users/{uid}.classId/.className` |
-| Gradebook (5 topics) + mastery | `/teacher` | writes `users/{uid}.grades`, `.mastery` (teacher-entered — the only real grades in the system) |
+| Student joins a class | `/app` join dialog · School Door (`/school-signup`, `/school-login`) | writes roster entry **D5** + stamps `users/{uid}.classId/.className` **and `.schoolId`** (from the class — so the school admin can see them; teacher-accepted joins self-heal `schoolId` on the student's next sign-in via `ensureUserProfile`) |
+| Gradebook — DepEd weighted (WW/PT/QA, 4 quarters, auto-computed) | `/teacher` · `src/lib/grading.ts`, `src/components/WeightedGradebook.tsx` | per-class config (component weights + per-quarter score items with optional topic tag) on `classes/{id}.grading` **D4**; per-student raw marks on `users/{uid}.weightedScores[classId][Qn][itemId]` **D2**; quarterly grade (DepEd transmutation, floor 60) + final (avg of quarters) are computed, never stored. Legacy `.grades`/`.mastery` (5 flat topics) retained on **D2** |
+| Class insights (AI analytics — weak areas, at-risk, recommendations) | `/teacher` → Gradebook · `src/lib/ai.ts` `aiClassInsights` | reads the computed grade stats (D2/D4), sends only aggregates to Gemini (**E3**); rule-based keyless fallback over the same numbers; nothing stored |
 | Quiz Builder (+ curriculum seeding, live results) | `/teacher` | quizzes stored as an **array field on the class doc** (`classes/{id}.quizzes[]`); results read from students' `assignmentResults` |
 | Mission Configurator | `/teacher` | `classes/{id}.missions[]`; completion proven by students' `practice.*` counters |
 | Performance tab (matrix, drill-downs, radar) | `/teacher` | read-only fan-in over every rostered student's `users/{uid}` doc |
@@ -124,7 +126,10 @@ Owner: `src/lib/profile.ts` (`StudentProfile`). One doc per user, all roles.
 | Field | Type | Notes |
 |---|---|---|
 | uid, email, displayName, photoURL | scalars | mirrored from Auth |
-| role | "student" \| "teacher" \| "admin" | |
+| firstName, middleName, lastName, schoolName | string | from the signup form (`auth.ts`); `displayName` is composed from first+last |
+| createdAt | Timestamp | set on first profile write |
+| lastLoginAt | Timestamp | refreshed on every login (`auth.ts`); an allowed self-update key in the rules |
+| role | "student" \| "teacher" \| "admin" \| "school_admin" | |
 | status | "pending" \| "approved" \| "rejected" | teachers only |
 | classId, className | string | denormalized from the joined class |
 | grades | map topicId → {score, outOf, feedback?} | **teacher-entered** |
@@ -148,9 +153,12 @@ Owner: `src/lib/profile.ts` (`StudentProfile`). One doc per user, all roles.
 
 ### D3 — Firestore `users/{uid}/evidence/{autoId}` (subcollection)
 Owner: `src/lib/scavenger.ts` (`EvidenceEntry`). One doc per scavenger-hunt
-submission: element, elementName, question, answer, image (data URL),
+submission: element, elementName, question, answer, **image** (a Cloudinary
+hosted URL when `VITE_CLOUDINARY_*` is configured, otherwise an inline data-URL
+fallback — see `src/lib/image-upload.ts` and external entity **E8**),
 correct, confidence, feedback, needsManualReview, source (gemini/fallback),
-teacherApproved?, createdAt.
+teacherApproved?, createdAt. **Inline is the current default** (Cloudinary env
+is unset unless provisioned).
 
 ### D4 — Firestore `classes/{ID}`
 Owner: `src/lib/teacher.ts`. Doc id = the permanent class id (historically
@@ -213,7 +221,9 @@ filtered (shell anchor).
 ### D11 — Firestore `schools/{schoolId}` (multi-tenant)
 Owner: `src/lib/schools.ts`. One doc per school. Fields: name, **code** (6-char
 shareable SCHOOL code — onboards teachers), logoUrl + brandColor (branding),
-adminEmails[], createdBy, active. Created by the super admin; a school admin may
+adminEmails[], **teacherEmails[]** (lowercased emails provisioned as teachers,
+maintained by `arrayUnion` alongside the `teacherInvites` docs **D16**),
+createdBy, active. Created by the super admin; a school admin may
 edit only their own school's name/logo/brandColor/code.
 See `docs/SCHOOL_MULTITENANCY.md` for the full hierarchy and flows.
 
@@ -221,6 +231,15 @@ See `docs/SCHOOL_MULTITENANCY.md` for the full hierarchy and flows.
 Owner: `src/lib/schools.ts`. `{email, schoolId}`. The super admin designates an
 email as a school's admin; `ensureUserProfile` reads it on login to promote the
 account to `school_admin` + stamp `schoolId`.
+
+### D16 — Firestore `teacherInvites/{emailLower}` (multi-tenant)
+Owner: `src/lib/schools.ts` (`createTeacherInvite` / `resolveTeacherInvite`).
+`{email, schoolId, createdAt}`. Teachers do **not** self-register — a school
+admin provisions them by email; on first sign-in `ensureUserProfile` reads this
+doc to auto-promote the account to an **approved** teacher and stamp `schoolId`.
+Paired with `schools.teacherEmails[]` (**D11**) and the `hasTeacherInvite()`
+rule that lets the owner self-write a `teacher` profile. Own rules block in
+`firestore.rules` (`match /teacherInvites/{email}`).
 
 ### D13 — Firestore `classes/{ID}/requests/{uid}` (subcollection)
 Owner: `src/lib/teacher.ts`. Pending student join requests `{uid, name, email,
@@ -230,8 +249,9 @@ requestedAt}`. A student with a valid code requests; the class teacher accepts
 state.
 
 > **New `users/{uid}` (D2) fields (multi-tenant):** `schoolId` (school_admin /
-> teacher / student); `pendingClassId` + `pendingClassName` (a pending join
-> request). **Roles** now: `admin` (= super admin) · `school_admin` · `teacher`
+> teacher / student); `schoolCode` (the 6-char school code the account joined
+> under, stamped on teacher provisioning — `schools.ts`); `pendingClassId` +
+> `pendingClassName` (a pending join request). **Roles** now: `admin` (= super admin) · `school_admin` · `teacher`
 > · `student`. **New routes:** `/school` (school-admin console), `/teacher/login`
 > (educator door). **`classes` (D4)** gained a `schoolId` field.
 
@@ -260,7 +280,10 @@ definitions), `curriculum.ts` + `learning.ts` (topics/concepts/question
 bank + SM-2), `periodic-table-data.ts` (118 elements + physical data),
 `element-lore.ts` (lore for all 118), `molecules.ts` (VSEPR set),
 `guide.ts` (guide steps), `duel.ts` (pure duel engine), the Emporium
-catalog in `src/routes/shop.tsx`, per-module datasets inside each route
+catalog in `src/routes/shop.tsx`, `lexicon.ts` (in-platform chemistry/term
+reference), `electron-config.ts` (ground-state configs for all 118 elements),
+`element-vision.ts` (COCO-class → plausible-elements map for the on-device
+scavenger "AI eye"), per-module datasets inside each route
 file (reactions, equations, isotopes, solubility, potentials, ΔH…), and
 `public/targets.mind` (compiled AR image targets).
 
@@ -277,6 +300,8 @@ file (reactions, equations, isotopes, solubility, potentials, ΔH…), and
 | E4 | Device camera | AR scanner (MindAR), scavenger hunt (COCO-SSD runs on-device), teacher selfie/ID capture |
 | E5 | Firebase (Auth + Firestore) | the managed backend; no self-hosted server DB |
 | E6 | Printer | forged-card printing from the Grimoire |
+| E7 | Brevo transactional email | server-only (`src/lib/server/brevo.ts`, `BREVO_API_KEY`); sends the signup verification code. Stateless (HMAC token, no store); keyless console fallback |
+| E8 | Cloudinary image CDN | optional scavenger-evidence image host (`src/lib/image-upload.ts`, unsigned browser upload via `VITE_CLOUDINARY_*`); only the hosted URL is stored. Inline data-URL fallback when unset |
 
 ---
 
@@ -308,10 +333,16 @@ seventh external entity keyed by the same `uid`.
   student's class — a cross-document soft reference worth a dashed line.
 
 **Things the ERD should NOT contain:** no server-side database beyond
-Firestore, no Cloud Storage bucket (images are data URLs inside docs),
-no AI-conversation persistence, no separate assignments/shop/leaderboard
-collections (they are class-doc arrays, static catalogs, and roster
+Firestore, no AI-conversation persistence, no separate assignments/shop/
+leaderboard collections (they are class-doc arrays, static catalogs, and roster
 denormalization respectively).
+
+**Images:** there is no self-hosted Cloud Storage bucket. Verification
+ID/selfie images (**D7**) are inline JPEG data URLs in the Firestore doc.
+Scavenger-evidence images (**D3**) are inline by default too, but offload to
+the **Cloudinary** CDN (**E8**) when `VITE_CLOUDINARY_*` is configured — in
+which case the doc holds only the hosted URL, not the bytes. Show Cloudinary as
+an external entity, not an entity/table.
 
 ## 5. DFD guidance
 

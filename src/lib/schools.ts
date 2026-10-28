@@ -7,6 +7,7 @@ import { getAuth, createUserWithEmailAndPassword, signOut as fbSignOut, updatePr
 import { useEffect, useState } from "react";
 import { db, firebaseConfig } from "./firebase";
 import { logAudit } from "./audit";
+import type { StudentProfile } from "./profile";
 
 /**
  * Schools — the multi-tenant layer (see docs/SCHOOL_MULTITENANCY.md).
@@ -314,9 +315,13 @@ export interface SchoolClass {
   id: string;
   name: string;
   teacherId: string;
+  teacherName?: string | null;
   joinCode?: string;
   joinCodeExpiresAt?: Timestamp | null;
   archived?: boolean;
+  /** DepEd weighted-grading config (lib/grading.ts) — present once a teacher
+   *  sets it up; normalise before use. Typed loose to avoid a circular import. */
+  grading?: unknown;
 }
 
 export function useSchoolClasses(schoolId: string | undefined) {
@@ -356,6 +361,32 @@ export function useSchoolTeachers(schoolId: string | undefined) {
     return unsub;
   }, [schoolId]);
   return { teachers, loading };
+}
+
+// ── Students in a school (for the school-admin directory + analytics) ────────
+// Students carry schoolId once they join a class (stamped at join time, or
+// self-healed on next sign-in — see teacher.joinClass / auth.ensureUserProfile).
+// Firestore rules let a school admin read any user whose schoolId matches theirs.
+export function useSchoolStudents(schoolId: string | undefined) {
+  const [students, setStudents] = useState<StudentProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!schoolId) { setStudents([]); setLoading(false); return; }
+    setLoading(true);
+    const q = query(collection(db, "users"), where("schoolId", "==", schoolId));
+    return onSnapshot(
+      q,
+      (snap) => {
+        const list = snap.docs
+          .map((d) => ({ uid: d.id, ...(d.data() as Omit<StudentProfile, "uid">) }))
+          .filter((u) => (u.role ?? "student") === "student");
+        setStudents(list);
+        setLoading(false);
+      },
+      (err) => { console.error("useSchoolStudents:", err); setLoading(false); },
+    );
+  }, [schoolId]);
+  return { students, loading };
 }
 
 /** Returns the schoolId this email is designated to admin, or null. */

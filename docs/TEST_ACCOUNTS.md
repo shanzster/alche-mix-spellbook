@@ -2,7 +2,13 @@
 
 > ⚠️ Keep out of any public repo (secrets-adjacent). Everything you need to log
 > in and exercise all four roles for manual testing.
-> Last updated: 2026-10-14.
+> Last updated: 2026-10-28.
+
+> **Before any public / classroom demo** (from the 2026-10-28 data-handling
+> audit — see `docs/LOGS.md`): rotate the live Gemini/Brevo/Cloudinary keys,
+> restore `allow write: if isAdmin()` on the `config` rule in `firestore.rules`,
+> and confirm `firebase deploy --only firestore:rules` actually ran. These do
+> **not** affect local testing with the accounts below.
 
 ## ✅ Ready now — seeded accounts (created 2026-10-14)
 

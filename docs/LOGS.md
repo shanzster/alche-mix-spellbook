@@ -7,6 +7,194 @@
 
 ---
 
+## 2026-10-28 (Tuesday)
+
+> System audit of data handling / data flows, and a `DATA_INVENTORY.md` refresh
+> (it had drifted since its 2026-09-04 verification). Docs only — no code change.
+
+### Display font: blackletter → Cinzel
+
+- Adviser flagged **UnifrakturMaguntia** (blackletter) as unreadable for kids.
+  Swapped the display/headline voice to **Cinzel** (engraved Roman-inscription
+  serif, weight 600) in both skins — `.grimoire-skin` and `.grimoire-display`
+  (`src/styles.css`). Keeps the engraved-manuscript feel but is legible.
+  Dropped UnifrakturMaguntia from the Google Fonts import in `__root.tsx`
+  (Cinzel was already loaded). `DESIGN_DIRECTION.md` typography table updated.
+
+### School-admin console expanded (6 modules, school-wide data)
+
+- `/school` rebuilt like the super-admin console but school-scoped, with more
+  functions:
+  - **Overview** — KPI tiles (teachers/classes/students/at-risk, all clickable)
+    + a **school grade snapshot** (average, passing, at-risk, per-quarter bars).
+  - **Teachers** — search + status filter + pagination; each row shows class &
+    student counts, and you can **revoke / reinstate** access (`setTeacherStatus`)
+    besides approve/reject + ID review. Keeps the "add teacher" flow.
+  - **Classes** — search + active/archived filter + pagination; each class shows
+    **student count** and **class grade average** alongside the join code.
+  - **Students** (new) — school-wide directory: search + class filter +
+    pagination, each student's **final grade + Passed/Failed**, click → the
+    weighted **report card** (reused `StudentReport`), CSV export.
+  - **Analytics** (new) — school-wide: average, passing, at-risk, **per-class
+    comparison**, component health, topic weak-spots, and an **AI narrative**
+    (`aiClassInsights`, keyless rule-based fallback) of weak areas + at-risk
+    students + recommendations.
+  - **School** — branding/code settings (unchanged).
+- **Enabler (no rules change for reads):** school-admin reads are gated on a
+  matching `schoolId`, and rosters aren't readable by school admins — so
+  students now carry `schoolId`. Stamped at `joinClass` (teacher.ts) and
+  **self-healed** on the student's next sign-in in `ensureUserProfile`
+  (auth.ts) for already-enrolled / teacher-accepted students. New
+  `useSchoolStudents(schoolId)` hook; `SchoolClass` gains `grading`/`teacherName`.
+  (Existing students appear in the console only after they next sign in.)
+
+### Teacher gradebook → DepEd K-12 weighted grading + AI class insights
+
+- New grading engine `src/lib/grading.ts`: 4 quarters, components Written
+  Work/Performance Tasks/Quarterly Assessment (weights editable per class,
+  default 40/40/20), flexible score items (label + highest possible + optional
+  topic tag). Auto-computes PS → weighted → initial → **DepEd transmutation**
+  (verified against the official Order 8 s.2015 table, floor 60) → quarterly
+  grade; **final = average of the quarters**. Pass mark 75.
+  - Storage: config on `classes/{id}.grading`; per-student raw marks on
+    `users/{uid}.weightedScores[classId][Qn][itemId]` (new field on
+    `StudentProfile`). Grades are computed, never stored.
+- New `src/components/WeightedGradebook.tsx` replaces the old flat 5-topic
+  Gradebook tab: **Enter grades** (per-quarter grid, live auto-computed grade
+  per student), **Class record** (all 4 quarters + final + remarks, class
+  averages, CSV export), **Insights**, and **Setup** (weights + score items).
+  Per-student **report-card preview** shows every quarter's component PS/WS,
+  initial, transmuted grade, and the final. Removed dead old gradebook code.
+- **AI analytics** — new `aiClassInsights` server fn (`src/lib/ai.ts`) + `useAI`
+  hook: class summary, weakest areas (component + tagged topic), ranked
+  **at-risk / inclined-to-fail** students with reasons, and recommendations.
+  Keyless **rule-based fallback** computes the same analysis from the numbers
+  (CLAUDE.md rule). Insights view also shows always-on computed stat bars
+  (component health, quarter trend, topic weak-spots) with no AI needed.
+- **firestore.rules**: added `weightedScores` to the teacher-writable key set on
+  student docs (and to the owner's blocked-keys list). **Must redeploy rules**
+  (`firebase deploy --only firestore:rules`) before this works against live.
+
+### Custom 404 — "The Lost Transmutation"
+
+- Replaced the generic `NotFoundComponent` in `__root.tsx` with a hero-grade
+  grimoire 404 (`src/components/NotFound.tsx`), wired via `notFoundComponent`.
+  Reuses the hero's art language: theme-aware `.auth-backdrop`, orbiting
+  `ArcaneField` orbs, a faded conjurer/apprentice cut-figure, and mouse-parallax
+  crystal gems (the `/hero/gem-*.webp` art) bobbing via a new `nf-float`
+  keyframe (animates the independent `translate`/`rotate` props so it composes
+  with the inline parallax `transform`). Centrepiece: a giant gold "4 · 4" in
+  Cinzel with the slowly-rotating astrolabe seal as the 0. CTAs: Return to the
+  laboratory (`/`) + Go back; quick doors to Elements/Lexicon/Learn/Sign-in.
+  Fully frozen under `prefers-reduced-motion`; works in dark + light.
+
+### School-admin console + login enhanced; list toolbars everywhere
+
+- **School-admin login** (`/school/signin`) — new `SchoolLogin.tsx` (replaces
+  the plain shared `TechLogin` on this door): a polished branded portal (amber
+  school accent, logo, Cinzel title, show/hide password, Caps-Lock warning,
+  honest role-lock note). Same auth/role-lock flow. Teacher door still uses
+  `TechLogin`.
+- **School-admin console** (`/school`) — swapped the icon-only floating rail for
+  the modern labeled sidebar used on super-admin (brand chip + signed-in
+  identity card + "Menu" + flat nav rows with an amber active pill); content now
+  fills the width (`md:pl-[17.75rem] md:pr-7`, no `max-w-5xl`). Removed the now
+  unused `RailChip`.
+- **Toolbars + pagination** added across the super-admin list tabs — reusable
+  `Pager` + `paginate()` + `FilterSelect`: Users (role filter, 15/pg), Teachers
+  (status filter + pending count, 15/pg), Classes (active/archived filter, 12/pg
+  in a 3-col grid). Matches the Schools tab pattern so every list scales.
+
+### Schools tab rebuilt to scale (100+ schools)
+
+- `/admin` → Schools reworked so it stays usable with many tenants:
+  - **Toolbar** — search (name / code / admin email), status filter
+    (all/active/inactive), sort (name, most members, most admins).
+  - **Summary strip** — total / active / inactive / no-admin counts.
+  - **Pagination** — 12 cards/page, responsive 1→2→3 cols, "Showing X–Y of N".
+  - **Compact uniform cards** — `SchoolCard` now shows live member counts
+    (teachers/students/classes, computed from `users`+`classes`; classes mapped
+    via teacher→school) and collapses admin management behind a disclosure so
+    cards keep a consistent height at scale.
+  - Create form moved into a `SchoolCreateModal` (was an always-open panel
+    eating vertical space); migration tools tucked into an `Advanced` details.
+  - `SchoolsTab` now takes `users` + `classes` props from the shell.
+
+### Admin shell: modern sidebar + full-bleed content
+
+- Reworked `/admin` sidebar (owner wanted it cleaner/more modern): brand chip,
+  a signed-in identity card (avatar initial + admin email), a "Menu" label, and
+  flat nav rows (plain icons, soft hover, filled active row with an
+  emerald→violet left pill) instead of the heavy bordered icon-chips.
+- Killed the big right-hand margin: content wrapper no longer `mx-auto
+  max-w-6xl` — it now fills to `md:pr-7` so the dashboard uses the full width.
+
+### Admin Overview rebuilt as a real dashboard
+
+- `/admin` Overview tab is now a proper admin dashboard (ref: a Jobgio-style
+  layout the owner shared), all wired to live Firestore — no mock data:
+  - **Quick Stats** — six icon tiles (Total users, Students, Teachers, Schools,
+    Classes, To-verify). Each tile jumps to its tab; the To-verify tile goes
+    filled/attention when the queue is non-empty.
+  - **Statistics chart** — grouped bars of *students vs. educators per school*
+    (`MembersBySchool`). Honest, computed counts: we have **no `createdAt` on
+    user docs**, so a signups-over-time series would be fabricated — went with a
+    real per-school breakdown instead.
+  - **Pending Approvals** — real educator verification submissions with inline
+    Approve/Reject (`approveTeacher`/`rejectTeacher`) and a "Review all" jump.
+  - **Manage users table** — role filter, search, **CSV export** (filtered or
+    selected rows), select-all + bulk export/delete, and per-row Edit (reuses
+    `UserEditModal`) / Delete (`deleteUserProfile`).
+  - Replaced the old `Overview`/`StatCard`; content container widened to
+    `max-w-6xl`. Kept the existing violet "grimoire-display" admin skin so dark
+    + light both hold (not the reference's flat white).
+
+### Super-admin door restyled — grimoire "Warden's Door"
+
+- `/admin/login` no longer uses the plain shared `TechLogin`. New dedicated
+  `src/components/AdminLogin.tsx`: the grimoire voice — a gold-ruled sealed
+  plate on the theme-aware `.auth-backdrop`, astrolabe seal emblem + faint
+  watermark, "✦ Warded entry" badge, Cinzel title, teal "Unseal the console"
+  action. Honest security affordances only: role-lock notice, show/hide master
+  key, live Caps-Lock warning — no fabricated encryption claims. Auth logic is
+  byte-for-byte the old flow (sign in → `fetchRole` → sign back out if not
+  `admin`). School/teacher doors keep `TechLogin` unchanged.
+  - (A terminal "control plane" variant was tried and rejected — too off-theme
+    for AlcheMix; reverted to this grimoire version.)
+
+### Data-inventory refresh (to match the shipped code)
+
+- **Cloudinary is real now.** Scavenger-evidence images (D3) offload to the
+  Cloudinary CDN when `VITE_CLOUDINARY_*` is set (`src/lib/image-upload.ts`),
+  storing only the hosted URL; inline data-URL is the fallback/default. Retired
+  the inventory's absolute "no Cloud Storage bucket — images are data URLs"
+  claim in §4; added Cloudinary as external entity **E8**.
+- **Brevo email** added as external entity **E7** — the verify-before-create
+  signup flow (`email-verify.ts` → `server/brevo.ts`), stateless HMAC token, no
+  store. Wired into the §1.1 Sign up row.
+- **New store D16 `teacherInvites/{emailLower}`** (`schools.ts`) documented;
+  previously only `schoolAdminInvites` (D12) was listed though the rules already
+  had a `teacherInvites` block.
+- **Missing D2 fields** added: `firstName/middleName/lastName/schoolName`,
+  `createdAt`, `lastLoginAt`, `schoolCode`; `role` now includes `school_admin`.
+  **D11 schools** gained `teacherEmails[]`.
+- **D9** static datasets: added `lexicon.ts`, `electron-config.ts`,
+  `element-vision.ts`.
+
+### Audit findings NOT yet actioned (tracked for follow-up)
+
+- **Launch blockers:** `config/{docId}` rule is still world-writable
+  (`firestore.rules:149` — restore `allow write: if isAdmin()`); rotate the live
+  Gemini/Brevo/Cloudinary keys; confirm `firebase deploy --only firestore:rules`
+  actually ran (repo may not match live); no deletion/retention path or consent
+  notice for teacher ID+selfie PII.
+- **Data-correctness:** leaderboard denormalization drift (`syncRosterStats`
+  only fires from `recordTrial`/`recordDuel`, so streak/compounds/aurum boards
+  go stale); duel reward double-payout (localStorage-only dedupe); no cascade on
+  class/user/school delete (orphans + stranded students); missing composite
+  index on `users(schoolId, role)` so the school-admin Teachers list fails in
+  prod (no `firestore.indexes.json` in the repo at all).
+
 ## 2026-10-19 (Sunday)
 
 > Element detail: labelled "Element Card" anatomy view (prof request).

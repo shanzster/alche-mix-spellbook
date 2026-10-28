@@ -357,6 +357,107 @@ export const aiStarterQuiz = createServerFn({ method: "POST" })
   });
 
 // ════════════════════════════════════════════════════════════════════════════
+//  1e. Class insights — Gemini turns the gradebook's ALREADY-COMPUTED stats
+//  into a short narrative: weakest areas, students at risk of failing, and what
+//  to do next. Keyless → a deterministic rule-based summary over the same
+//  numbers (so the teacher always gets real analysis, AI or not).
+// ════════════════════════════════════════════════════════════════════════════
+export interface InsightStudent {
+  name: string;
+  final: number | null;
+  /** Component the student scored lowest in, e.g. "Written Work". */
+  weakestComponent: string | null;
+}
+export interface ClassInsightsInput {
+  className: string;
+  passMark: number;
+  classAverage: number | null;
+  passing: number;
+  total: number;
+  quarterAverages: { quarter: string; average: number | null }[];
+  componentAverages: { component: string; average: number | null }[];
+  topicAverages: { topic: string; average: number }[];
+  students: InsightStudent[];
+}
+export interface ClassInsightsResult {
+  summary: string;
+  weakAreas: { area: string; detail: string }[];
+  atRisk: { name: string; reason: string }[];
+  recommendations: string[];
+  source: AISource;
+}
+
+function fallbackInsights(d: ClassInsightsInput): ClassInsightsResult {
+  const graded = d.students.filter((s): s is InsightStudent & { final: number } => s.final !== null);
+  const atRisk = graded
+    .filter((s) => s.final < d.passMark)
+    .sort((a, b) => a.final - b.final)
+    .map((s) => ({
+      name: s.name,
+      reason: `Final ${s.final} — ${d.passMark - s.final} point(s) below the ${d.passMark} pass mark${s.weakestComponent ? `; weakest in ${s.weakestComponent}` : ""}.`,
+    }));
+
+  const comps = d.componentAverages.filter((c): c is { component: string; average: number } => c.average !== null);
+  const topics = [...d.topicAverages].sort((a, b) => a.average - b.average);
+  const weakAreas: { area: string; detail: string }[] = [];
+  if (comps.length) {
+    const worst = [...comps].sort((a, b) => a.average - b.average)[0];
+    weakAreas.push({ area: worst.component, detail: `Lowest component average at ${Math.round(worst.average)}% across the class — prioritise it.` });
+  }
+  if (topics.length) {
+    weakAreas.push({ area: topics[0].topic, detail: `Weakest tagged topic at ${Math.round(topics[0].average)}%.` });
+  }
+
+  const avgTxt = d.classAverage !== null ? `a class average of ${d.classAverage}` : "no complete grades yet";
+  const summary = `${d.className} has ${avgTxt}, with ${d.passing} of ${d.total} student(s) at or above the ${d.passMark} pass mark${atRisk.length ? ` and ${atRisk.length} at risk of failing` : ""}.`;
+
+  const recommendations: string[] = [];
+  if (weakAreas[0]) recommendations.push(`Reteach and re-assess ${weakAreas[0].area.toLowerCase()} — the class's weakest area.`);
+  if (atRisk.length) recommendations.push(`Give targeted support to ${atRisk.slice(0, 3).map((a) => a.name).join(", ")}${atRisk.length > 3 ? " and the others below the pass mark" : ""}.`);
+  recommendations.push("Open the per-student report cards to see which component (WW / PT / QA) is dragging each grade down.");
+
+  return { summary, weakAreas, atRisk, recommendations, source: "fallback" };
+}
+
+export const aiClassInsights = createServerFn({ method: "POST" })
+  .validator((d: ClassInsightsInput) => d)
+  .handler(async ({ data }): Promise<ClassInsightsResult> => {
+    const fb = fallbackInsights(data);
+    try {
+      const { askGemini } = await import("./server/gemini");
+      const out = await askGemini<Omit<ClassInsightsResult, "source">>({
+        system:
+          "You are a supportive data analyst for a Filipino high-school chemistry teacher using DepEd K-12 weighted grading (pass mark 75; components Written Work, Performance Tasks, Quarterly Assessment). " +
+          "You are given ALREADY-COMPUTED class statistics as JSON — do NOT recompute or invent numbers; reference the given numbers faithfully. " +
+          "Write a concise, encouraging but honest analysis. `atRisk` = students inclined to fail (final below the pass mark, or clearly trending low), ranked most-urgent first, each with a one-line reason grounded in the data. " +
+          "`weakAreas` = the component(s)/topic(s) the class is weakest in. `recommendations` = 2–4 concrete, classroom-actionable next steps. Keep every string short.",
+        temperature: 0.5,
+        jsonSchema: {
+          type: "object",
+          properties: {
+            summary: { type: "string" },
+            weakAreas: { type: "array", items: { type: "object", properties: { area: { type: "string" }, detail: { type: "string" } }, required: ["area", "detail"] } },
+            atRisk: { type: "array", items: { type: "object", properties: { name: { type: "string" }, reason: { type: "string" } }, required: ["name", "reason"] } },
+            recommendations: { type: "array", items: { type: "string" } },
+          },
+          required: ["summary", "weakAreas", "atRisk", "recommendations"],
+        },
+        parts: [{ text: JSON.stringify(data) }],
+      });
+      return {
+        summary: out.summary || fb.summary,
+        weakAreas: Array.isArray(out.weakAreas) && out.weakAreas.length ? out.weakAreas : fb.weakAreas,
+        atRisk: Array.isArray(out.atRisk) ? out.atRisk : fb.atRisk,
+        recommendations: Array.isArray(out.recommendations) && out.recommendations.length ? out.recommendations : fb.recommendations,
+        source: "gemini",
+      };
+    } catch (err) {
+      console.error("[AI] aiClassInsights fell back to rule-based summary:", err);
+      return fb;
+    }
+  });
+
+// ════════════════════════════════════════════════════════════════════════════
 //  1c. Element Identifier — every item in the frame + the elements it contains.
 //  AI is the source of truth for accuracy; the client falls back to the
 //  on-device COCO-SSD eye + curated composition map when keyless/offline.

@@ -5,6 +5,7 @@ import {
   LayoutDashboard, Users, GraduationCap, BookOpen, Search, UserCog,
   School, Plus, ArrowUpRight, Pencil, Trash2, UserPlus, ScrollText,
   Database, Download, Upload, Save, RotateCcw, AlertTriangle, Archive, FileJson,
+  TrendingUp, MoreHorizontal, ChevronDown, Building2,
 } from "lucide-react";
 import { RequireRole } from "../components/RequireRole";
 import { ArcaneField } from "../components/ArcaneField";
@@ -60,20 +61,6 @@ function Orb({ icon: Icon, accent = ACCENT, active = false, size = "h-10 w-10" }
     >
       <Icon className="h-[18px] w-[18px]" />
     </span>
-  );
-}
-
-function StatCard({ label, value, accent, icon }: {
-  label: string; value: number | string; accent: string; icon: ComponentType<{ className?: string }>;
-}) {
-  return (
-    <div className="glass rounded-2xl p-5 flex items-center gap-4">
-      <Orb icon={icon} accent={accent} />
-      <div>
-        <div className="font-ui text-3xl font-bold leading-none" style={{ color: accent }}>{value}</div>
-        <div className="text-[10px] tracking-[0.18em] uppercase text-parchment/60 mt-1.5">{label}</div>
-      </div>
-    </div>
   );
 }
 
@@ -159,6 +146,51 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 
 const PRIMARY_BTN = "rounded-lg px-4 py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50";
 
+/** A select styled to match INPUT, with a chevron affordance. */
+function FilterSelect({ value, onChange, children }: { value: string; onChange: (v: string) => void; children: React.ReactNode }) {
+  return (
+    <div className="relative">
+      <select value={value} onChange={(e) => onChange(e.target.value)} className={`${INPUT} appearance-none py-2.5 pr-8`}>{children}</select>
+      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-parchment/40" />
+    </div>
+  );
+}
+
+/** Shared result-count + page controls. Hidden when there's nothing to page. */
+function Pager({ total, page, pageSize, onPage }: { total: number; page: number; pageSize: number; onPage: (p: number) => void }) {
+  if (total === 0) return null;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const cur = Math.min(page, totalPages);
+  const start = (cur - 1) * pageSize;
+  return (
+    <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+      <p className="text-xs text-parchment/55">Showing <span className="text-spectral">{start + 1}–{Math.min(start + pageSize, total)}</span> of <span className="text-spectral">{total}</span></p>
+      {totalPages > 1 && (
+        <div className="flex items-center gap-1">
+          <button onClick={() => onPage(cur - 1)} disabled={cur <= 1} className="rounded-lg px-3 py-1.5 text-xs text-parchment/70 transition hover:text-spectral disabled:opacity-40" style={{ border: "1px solid var(--color-border)" }}>Prev</button>
+          {Array.from({ length: totalPages }).map((_, i) => (
+            <button key={i} onClick={() => onPage(i + 1)}
+              className="h-8 min-w-8 rounded-lg px-2 text-xs font-semibold transition"
+              style={i + 1 === cur
+                ? { background: "color-mix(in oklab, var(--color-wraith) 16%, transparent)", color: "var(--color-wraith)", border: "1px solid color-mix(in oklab, var(--color-wraith) 35%, transparent)" }
+                : { color: "var(--color-parchment)", border: "1px solid var(--color-border)" }}>
+              {i + 1}
+            </button>
+          ))}
+          <button onClick={() => onPage(cur + 1)} disabled={cur >= totalPages} className="rounded-lg px-3 py-1.5 text-xs text-parchment/70 transition hover:text-spectral disabled:opacity-40" style={{ border: "1px solid var(--color-border)" }}>Next</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Slice a filtered list by page, clamping the page into range. */
+function paginate<T>(list: T[], page: number, pageSize: number): T[] {
+  const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
+  const cur = Math.min(page, totalPages);
+  return list.slice((cur - 1) * pageSize, (cur - 1) * pageSize + pageSize);
+}
+
 // ── Verification review card ────────────────────────────────────────────────
 function VerificationCard({ v }: { v: Verification }) {
   const [busy, setBusy] = useState(false);
@@ -197,79 +229,390 @@ function VerificationCard({ v }: { v: Verification }) {
   );
 }
 
-// ── Tabs ────────────────────────────────────────────────────────────────────
-function Overview({ users, classesCount, pendingVerifs, onGo }: {
-  users: StudentProfile[]; classesCount: number; pendingVerifs: number; onGo: (t: TabKey) => void;
+// ── Dashboard (Overview) ─────────────────────────────────────────────────────
+
+/** 12.3K-style compact number for the quick-stat tiles. */
+function fmtCompact(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 ? 1 : 0)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n % 1_000 ? 1 : 0)}K`;
+  return String(n);
+}
+
+/** A quick-stat tile: icon chip on top, big number, label — the reference look.
+ *  Clickable to jump to its tab; `highlight` gives it the filled accent card. */
+function QuickStat({ label, value, icon: Icon, accent, highlight, attention, onClick }: {
+  label: string; value: number; icon: ComponentType<{ className?: string }>;
+  accent: string; highlight?: boolean; attention?: boolean; onClick?: () => void;
 }) {
-  const students = users.filter((u) => (u.role ?? "student") === "student").length;
-  const teachers = users.filter((u) => u.role === "teacher");
-  const approved = teachers.filter((t) => t.status === "approved").length;
-  const pending = teachers.filter((t) => (t.status ?? "pending") === "pending").length;
+  return (
+    <button onClick={onClick} disabled={!onClick}
+      className="glass group relative flex flex-col items-center rounded-2xl px-3 py-5 text-center transition enabled:hover:-translate-y-0.5 enabled:cursor-pointer"
+      style={highlight ? { background: `color-mix(in oklab, ${accent} 90%, black 8%)`, borderColor: accent } : undefined}>
+      {attention && <span className="absolute right-3 top-3 h-2 w-2 rounded-full" style={{ background: "var(--color-crimson)", boxShadow: "0 0 0 3px color-mix(in oklab, var(--color-crimson) 25%, transparent)" }} />}
+      <span className="flex h-11 w-11 items-center justify-center rounded-full"
+        style={highlight
+          ? { background: "rgba(255,255,255,0.18)", color: "#fff" }
+          : { color: accent, background: `color-mix(in oklab, ${accent} 12%, transparent)`, border: `1px solid color-mix(in oklab, ${accent} 28%, transparent)` }}>
+        <Icon className="h-[18px] w-[18px]" />
+      </span>
+      <div className="mt-3 font-ui text-3xl font-bold leading-none" style={{ color: highlight ? "#fff" : "var(--color-spectral)" }}>{fmtCompact(value)}</div>
+      <div className="mt-1.5 text-[10px] font-medium uppercase leading-tight tracking-[0.14em]" style={{ color: highlight ? "rgba(255,255,255,0.8)" : "var(--color-parchment)" }}>{label}</div>
+      {onClick && <ArrowUpRight className="absolute bottom-2.5 right-2.5 h-3.5 w-3.5 opacity-0 transition group-enabled:group-hover:opacity-60" style={{ color: highlight ? "#fff" : accent }} />}
+    </button>
+  );
+}
+
+/** Grouped bar chart — students vs. educators per school. Real counts only. */
+function MembersBySchool({ users, schools }: { users: StudentProfile[]; schools: SchoolRec[] }) {
+  const groups = useMemo(() => {
+    const rows = schools.slice(0, 8).map((s) => ({
+      name: s.name,
+      students: users.filter((u) => u.schoolId === s.id && (u.role ?? "student") === "student").length,
+      teachers: users.filter((u) => u.schoolId === s.id && u.role === "teacher").length,
+    }));
+    const unStudents = users.filter((u) => !u.schoolId && (u.role ?? "student") === "student").length;
+    const unTeachers = users.filter((u) => !u.schoolId && u.role === "teacher").length;
+    if (unStudents + unTeachers > 0) rows.push({ name: "Unassigned", students: unStudents, teachers: unTeachers });
+    return rows;
+  }, [users, schools]);
+
+  const max = Math.max(1, ...groups.flatMap((g) => [g.students, g.teachers]));
+  const ticks = 4;
 
   return (
-    <div>
-      <SectionHead eyebrow="Administration" title="Control Room"
-        sub="Oversee users, review educator verifications, and manage schools and classes across the platform." />
-
-      <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">
-        <StatCard label="Total users" value={users.length} accent="var(--color-emerald-elixir)" icon={Users} />
-        <StatCard label="Students" value={students} accent="var(--color-emerald-elixir)" icon={GraduationCap} />
-        <StatCard label="Approved teachers" value={approved} accent="var(--color-gold)" icon={UserCog} />
-        <StatCard label="Pending teachers" value={pending} accent="var(--color-gold)" icon={UserCog} />
-        <StatCard label="Classes" value={classesCount} accent="var(--color-wraith)" icon={BookOpen} />
-        <StatCard label="To verify" value={pendingVerifs} accent="var(--color-wraith)" icon={ShieldCheck} />
+    <div className="glass rounded-2xl p-5">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 className="inline-flex items-center gap-2 font-display text-xl"><TrendingUp className="h-4 w-4 text-wraith" /> Statistics</h3>
+          <p className="mt-0.5 text-xs text-parchment/55">Members per school, by role.</p>
+        </div>
+        <div className="flex items-center gap-4 text-[11px]">
+          <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--color-emerald-elixir)" }} /> Students</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: "var(--color-gold)" }} /> Educators</span>
+        </div>
       </div>
 
-      {/* Quick actions — jump into the work */}
-      <p className="font-ui text-[11px] font-medium tracking-[0.18em] uppercase opacity-70 mt-9 mb-3" style={{ color: ACCENT }}>Jump to</p>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {([
-          { t: "verifications" as TabKey, icon: ShieldCheck, title: "Review verifications", sub: pendingVerifs ? `${pendingVerifs} waiting for review` : "All caught up", accent: "var(--color-wraith)" },
-          { t: "schools" as TabKey, icon: School, title: "Manage schools", sub: "Create schools, designate admins", accent: "var(--color-gold)" },
-          { t: "teachers" as TabKey, icon: UserCog, title: "Approve teachers", sub: pending ? `${pending} pending` : "No pending teachers", accent: "var(--color-emerald-elixir)" },
-        ]).map((a) => (
-          <button key={a.t} onClick={() => onGo(a.t)}
-            className="glass rounded-2xl p-5 text-left transition hover:-translate-y-0.5 group">
-            <div className="flex items-start justify-between">
-              <Orb icon={a.icon} accent={a.accent} />
-              <ArrowUpRight className="h-4 w-4 text-parchment/40 transition group-hover:text-spectral group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-            </div>
-            <h3 className="font-display text-lg mt-3">{a.title}</h3>
-            <p className="font-serif text-sm text-parchment/65 mt-0.5">{a.sub}</p>
+      {groups.length === 0 ? (
+        <p className="py-10 text-center text-sm text-parchment/50">No members yet.</p>
+      ) : (
+        <div className="relative pl-8" style={{ height: 220 }}>
+          {/* Y gridlines + labels */}
+          {Array.from({ length: ticks + 1 }).map((_, i) => {
+            const val = Math.round((max / ticks) * (ticks - i));
+            return (
+              <div key={i} className="absolute left-0 right-0 flex items-center gap-2" style={{ top: `${(i / ticks) * 100}%` }}>
+                <span className="w-6 text-right text-[9px] tabular-nums text-parchment/40">{val}</span>
+                <span className="h-px flex-1" style={{ background: "color-mix(in oklab, var(--color-spectral) 9%, transparent)" }} />
+              </div>
+            );
+          })}
+          {/* Bars */}
+          <div className="absolute inset-0 left-8 flex items-end justify-around gap-2 pb-6">
+            {groups.map((g) => (
+              <div key={g.name} className="flex h-full flex-1 flex-col items-center justify-end">
+                <div className="flex h-full w-full items-end justify-center gap-1">
+                  <div title={`${g.students} students`} className="w-[22%] max-w-5 rounded-t transition-all hover:brightness-110"
+                    style={{ height: `${(g.students / max) * 100}%`, minHeight: g.students ? 3 : 0, background: "var(--color-emerald-elixir)" }} />
+                  <div title={`${g.teachers} educators`} className="w-[22%] max-w-5 rounded-t transition-all hover:brightness-110"
+                    style={{ height: `${(g.teachers / max) * 100}%`, minHeight: g.teachers ? 3 : 0, background: "var(--color-gold)" }} />
+                </div>
+                <span className="mt-2 max-w-full truncate text-[10px] text-parchment/55" title={g.name}>{g.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Pending educator verifications — approve/reject inline, or jump to review. */
+function PendingApprovals({ items, loading, onReview }: {
+  items: Verification[]; loading: boolean; onReview: () => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const act = async (uid: string, fn: (uid: string) => Promise<void>) => { setBusy(uid); try { await fn(uid); } finally { setBusy(null); } };
+
+  return (
+    <div className="glass flex h-full flex-col rounded-2xl p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="font-display text-xl">Pending Approvals</h3>
+        {items.length > 0 && (
+          <button onClick={onReview} className="inline-flex items-center gap-1 text-[11px] font-semibold text-wraith transition hover:brightness-110">
+            Review all <ArrowUpRight className="h-3 w-3" />
           </button>
-        ))}
+        )}
+      </div>
+      {loading ? (
+        <p className="py-6 text-center text-sm text-parchment/50">Loading…</p>
+      ) : items.length === 0 ? (
+        <div className="flex flex-1 flex-col items-center justify-center py-8 text-center">
+          <span className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl" style={{ color: "var(--color-emerald-elixir)", background: "color-mix(in oklab, var(--color-emerald-elixir) 12%, transparent)" }}><Check className="h-5 w-5" /></span>
+          <p className="text-sm text-parchment/60">All caught up — no educators waiting.</p>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {items.slice(0, 5).map((v) => (
+            <div key={v.uid} className="flex items-center gap-3">
+              <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full" style={{ color: "var(--color-gold)", background: "color-mix(in oklab, var(--color-gold) 12%, transparent)" }}><IdCard className="h-4 w-4" /></span>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold leading-tight">{v.name ?? "Unnamed educator"}</div>
+                <div className="truncate text-[11px] text-parchment/50">{v.email}</div>
+              </div>
+              <button onClick={() => act(v.uid, approveTeacher)} disabled={busy === v.uid} aria-label="Approve"
+                className="flex h-7 w-7 items-center justify-center rounded-lg transition hover:-translate-y-px disabled:opacity-50"
+                style={{ color: "var(--color-emerald-elixir)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent)" }}><Check className="h-3.5 w-3.5" /></button>
+              <button onClick={() => act(v.uid, rejectTeacher)} disabled={busy === v.uid} aria-label="Reject"
+                className="flex h-7 w-7 items-center justify-center rounded-lg transition hover:-translate-y-px disabled:opacity-50"
+                style={{ color: "var(--color-crimson)", border: "1px solid color-mix(in oklab, var(--color-crimson) 35%, transparent)" }}><X className="h-3.5 w-3.5" /></button>
+            </div>
+          ))}
+          {items.length > 5 && <p className="pt-1 text-center text-[11px] text-parchment/45">+{items.length - 5} more — <button onClick={onReview} className="text-wraith hover:underline">review all</button></p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function csvCell(s: unknown): string {
+  const v = s == null ? "" : String(s);
+  return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+
+/** Manage-users table: role filter + search + CSV export + bulk select + row actions. */
+function ManageUsers({ users, schools, onEdit }: {
+  users: StudentProfile[]; schools: SchoolRec[]; onEdit: (u: StudentProfile) => void;
+}) {
+  const [role, setRole] = useState<"all" | Role>("all");
+  const [q, setQ] = useState("");
+  const [sel, setSel] = useState<Set<string>>(new Set());
+  const [menu, setMenu] = useState<string | null>(null);
+  const schoolName = (id?: string) => (id ? schools.find((s) => s.id === id)?.name : undefined);
+
+  const rows = useMemo(() => users.filter((u) => {
+    if (role !== "all" && (u.role ?? "student") !== role) return false;
+    const hay = `${u.displayName ?? ""} ${u.email ?? ""} ${u.role ?? "student"}`.toLowerCase();
+    return hay.includes(q.trim().toLowerCase());
+  }), [users, role, q]);
+
+  const toggle = (uid: string) => setSel((s) => { const n = new Set(s); n.has(uid) ? n.delete(uid) : n.add(uid); return n; });
+  const allOn = rows.length > 0 && rows.every((r) => sel.has(r.uid));
+  const toggleAll = () => setSel(allOn ? new Set() : new Set(rows.map((r) => r.uid)));
+
+  const exportCsv = (which: StudentProfile[]) => {
+    const header = ["Name", "Email", "Role", "Status", "School"];
+    const lines = [header.join(",")].concat(
+      which.map((u) => [u.displayName ?? "", u.email ?? "", u.role ?? "student", u.role === "teacher" ? (u.status ?? "pending") : "", schoolName(u.schoolId) ?? ""].map(csvCell).join(",")),
+    );
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `alchemix-users-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+  };
+
+  const removeUser = async (u: StudentProfile) => {
+    setMenu(null);
+    if (!confirm(`Delete ${u.displayName ?? u.email}'s profile?\n\nTheir login credential remains (it can't be removed from the client), but they'll have no profile.`)) return;
+    await deleteUserProfile(u.uid, u.displayName ?? u.email ?? undefined);
+    setSel((s) => { const n = new Set(s); n.delete(u.uid); return n; });
+  };
+
+  const bulkDelete = async () => {
+    const chosen = rows.filter((r) => sel.has(r.uid));
+    if (!chosen.length || !confirm(`Delete ${chosen.length} user profile(s)? This cannot be undone.`)) return;
+    for (const u of chosen) await deleteUserProfile(u.uid, u.displayName ?? u.email ?? undefined);
+    setSel(new Set());
+  };
+
+  const selCount = rows.filter((r) => sel.has(r.uid)).length;
+
+  return (
+    <div className="glass rounded-2xl p-5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h3 className="font-display text-xl">Manage users</h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-parchment/40" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className={`${INPUT} w-44 pl-9 py-2`} />
+          </div>
+          <div className="relative">
+            <select value={role} onChange={(e) => setRole(e.target.value as any)} className={`${INPUT} appearance-none py-2 pr-8`}>
+              <option value="all">All roles</option>
+              <option value="student">Students</option>
+              <option value="teacher">Teachers</option>
+              <option value="school_admin">School admins</option>
+              <option value="admin">Admins</option>
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-parchment/40" />
+          </div>
+          <button onClick={() => exportCsv(selCount ? rows.filter((r) => sel.has(r.uid)) : rows)}
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold text-white transition hover:brightness-110" style={{ background: "var(--color-wraith)" }}>
+            <Download className="h-3.5 w-3.5" /> Export{selCount ? ` (${selCount})` : ""}
+          </button>
+        </div>
+      </div>
+
+      {selCount > 0 && (
+        <div className="mb-3 flex items-center justify-between rounded-lg px-3 py-2 text-xs" style={{ background: "color-mix(in oklab, var(--color-wraith) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--color-wraith) 28%, transparent)" }}>
+          <span className="text-parchment/80">{selCount} selected</span>
+          <div className="flex items-center gap-2">
+            <button onClick={() => exportCsv(rows.filter((r) => sel.has(r.uid)))} className="font-semibold text-wraith hover:brightness-110">Export selected</button>
+            <button onClick={bulkDelete} className="font-semibold text-crimson hover:brightness-110">Delete selected</button>
+            <button onClick={() => setSel(new Set())} className="text-parchment/60 hover:text-spectral">Clear</button>
+          </div>
+        </div>
+      )}
+
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[640px] border-collapse text-sm">
+          <thead>
+            <tr className="text-left text-[10px] uppercase tracking-[0.14em] text-parchment/50">
+              <th className="w-8 pb-2 pl-1"><input type="checkbox" checked={allOn} onChange={toggleAll} aria-label="Select all" style={{ accentColor: "var(--color-wraith)" }} /></th>
+              <th className="pb-2 font-medium">User</th>
+              <th className="pb-2 font-medium">Email</th>
+              <th className="pb-2 font-medium">Role</th>
+              <th className="pb-2 font-medium">Status</th>
+              <th className="pb-2 font-medium">School</th>
+              <th className="w-10 pb-2" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((u) => (
+              <tr key={u.uid} className="border-t" style={{ borderColor: "color-mix(in oklab, var(--color-spectral) 8%, transparent)" }}>
+                <td className="py-2.5 pl-1"><input type="checkbox" checked={sel.has(u.uid)} onChange={() => toggle(u.uid)} aria-label={`Select ${u.displayName ?? u.email}`} style={{ accentColor: "var(--color-wraith)" }} /></td>
+                <td className="py-2.5 pr-3 font-medium text-spectral">{u.displayName ?? "—"}</td>
+                <td className="max-w-[200px] truncate py-2.5 pr-3 text-parchment/70">{u.email}</td>
+                <td className="py-2.5 pr-3"><RoleBadge role={u.role} /></td>
+                <td className="py-2.5 pr-3">{u.role === "teacher" ? <StatusBadge status={u.status} /> : <span className="text-parchment/30">—</span>}</td>
+                <td className="max-w-[160px] truncate py-2.5 pr-3 text-parchment/70">{schoolName(u.schoolId) ?? <span className="text-parchment/30">—</span>}</td>
+                <td className="relative py-2.5">
+                  <button onClick={() => setMenu(menu === u.uid ? null : u.uid)} aria-label="Row actions" className="flex h-7 w-7 items-center justify-center rounded-lg text-parchment/55 transition hover:bg-wraith/10 hover:text-spectral"><MoreHorizontal className="h-4 w-4" /></button>
+                  {menu === u.uid && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setMenu(null)} aria-hidden />
+                      <div className="glass-strong absolute right-0 z-20 mt-1 w-32 overflow-hidden rounded-lg py-1 text-xs shadow-lg">
+                        <button onClick={() => { setMenu(null); onEdit(u); }} className="flex w-full items-center gap-2 px-3 py-2 text-left transition hover:bg-wraith/10"><Pencil className="h-3.5 w-3.5" /> Edit</button>
+                        <button onClick={() => removeUser(u)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-crimson transition hover:bg-crimson/10"><Trash2 className="h-3.5 w-3.5" /> Delete</button>
+                      </div>
+                    </>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {rows.length === 0 && <p className="py-8 text-center text-sm text-parchment/50">No users match.</p>}
       </div>
     </div>
   );
 }
 
-function TeachersTab({ users }: { users: StudentProfile[] }) {
-  const teachers = useMemo(() => users.filter((u) => u.role === "teacher"), [users]);
-  const [busy, setBusy] = useState<string | null>(null);
-  const set = async (uid: string, status: "approved" | "rejected") => { setBusy(uid); await setTeacherStatus(uid, status); setBusy(null); };
+function DashboardTab({ users, classesCount, pendingVerifs, vLoading, onGo }: {
+  users: StudentProfile[]; classesCount: number; pendingVerifs: Verification[]; vLoading: boolean; onGo: (t: TabKey) => void;
+}) {
+  const { schools } = useSchools();
+  const [editing, setEditing] = useState<StudentProfile | null>(null);
+  const students = users.filter((u) => (u.role ?? "student") === "student").length;
+  const teachers = users.filter((u) => u.role === "teacher").length;
 
   return (
     <div>
-      <SectionHead eyebrow="Educators" title="Teachers" sub="Approve or revoke educator access across all schools." />
-      {teachers.length === 0 ? (
+      <SectionHead eyebrow="Administration" title="Dashboard"
+        sub="Your platform at a glance — members, schools, classes and educator approvals." />
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+        <QuickStat label="Total users" value={users.length} icon={Users} accent="var(--color-wraith)" onClick={() => onGo("users")} />
+        <QuickStat label="Students" value={students} icon={GraduationCap} accent="var(--color-emerald-elixir)" onClick={() => onGo("users")} />
+        <QuickStat label="Teachers" value={teachers} icon={UserCog} accent="var(--color-gold)" onClick={() => onGo("teachers")} />
+        <QuickStat label="Schools" value={schools.length} icon={Building2} accent="var(--color-amber-scry)" onClick={() => onGo("schools")} />
+        <QuickStat label="Classes" value={classesCount} icon={BookOpen} accent="var(--color-emerald-elixir)" onClick={() => onGo("classes")} />
+        <QuickStat label="To verify" value={pendingVerifs.length} icon={ShieldCheck} accent="var(--color-wraith)" highlight={pendingVerifs.length > 0} attention={pendingVerifs.length > 0} onClick={() => onGo("verifications")} />
+      </div>
+
+      {/* Chart + Pending approvals */}
+      <div className="mt-5 grid gap-5 lg:grid-cols-[1.6fr_1fr]">
+        <MembersBySchool users={users} schools={schools} />
+        <PendingApprovals items={pendingVerifs} loading={vLoading} onReview={() => onGo("verifications")} />
+      </div>
+
+      {/* Manage table */}
+      <div className="mt-5">
+        <ManageUsers users={users} schools={schools} onEdit={setEditing} />
+      </div>
+
+      {editing && <UserEditModal user={editing} schools={schools} onClose={() => setEditing(null)} />}
+    </div>
+  );
+}
+
+const TEACHERS_PAGE = 15;
+
+function TeachersTab({ users }: { users: StudentProfile[] }) {
+  const allTeachers = useMemo(() => users.filter((u) => u.role === "teacher"), [users]);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [q, setQ] = useState("");
+  const [status, setStatus] = useState<"all" | "pending" | "approved" | "rejected">("all");
+  const [page, setPage] = useState(1);
+  const set = async (uid: string, status: "approved" | "rejected") => { setBusy(uid); await setTeacherStatus(uid, status); setBusy(null); };
+
+  const pendingCount = allTeachers.filter((t) => (t.status ?? "pending") === "pending").length;
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return allTeachers.filter((t) => {
+      if (status !== "all" && (t.status ?? "pending") !== status) return false;
+      if (!needle) return true;
+      return `${t.displayName ?? ""} ${t.email ?? ""} ${t.className ?? ""}`.toLowerCase().includes(needle);
+    });
+  }, [allTeachers, q, status]);
+  const shown = paginate(filtered, page, TEACHERS_PAGE);
+  const reset = <T,>(fn: (v: T) => void) => (v: T) => { fn(v); setPage(1); };
+
+  return (
+    <div>
+      <SectionHead eyebrow="Educators" title="Teachers" sub="Approve or revoke educator access across all schools."
+        right={<span className="rounded-full px-3 py-1 text-[11px] font-semibold" style={{ color: "var(--color-gold)", background: "color-mix(in oklab, var(--color-gold) 12%, transparent)", border: "1px solid color-mix(in oklab, var(--color-gold) 30%, transparent)" }}>{pendingCount} pending</span>} />
+
+      {allTeachers.length === 0 ? (
         <EmptyState icon={GraduationCap} title="No teachers yet" sub="Teachers appear here after a school admin provisions them and they sign in." />
       ) : (
-        <div className="space-y-2.5">
-          {teachers.map((t) => (
-            <div key={t.uid} className="glass flex flex-wrap items-center gap-3 rounded-xl px-4 py-3">
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold leading-tight">{t.displayName ?? t.email}</div>
-                <div className="text-xs text-parchment/50 truncate">{t.email}{t.className ? ` · ${t.className}` : ""}</div>
-              </div>
-              <StatusBadge status={t.status} />
-              {t.status !== "approved" ? (
-                <button onClick={() => set(t.uid, "approved")} disabled={busy === t.uid} className="rounded-lg px-3 py-1.5 text-xs tracking-[0.1em] uppercase font-semibold disabled:opacity-50 transition hover:-translate-y-px" style={{ color: "var(--color-emerald-elixir)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent)", background: "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)" }}>Approve</button>
-              ) : (
-                <button onClick={() => set(t.uid, "rejected")} disabled={busy === t.uid} className="rounded-lg px-3 py-1.5 text-xs tracking-[0.1em] uppercase font-semibold disabled:opacity-50 transition hover:-translate-y-px" style={{ color: "var(--color-crimson)", border: "1px solid color-mix(in oklab, var(--color-crimson) 35%, transparent)", background: "color-mix(in oklab, var(--color-crimson) 8%, transparent)" }}>Revoke</button>
-              )}
+        <>
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <div className="relative min-w-0 flex-1 sm:max-w-xs">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-parchment/40" />
+              <input value={q} onChange={(e) => reset(setQ)(e.target.value)} placeholder="Search name, email or class…" className={`${INPUT} pl-9`} />
             </div>
-          ))}
-        </div>
+            <FilterSelect value={status} onChange={(v) => reset(setStatus)(v as any)}>
+              <option value="all">All statuses</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </FilterSelect>
+          </div>
+
+          {filtered.length === 0 ? (
+            <EmptyState icon={Search} title="No teachers match" sub="Try a different search term or status filter." />
+          ) : (
+            <div className="space-y-2.5">
+              {shown.map((t) => (
+                <div key={t.uid} className="glass flex flex-wrap items-center gap-3 rounded-xl px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold leading-tight">{t.displayName ?? t.email}</div>
+                    <div className="text-xs text-parchment/50 truncate">{t.email}{t.className ? ` · ${t.className}` : ""}</div>
+                  </div>
+                  <StatusBadge status={t.status} />
+                  {t.status !== "approved" ? (
+                    <button onClick={() => set(t.uid, "approved")} disabled={busy === t.uid} className="rounded-lg px-3 py-1.5 text-xs tracking-[0.1em] uppercase font-semibold disabled:opacity-50 transition hover:-translate-y-px" style={{ color: "var(--color-emerald-elixir)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 35%, transparent)", background: "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)" }}>Approve</button>
+                  ) : (
+                    <button onClick={() => set(t.uid, "rejected")} disabled={busy === t.uid} className="rounded-lg px-3 py-1.5 text-xs tracking-[0.1em] uppercase font-semibold disabled:opacity-50 transition hover:-translate-y-px" style={{ color: "var(--color-crimson)", border: "1px solid color-mix(in oklab, var(--color-crimson) 35%, transparent)", background: "color-mix(in oklab, var(--color-crimson) 8%, transparent)" }}>Revoke</button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+          <Pager total={filtered.length} page={page} pageSize={TEACHERS_PAGE} onPage={setPage} />
+        </>
       )}
     </div>
   );
@@ -389,16 +732,27 @@ function UserCreateModal({ schools, onClose }: { schools: SchoolRec[]; onClose: 
   );
 }
 
+const USERS_PAGE = 15;
+
 function UsersTab({ users }: { users: StudentProfile[] }) {
   const { schools } = useSchools();
   const schoolName = (id?: string) => (id ? schools.find((s) => s.id === id)?.name : undefined);
   const [q, setQ] = useState("");
+  const [role, setRole] = useState<"all" | Role>("all");
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<StudentProfile | null>(null);
   const [creating, setCreating] = useState(false);
-  const filtered = users.filter((u) =>
-    (u.displayName ?? "").toLowerCase().includes(q.toLowerCase()) ||
-    (u.email ?? "").toLowerCase().includes(q.toLowerCase()) ||
-    (u.role ?? "student").includes(q.toLowerCase()));
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return users.filter((u) => {
+      if (role !== "all" && (u.role ?? "student") !== role) return false;
+      if (!needle) return true;
+      return `${u.displayName ?? ""} ${u.email ?? ""} ${u.role ?? "student"}`.toLowerCase().includes(needle);
+    });
+  }, [users, q, role]);
+  const shown = paginate(filtered, page, USERS_PAGE);
+  const reset = <T,>(fn: (v: T) => void) => (v: T) => { fn(v); setPage(1); };
 
   const removeUser = async (u: StudentProfile) => {
     if (!confirm(`Delete ${u.displayName ?? u.email}'s profile?\n\nTheir login credential will remain (it can't be removed from the client), but they'll have no profile.`)) return;
@@ -408,30 +762,41 @@ function UsersTab({ users }: { users: StudentProfile[] }) {
   return (
     <div>
       <SectionHead eyebrow="Directory" title="Users" sub="Everyone on the platform — students, teachers, and admins."
-        right={
-          <div className="flex items-center gap-2">
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-parchment/40" />
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search…" className={`${INPUT} pl-9`} />
-            </div>
-            <button onClick={() => setCreating(true)} className="btn-arcane btn-arcane-hover text-xs whitespace-nowrap"><UserPlus className="h-4 w-4" /> New user</button>
-          </div>
-        } />
-      <div className="space-y-1.5">
-        {filtered.map((u) => (
-          <div key={u.uid} className="glass flex items-center gap-3 rounded-xl px-4 py-2.5">
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold">{u.displayName ?? u.email}</div>
-              <div className="text-xs text-parchment/50 truncate">{u.email}{schoolName(u.schoolId) ? ` · ${schoolName(u.schoolId)}` : ""}{u.className ? ` · ${u.className}` : ""}</div>
-            </div>
-            {u.role === "teacher" && <StatusBadge status={u.status} />}
-            <RoleBadge role={u.role} />
-            <button onClick={() => setEditing(u)} aria-label="Edit" className="flex h-8 w-8 items-center justify-center rounded-lg text-parchment/60 transition hover:bg-wraith/10 hover:text-wraith"><Pencil className="h-3.5 w-3.5" /></button>
-            <button onClick={() => removeUser(u)} aria-label="Delete" className="flex h-8 w-8 items-center justify-center rounded-lg text-parchment/60 transition hover:bg-crimson/10 hover:text-crimson"><Trash2 className="h-3.5 w-3.5" /></button>
-          </div>
-        ))}
-        {filtered.length === 0 && <p className="text-sm text-parchment/50 px-1 py-4">No users match.</p>}
+        right={<button onClick={() => setCreating(true)} className="btn-arcane btn-arcane-hover text-xs whitespace-nowrap"><UserPlus className="h-4 w-4" /> New user</button>} />
+
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-parchment/40" />
+          <input value={q} onChange={(e) => reset(setQ)(e.target.value)} placeholder="Search name, email or role…" className={`${INPUT} pl-9`} />
+        </div>
+        <FilterSelect value={role} onChange={(v) => reset(setRole)(v as any)}>
+          <option value="all">All roles</option>
+          <option value="student">Students</option>
+          <option value="teacher">Teachers</option>
+          <option value="school_admin">School admins</option>
+          <option value="admin">Admins</option>
+        </FilterSelect>
       </div>
+
+      {filtered.length === 0 ? (
+        <EmptyState icon={Search} title="No users match" sub="Try a different search term or role filter." />
+      ) : (
+        <div className="space-y-1.5">
+          {shown.map((u) => (
+            <div key={u.uid} className="glass flex items-center gap-3 rounded-xl px-4 py-2.5">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold">{u.displayName ?? u.email}</div>
+                <div className="text-xs text-parchment/50 truncate">{u.email}{schoolName(u.schoolId) ? ` · ${schoolName(u.schoolId)}` : ""}{u.className ? ` · ${u.className}` : ""}</div>
+              </div>
+              {u.role === "teacher" && <StatusBadge status={u.status} />}
+              <RoleBadge role={u.role} />
+              <button onClick={() => setEditing(u)} aria-label="Edit" className="flex h-8 w-8 items-center justify-center rounded-lg text-parchment/60 transition hover:bg-wraith/10 hover:text-wraith"><Pencil className="h-3.5 w-3.5" /></button>
+              <button onClick={() => removeUser(u)} aria-label="Delete" className="flex h-8 w-8 items-center justify-center rounded-lg text-parchment/60 transition hover:bg-crimson/10 hover:text-crimson"><Trash2 className="h-3.5 w-3.5" /></button>
+            </div>
+          ))}
+        </div>
+      )}
+      <Pager total={filtered.length} page={page} pageSize={USERS_PAGE} onPage={setPage} />
 
       {editing && <UserEditModal user={editing} schools={schools} onClose={() => setEditing(null)} />}
       {creating && <UserCreateModal schools={schools} onClose={() => setCreating(false)} />}
@@ -466,11 +831,25 @@ function ClassEditModal({ cls, onClose }: { cls: AdminClass; onClose: () => void
   );
 }
 
+const CLASSES_PAGE = 12;
+
 function ClassesTab({ classes }: { classes: AdminClass[] }) {
   const [q, setQ] = useState("");
+  const [state, setState] = useState<"all" | "active" | "archived">("all");
+  const [page, setPage] = useState(1);
   const [editing, setEditing] = useState<AdminClass | null>(null);
-  const filtered = classes.filter((c) =>
-    !q.trim() || c.name.toLowerCase().includes(q.toLowerCase()) || c.id.toLowerCase().includes(q.toLowerCase()) || (c.teacherName ?? "").toLowerCase().includes(q.toLowerCase()));
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    return classes.filter((c) => {
+      if (state === "active" && c.archived) return false;
+      if (state === "archived" && !c.archived) return false;
+      if (!needle) return true;
+      return c.name.toLowerCase().includes(needle) || c.id.toLowerCase().includes(needle) || (c.teacherName ?? "").toLowerCase().includes(needle);
+    });
+  }, [classes, q, state]);
+  const shown = paginate(filtered, page, CLASSES_PAGE);
+  const reset = <T,>(fn: (v: T) => void) => (v: T) => { fn(v); setPage(1); };
 
   const del = async (c: AdminClass) => {
     if (!window.confirm(`Delete “${c.name}”? The class document is removed (its roster/requests subdocs are not cascaded from here). This cannot be undone.`)) return;
@@ -480,15 +859,26 @@ function ClassesTab({ classes }: { classes: AdminClass[] }) {
   return (
     <div>
       <SectionHead eyebrow="Rosters" title="Classes" sub="Every class created by a teacher. Rename, archive, or delete — the owning teacher keeps managing rosters, grades and assignments." />
-      <div className="relative mb-4 max-w-sm">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-parchment/40" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search classes…" className={INPUT + " pl-9"} />
-      </div>
-      {filtered.length === 0 ? (
+      {classes.length === 0 ? (
         <EmptyState icon={BookOpen} title="No classes" sub="Classes teachers create will be listed here." />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
-          {filtered.map((c) => (
+      <>
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-parchment/40" />
+          <input value={q} onChange={(e) => reset(setQ)(e.target.value)} placeholder="Search name, code or teacher…" className={INPUT + " pl-9"} />
+        </div>
+        <FilterSelect value={state} onChange={(v) => reset(setState)(v as any)}>
+          <option value="all">All classes</option>
+          <option value="active">Active</option>
+          <option value="archived">Archived</option>
+        </FilterSelect>
+      </div>
+      {filtered.length === 0 ? (
+        <EmptyState icon={Search} title="No classes match" sub="Try a different search term or filter." />
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {shown.map((c) => (
             <div key={c.id} className="glass flex items-center justify-between gap-3 rounded-xl px-4 py-3.5">
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm font-semibold leading-tight">
@@ -504,6 +894,9 @@ function ClassesTab({ classes }: { classes: AdminClass[] }) {
             </div>
           ))}
         </div>
+      )}
+      <Pager total={filtered.length} page={page} pageSize={CLASSES_PAGE} onPage={setPage} />
+      </>
       )}
       {editing && <ClassEditModal cls={editing} onClose={() => setEditing(null)} />}
     </div>
@@ -804,14 +1197,27 @@ function SchoolEditModal({ school, onClose }: { school: SchoolRec; onClose: () =
   );
 }
 
-function SchoolCard({ school }: { school: SchoolRec }) {
+type SchoolCounts = { teachers: number; students: number; classes: number };
+
+function CountChip({ icon: Icon, n, label, color }: { icon: ComponentType<{ className?: string; style?: React.CSSProperties }>; n: number; label: string; color: string }) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] text-parchment/70" style={{ border: "1px solid var(--color-border)" }}>
+      <Icon className="h-3 w-3" style={{ color }} /> <b className="text-spectral tabular-nums">{n}</b> {label}
+    </span>
+  );
+}
+
+function SchoolCard({ school, counts }: { school: SchoolRec; counts: SchoolCounts }) {
   const [code, setCode] = useState(school.code);
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState(false);
   const inactive = school.active === false;
+  const adminCount = school.adminEmails?.length ?? 0;
 
   const regen = async () => {
+    if (!confirm(`Regenerate the join code for “${school.name}”? The old code ${code} stops working immediately.`)) return;
     setBusy(true);
     try { setCode(await regenerateSchoolCode(school.id)); } finally { setBusy(false); }
   };
@@ -821,53 +1227,66 @@ function SchoolCard({ school }: { school: SchoolRec }) {
   };
 
   return (
-    <div className="glass rounded-2xl p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <Orb icon={School} accent="var(--color-gold)" />
+    <div className="glass flex flex-col rounded-2xl p-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Orb icon={School} accent={inactive ? "var(--color-crimson)" : "var(--color-gold)"} size="h-9 w-9" />
           <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="font-display text-lg leading-tight truncate">{school.name}</h3>
-              {inactive && <span className="rounded-full px-2 py-0.5 text-[9px] uppercase tracking-[0.14em] font-semibold" style={{ color: "var(--color-crimson)", background: "color-mix(in oklab, var(--color-crimson) 12%, transparent)" }}>inactive</span>}
+            <div className="flex items-center gap-1.5">
+              <h3 className="truncate font-display text-base leading-tight" title={school.name}>{school.name}</h3>
+              {inactive && <span className="flex-shrink-0 rounded-full px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-[0.12em]" style={{ color: "var(--color-crimson)", background: "color-mix(in oklab, var(--color-crimson) 12%, transparent)" }}>inactive</span>}
             </div>
-            <p className="text-[10px] uppercase tracking-[0.2em] text-parchment/45 mt-0.5">School code</p>
+            <p className="mt-0.5 font-ui text-sm font-bold tracking-[0.18em] text-gold">{code}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 flex-shrink-0">
-          <span className="font-ui font-bold text-lg tracking-[0.2em] text-gold">{code}</span>
-          <button onClick={() => setEditing(true)} aria-label="Edit school" className="flex h-8 w-8 items-center justify-center rounded-lg text-parchment/60 transition hover:bg-wraith/10 hover:text-wraith"><Pencil className="h-3.5 w-3.5" /></button>
-          <button onClick={remove} aria-label="Delete school" className="flex h-8 w-8 items-center justify-center rounded-lg text-parchment/60 transition hover:bg-crimson/10 hover:text-crimson"><Trash2 className="h-3.5 w-3.5" /></button>
+        <div className="flex flex-shrink-0 items-center gap-0.5">
+          <button onClick={() => setEditing(true)} aria-label="Edit school" className="flex h-7 w-7 items-center justify-center rounded-lg text-parchment/55 transition hover:bg-wraith/10 hover:text-wraith"><Pencil className="h-3.5 w-3.5" /></button>
+          <button onClick={remove} aria-label="Delete school" className="flex h-7 w-7 items-center justify-center rounded-lg text-parchment/55 transition hover:bg-crimson/10 hover:text-crimson"><Trash2 className="h-3.5 w-3.5" /></button>
         </div>
       </div>
-      <button onClick={regen} disabled={busy} className="mt-1.5 text-[11px] text-parchment/50 transition hover:text-spectral disabled:opacity-50">↻ Regenerate code</button>
+
+      {/* Live counts — see which schools are actually populated at a glance */}
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        <CountChip icon={UserCog} n={counts.teachers} label="teachers" color="var(--color-gold)" />
+        <CountChip icon={GraduationCap} n={counts.students} label="students" color="var(--color-emerald-elixir)" />
+        <CountChip icon={BookOpen} n={counts.classes} label="classes" color="var(--color-wraith)" />
+      </div>
+
       {editing && <SchoolEditModal school={school} onClose={() => setEditing(false)} />}
 
-      <div className="mt-4">
-        <p className="mb-1.5 text-[10px] uppercase tracking-[0.2em] text-parchment/60">School admins</p>
-        {school.adminEmails?.length ? (
-          <ul className="space-y-1">
-            {school.adminEmails.map((e) => <li key={e} className="text-[12px] text-parchment/75 flex items-center gap-1.5"><span className="h-1.5 w-1.5 rounded-full bg-gold/70" /> {e}</li>)}
-          </ul>
-        ) : (
-          <p className="text-[11px] text-parchment/45">No admins yet.</p>
-        )}
+      {/* Collapsible admin management — keeps cards compact at scale */}
+      <button onClick={() => setOpen((o) => !o)} className="mt-3 flex items-center justify-between rounded-lg px-2 py-1.5 text-xs text-parchment/70 transition hover:bg-wraith/8 hover:text-spectral" style={{ border: "1px solid var(--color-border)" }}>
+        <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-gold" /> {adminCount} admin{adminCount === 1 ? "" : "s"}</span>
+        <ChevronDown className={`h-4 w-4 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
 
-        {adding ? (
-          <div className="mt-3">
-            <AddAdminForm schoolId={school.id} onDone={() => setAdding(false)} />
-          </div>
-        ) : (
-          <button onClick={() => setAdding(true)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-teal transition hover:brightness-110">
-            <Plus className="h-3.5 w-3.5" /> Add an admin account
-          </button>
-        )}
-      </div>
+      {open && (
+        <div className="mt-3 border-t pt-3" style={{ borderColor: "var(--color-border)" }}>
+          {adminCount ? (
+            <ul className="space-y-1">
+              {school.adminEmails!.map((e) => <li key={e} className="flex items-center gap-1.5 truncate text-[12px] text-parchment/75"><span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-gold/70" /> {e}</li>)}
+            </ul>
+          ) : (
+            <p className="text-[11px] text-parchment/45">No admins yet.</p>
+          )}
+
+          {adding ? (
+            <div className="mt-3"><AddAdminForm schoolId={school.id} onDone={() => setAdding(false)} /></div>
+          ) : (
+            <div className="mt-3 flex items-center justify-between">
+              <button onClick={() => setAdding(true)} className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal transition hover:brightness-110">
+                <Plus className="h-3.5 w-3.5" /> Add admin
+              </button>
+              <button onClick={regen} disabled={busy} className="text-[11px] text-parchment/50 transition hover:text-spectral disabled:opacity-50">↻ {busy ? "…" : "New code"}</button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-function SchoolsTab() {
-  const { schools } = useSchools();
+function SchoolCreateModal({ onClose }: { onClose: () => void }) {
   const [schoolName, setSchoolName] = useState("");
   const [adminName, setAdminName] = useState("");
   const [adminEmail, setAdminEmail] = useState("");
@@ -896,44 +1315,175 @@ function SchoolsTab() {
   };
 
   return (
-    <div>
-      <SectionHead eyebrow="Multi-tenant" title="Schools" sub="Create a school and its admin account in one step. Each school gets a generated code that onboards its teachers." />
+    <Modal title="New school" onClose={onClose}>
+      <div className="space-y-3">
+        <Field label="School name"><input value={schoolName} onChange={(e) => setSchoolName(e.target.value)} placeholder="e.g. Olongapo City National High School" className={INPUT} /></Field>
+        <p className="pt-1 text-[10px] uppercase tracking-[0.2em]" style={{ color: ACCENT }}>School admin account</p>
+        <Field label="Admin name"><input value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="Full name" className={INPUT} /></Field>
+        <Field label="Admin email"><input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder="admin@school.edu" className={INPUT} /></Field>
+        <Field label="Password"><input type="password" value={adminPw} onChange={(e) => setAdminPw(e.target.value)} placeholder="Min. 6 characters" className={INPUT} /></Field>
 
-      {/* Create school + its admin account */}
-      <div className="glass rounded-2xl p-5 mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Orb icon={School} accent="var(--color-gold)" />
-          <h3 className="font-display text-lg">New school</h3>
-        </div>
-
-        <label className="mb-1.5 block text-[10px] uppercase tracking-[0.2em] text-parchment/60">School name</label>
-        <input value={schoolName} onChange={(e) => setSchoolName(e.target.value)} placeholder="e.g. Olongapo City National High School" className={`${INPUT} mb-4`} />
-
-        <p className="mb-2 text-[10px] uppercase tracking-[0.2em]" style={{ color: ACCENT }}>School admin account</p>
-        <div className="grid gap-2 sm:grid-cols-3">
-          <input value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="Admin name" className={INPUT} />
-          <input type="email" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} placeholder="admin@school.edu" className={INPUT} />
-          <input type="password" value={adminPw} onChange={(e) => setAdminPw(e.target.value)} placeholder="Password (min 6)" className={INPUT} />
-        </div>
-
-        {err && <p className="mt-3 text-xs text-crimson bg-crimson/10 border border-crimson/30 rounded-lg px-3 py-2">{err}</p>}
+        {err && <p className="rounded-lg border border-crimson/30 bg-crimson/10 px-3 py-2 text-xs text-crimson">{err}</p>}
         {ok && (
-          <div className="mt-3 rounded-lg px-3 py-2.5 text-xs" style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 30%, transparent)" }}>
-            <span className="text-emerald-elixir font-semibold">Created “{ok.school}.”</span>{" "}
-            <span className="text-parchment/80">School code <span className="font-bold tracking-[0.15em] text-gold">{ok.code}</span>. The admin <span className="text-spectral">{ok.email}</span> can sign in at <span className="font-mono">/school/signin</span>.</span>
+          <div className="rounded-lg px-3 py-2.5 text-xs" style={{ background: "color-mix(in oklab, var(--color-emerald-elixir) 10%, transparent)", border: "1px solid color-mix(in oklab, var(--color-emerald-elixir) 30%, transparent)" }}>
+            <span className="font-semibold text-emerald-elixir">Created “{ok.school}.”</span>{" "}
+            <span className="text-parchment/80">Code <span className="font-bold tracking-[0.15em] text-gold">{ok.code}</span> · admin <span className="text-spectral">{ok.email}</span> signs in at <span className="font-mono">/school/signin</span>.</span>
           </div>
         )}
 
-        <button onClick={create} disabled={busy} className="btn-arcane btn-arcane-hover justify-center text-xs mt-4 disabled:opacity-50">
-          {busy ? <>Creating…</> : <><Plus className="h-4 w-4" /> Create school &amp; admin</>}
-        </button>
+        <div className="flex justify-end gap-2 pt-1">
+          <button onClick={onClose} className="rounded-lg px-4 py-2 text-xs text-parchment/70 transition hover:text-spectral">{ok ? "Done" : "Cancel"}</button>
+          <button onClick={create} disabled={busy} className={PRIMARY_BTN} style={{ background: "var(--color-gold)", color: "var(--color-mist)" }}>
+            {busy ? "Creating…" : ok ? "Create another" : "Create school & admin"}
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function SummaryChip({ label, value, color }: { label: string; value: number; color: string }) {
+  return (
+    <div className="glass flex items-center gap-2.5 rounded-xl px-3.5 py-2.5">
+      <span className="h-8 w-1 rounded-full" style={{ background: color }} />
+      <div>
+        <div className="font-ui text-lg font-bold leading-none tabular-nums">{value}</div>
+        <div className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-parchment/55">{label}</div>
+      </div>
+    </div>
+  );
+}
+
+const SCHOOLS_PAGE = 12;
+
+function SchoolsTab({ users, classes }: { users: StudentProfile[]; classes: AdminClass[] }) {
+  const { schools, loading } = useSchools();
+  const [q, setQ] = useState("");
+  const [status, setStatus] = useState<"all" | "active" | "inactive">("all");
+  const [sort, setSort] = useState<"name" | "members" | "admins">("name");
+  const [page, setPage] = useState(1);
+  const [creating, setCreating] = useState(false);
+
+  // Live per-school counts (teachers/students via schoolId; classes via teacher→school).
+  const counts = useMemo(() => {
+    const uidSchool = new Map<string, string>();
+    for (const u of users) if (u.schoolId) uidSchool.set(u.uid, u.schoolId);
+    const m = new Map<string, SchoolCounts>();
+    const bump = (id: string) => m.get(id) ?? (m.set(id, { teachers: 0, students: 0, classes: 0 }), m.get(id)!);
+    for (const u of users) {
+      if (!u.schoolId) continue;
+      const c = bump(u.schoolId);
+      if (u.role === "teacher") c.teachers++; else if ((u.role ?? "student") === "student") c.students++;
+    }
+    for (const cls of classes) {
+      const sid = uidSchool.get(cls.teacherId);
+      if (sid) bump(sid).classes++;
+    }
+    return m;
+  }, [users, classes]);
+  const getCounts = (id: string): SchoolCounts => counts.get(id) ?? { teachers: 0, students: 0, classes: 0 };
+
+  const active = schools.filter((s) => s.active !== false).length;
+  const noAdmin = schools.filter((s) => !(s.adminEmails?.length)).length;
+
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    const list = schools.filter((s) => {
+      if (status === "active" && s.active === false) return false;
+      if (status === "inactive" && s.active !== false) return false;
+      if (!needle) return true;
+      return `${s.name} ${s.code} ${(s.adminEmails ?? []).join(" ")}`.toLowerCase().includes(needle);
+    });
+    const members = (s: SchoolRec) => { const c = getCounts(s.id); return c.teachers + c.students; };
+    return [...list].sort((a, b) =>
+      sort === "members" ? members(b) - members(a)
+        : sort === "admins" ? (b.adminEmails?.length ?? 0) - (a.adminEmails?.length ?? 0)
+          : a.name.localeCompare(b.name));
+  }, [schools, q, status, sort, counts]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / SCHOOLS_PAGE));
+  const cur = Math.min(page, totalPages);
+  const start = (cur - 1) * SCHOOLS_PAGE;
+  const slice = filtered.slice(start, start + SCHOOLS_PAGE);
+  const reset = <T,>(set: (v: T) => void) => (v: T) => { set(v); setPage(1); };
+
+  return (
+    <div>
+      <SectionHead eyebrow="Multi-tenant" title="Schools" sub="Every tenant on the platform. Create schools, manage their admins, and track adoption."
+        right={<button onClick={() => setCreating(true)} className="btn-arcane btn-arcane-hover whitespace-nowrap text-xs"><Plus className="h-4 w-4" /> New school</button>} />
+
+      {/* Summary */}
+      <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <SummaryChip label="Total schools" value={schools.length} color="var(--color-gold)" />
+        <SummaryChip label="Active" value={active} color="var(--color-emerald-elixir)" />
+        <SummaryChip label="Inactive" value={schools.length - active} color="var(--color-crimson)" />
+        <SummaryChip label="No admin yet" value={noAdmin} color="var(--color-amber-scry)" />
       </div>
 
-      {schools.length === 0
-        ? <EmptyState icon={School} title="No schools yet" sub="Create a school above; it gets a code that onboards teachers, and its admin account signs in at /school/signin." />
-        : <div className="grid gap-4 md:grid-cols-2">{schools.map((s) => <SchoolCard key={s.id} school={s} />)}</div>}
+      {/* Toolbar */}
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="relative min-w-0 flex-1 sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-parchment/40" />
+          <input value={q} onChange={(e) => reset(setQ)(e.target.value)} placeholder="Search name, code or admin email…" className={`${INPUT} pl-9`} />
+        </div>
+        <div className="relative">
+          <select value={status} onChange={(e) => reset(setStatus)(e.target.value as any)} className={`${INPUT} appearance-none py-2.5 pr-8`}>
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-parchment/40" />
+        </div>
+        <div className="relative">
+          <select value={sort} onChange={(e) => reset(setSort)(e.target.value as any)} className={`${INPUT} appearance-none py-2.5 pr-8`}>
+            <option value="name">Sort: Name A–Z</option>
+            <option value="members">Sort: Most members</option>
+            <option value="admins">Sort: Most admins</option>
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-parchment/40" />
+        </div>
+      </div>
 
-      <div className="mt-6"><MigrationCard /></div>
+      {loading ? (
+        <p className="py-10 text-center text-sm text-parchment/60">Loading schools…</p>
+      ) : schools.length === 0 ? (
+        <EmptyState icon={School} title="No schools yet" sub="Create a school — it gets a code that onboards teachers, and its admin account signs in at /school/signin." />
+      ) : filtered.length === 0 ? (
+        <EmptyState icon={Search} title="No schools match" sub="Try a different search term or clear the filters." />
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {slice.map((s) => <SchoolCard key={s.id} school={s} counts={getCounts(s.id)} />)}
+          </div>
+
+          {/* Footer: result count + pagination */}
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs text-parchment/55">Showing <span className="text-spectral">{start + 1}–{Math.min(start + SCHOOLS_PAGE, filtered.length)}</span> of <span className="text-spectral">{filtered.length}</span></p>
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1">
+                <button onClick={() => setPage(cur - 1)} disabled={cur <= 1} className="rounded-lg px-3 py-1.5 text-xs text-parchment/70 transition hover:text-spectral disabled:opacity-40" style={{ border: "1px solid var(--color-border)" }}>Prev</button>
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button key={i} onClick={() => setPage(i + 1)}
+                    className="h-8 min-w-8 rounded-lg px-2 text-xs font-semibold transition"
+                    style={i + 1 === cur
+                      ? { background: "color-mix(in oklab, var(--color-wraith) 16%, transparent)", color: "var(--color-wraith)", border: "1px solid color-mix(in oklab, var(--color-wraith) 35%, transparent)" }
+                      : { color: "var(--color-parchment)", border: "1px solid var(--color-border)" }}>
+                    {i + 1}
+                  </button>
+                ))}
+                <button onClick={() => setPage(cur + 1)} disabled={cur >= totalPages} className="rounded-lg px-3 py-1.5 text-xs text-parchment/70 transition hover:text-spectral disabled:opacity-40" style={{ border: "1px solid var(--color-border)" }}>Next</button>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      <details className="mt-8 group">
+        <summary className="inline-flex cursor-pointer list-none items-center gap-1.5 text-xs font-medium text-parchment/50 transition hover:text-spectral"><ChevronDown className="h-3.5 w-3.5 transition-transform group-open:rotate-180" /> Advanced · migration tools</summary>
+        <div className="mt-3"><MigrationCard /></div>
+      </details>
+
+      {creating && <SchoolCreateModal onClose={() => setCreating(false)} />}
     </div>
   );
 }
@@ -1010,6 +1560,7 @@ function AdminConsole() {
   const { items: pendingVerifs, loading: vLoading } = usePendingVerifications();
   const { users } = useAllUsers();
   const classes = useAllClasses();
+  const adminEmail = auth.currentUser?.email ?? "";
 
   const NAV = [
     { key: "overview" as TabKey, label: "Overview", icon: LayoutDashboard },
@@ -1029,35 +1580,51 @@ function AdminConsole() {
       <ArcaneField />
 
       {/* ── Desktop sidebar — a floating glass column ── */}
-      <aside className="glass-strong hidden md:flex fixed left-3 top-3 bottom-3 z-40 w-60 flex-col rounded-2xl p-3">
-        <Link to="/" className="flex items-center gap-2.5 px-2 py-2">
-          <img src="/images/logo-outline.png" alt="" className="h-8 w-8 object-contain" style={{ filter: "drop-shadow(0 0 8px color-mix(in oklab, var(--color-wraith) 60%, transparent))" }} />
-          <span className="font-display text-lg leading-none tracking-[0.1em]">AlcheMix <span className="text-wraith">Admin</span></span>
+      <aside className="glass-strong hidden md:flex fixed left-3 top-3 bottom-3 z-40 w-64 flex-col rounded-3xl p-3.5">
+        {/* Brand */}
+        <Link to="/" className="flex items-center gap-3 rounded-2xl px-2 py-1.5 transition hover:bg-wraith/5">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "color-mix(in oklab, var(--color-wraith) 14%, transparent)", border: "1px solid color-mix(in oklab, var(--color-wraith) 30%, transparent)" }}>
+            <img src="/images/logo-outline.png" alt="" className="h-6 w-6 object-contain" style={{ filter: "drop-shadow(0 0 6px color-mix(in oklab, var(--color-wraith) 60%, transparent))" }} />
+          </span>
+          <span className="leading-tight">
+            <span className="block font-display text-base tracking-[0.12em]">AlcheMix</span>
+            <span className="block text-[10px] font-semibold uppercase tracking-[0.28em] text-wraith">Admin</span>
+          </span>
         </Link>
 
-        <div className="my-3 h-px w-full" style={{ background: "var(--color-border)" }} />
+        {/* Signed-in identity */}
+        <div className="mt-3 flex items-center gap-2.5 rounded-2xl px-2.5 py-2.5" style={{ background: "color-mix(in oklab, var(--color-slate-sunken) 55%, transparent)", border: "1px solid var(--color-border)" }}>
+          <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: "linear-gradient(135deg, var(--color-wraith), var(--color-emerald-elixir))" }}>
+            {(adminEmail[0] ?? "A").toUpperCase()}
+          </span>
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-[0.16em] text-parchment/45">Super admin</p>
+            <p className="truncate text-xs font-medium text-spectral">{adminEmail || "signed in"}</p>
+          </div>
+        </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto scroll-slim">
+        <p className="mb-1.5 mt-5 px-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-parchment/40">Menu</p>
+        <nav className="flex-1 space-y-0.5 overflow-y-auto scroll-slim">
           {NAV.map((n) => {
             const active = tab === n.key;
+            const badge = "badge" in n ? n.badge : 0;
             return (
               <button key={n.key} onClick={() => setTab(n.key)}
-                className="group relative flex w-full items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-wraith/8"
-                style={{ color: active ? "var(--color-wraith)" : "var(--color-spectral)", background: active ? "color-mix(in oklab, var(--color-wraith) 10%, transparent)" : undefined }}>
-                {active && <span className="absolute left-0 h-6 w-0.5 rounded-full" style={{ background: "linear-gradient(180deg, var(--color-wraith), var(--color-emerald-elixir))" }} />}
-                <Orb icon={n.icon} active={active} size="h-9 w-9" />
-                <span className="text-[13px] font-medium flex-1 text-left">{n.label}</span>
-                {"badge" in n && !!n.badge && n.badge > 0 && (
-                  <span className="flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white" style={{ background: "var(--color-crimson)" }}>{n.badge}</span>
+                className="group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-[color-mix(in_oklab,var(--color-spectral)_6%,transparent)]"
+                style={{ background: active ? "color-mix(in oklab, var(--color-wraith) 15%, transparent)" : undefined, color: active ? "var(--color-spectral)" : "color-mix(in oklab, var(--color-parchment) 90%, transparent)" }}>
+                {active && <span className="absolute left-0 top-1/2 h-7 w-1 -translate-y-1/2 rounded-r-full" style={{ background: "linear-gradient(180deg, var(--color-emerald-elixir), var(--color-wraith))" }} />}
+                <n.icon className="h-[18px] w-[18px] flex-shrink-0 transition-colors" style={{ color: active ? "var(--color-wraith)" : "currentColor" }} />
+                <span className="flex-1 text-[13.5px] font-medium">{n.label}</span>
+                {!!badge && badge > 0 && (
+                  <span className="flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white" style={{ background: "var(--color-crimson)" }}>{badge}</span>
                 )}
               </button>
             );
           })}
         </nav>
 
-        <div className="my-3 h-px w-full" style={{ background: "var(--color-border)" }} />
-        <div className="flex items-center justify-between px-1">
-          <button onClick={handleSignOut} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-parchment/70 transition hover:text-crimson"><LogOut className="h-4 w-4" /> Sign out</button>
+        <div className="mt-2 flex items-center justify-between gap-2 rounded-2xl px-2 py-1.5">
+          <button onClick={handleSignOut} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-parchment/65 transition hover:text-crimson"><LogOut className="h-4 w-4" /> Sign out</button>
           <ThemeToggle className="!h-9 !w-9" />
         </div>
       </aside>
@@ -1089,9 +1656,9 @@ function AdminConsole() {
 
       {/* ── Content ── */}
       <main className="relative z-10">
-        <div className="w-full px-5 pt-32 pb-16 md:pl-[16.5rem] md:pr-8 md:pt-10 md:pb-16 mx-auto max-w-5xl">
-          {tab === "overview" && <Overview users={users} classesCount={classes.length} pendingVerifs={pendingVerifs.length} onGo={setTab} />}
-          {tab === "schools" && <SchoolsTab />}
+        <div className="w-full px-5 pt-32 pb-16 md:pl-[17.75rem] md:pr-7 md:pt-9 md:pb-16">
+          {tab === "overview" && <DashboardTab users={users} classesCount={classes.length} pendingVerifs={pendingVerifs} vLoading={vLoading} onGo={setTab} />}
+          {tab === "schools" && <SchoolsTab users={users} classes={classes} />}
           {tab === "verifications" && (
             <div>
               <SectionHead eyebrow="Trust & safety" title="Verifications" sub="Educator identity submissions — compare the ID to the selfie, then approve or reject." />
