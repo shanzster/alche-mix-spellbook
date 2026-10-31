@@ -21,6 +21,25 @@
   Dropped UnifrakturMaguntia from the Google Fonts import in `__root.tsx`
   (Cinzel was already loaded). `DESIGN_DIRECTION.md` typography table updated.
 
+### Data-flow audit — DATA_INVENTORY verified against code + rules
+
+- Full audit of every store (D1–D16) and flow in `docs/DATA_INVENTORY.md`
+  against the shipped code and `firestore.rules`. All functional flows verified;
+  corrected the drift the audit found:
+  - **D4** block now lists `grading` (GradingConfig) and `schoolId` (were only in
+    prose). **D2** table now lists `weightedScores`, `starterHistory`,
+    `dropVessels` (were missing). AI plumbing "7 capabilities" → **8**
+    (aiClassInsights). `/shop` `equipped` is `equipItem` (not `spendAurum`).
+    `/scanner` no longer credited with writing `badges` (that's `awardBadge`).
+  - Enrolment corrected to **request → teacher-accept**: the School Door writes a
+    `requests` doc (D13) + `pendingClass*`, roster/`classId` land on accept;
+    `schoolId` is NOT stamped there (teacher can't per rules) — it self-heals on
+    the student's next sign-in. `joinClass()` (which would stamp it) is **unused**.
+  - ⚠️ **Flagged (needs owner action, not changed):** `config/{docId}` rule is
+    `allow write: if true` (TEMP) while the doc said "admin-only" — anyone can
+    rewrite module visibility. Restore `if isAdmin()` + redeploy before students
+    use the app. Doc D10 updated to state the real rule.
+
 ### Post-review fixes (gradebook correctness)
 
 - Self-review of the new grading/console code caught + fixed:

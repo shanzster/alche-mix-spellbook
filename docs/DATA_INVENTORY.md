@@ -13,7 +13,7 @@
 > the diagram rather than inventing new collections). If code and this file
 > disagree, the code wins — update this file in the same commit.
 >
-> Last verified against the code: 2026-10-28.
+> Last verified against the code: 2026-11-01 (full data-flow audit).
 
 ---
 
@@ -24,7 +24,7 @@
 | Feature | Route / file | Data touchpoints |
 |---|---|---|
 | Sign up / login (email+password, Google popup) | `/login`, `/signup` · `src/lib/auth.ts` | Firebase Auth **D1**; creates/merges `users/{uid}` **D2**; email signups go **verify-before-create** via `src/lib/email-verify.ts` → Brevo (**E7**) — stateless (HMAC token, no store), account only created after the 6-digit code checks out |
-| School Door (school-code signup/login, split from the general pages) | `/school-signup`, `/school-login` · `src/components/SchoolDoor.tsx` | Firebase Auth **D1**; live code lookup on `classes/{CODE}` **D4**; enrols via roster entry **D5** + stamps `users/{uid}.classId/.className` |
+| School Door (school-code signup/login, split from the general pages) | `/school-signup`, `/school-login` · `src/components/SchoolDoor.tsx` | Firebase Auth **D1**; live code lookup on `classes/{CODE}` **D4**; **request-based** enrolment — `requestToJoinClass` writes `classes/{ID}/requests/{uid}` **D13** + stamps `users/{uid}.pendingClassId/.pendingClassName`. The roster entry **D5** + `classId/className` stamp happen later, when the teacher accepts (`acceptJoinRequest`). |
 | Role gating (student / teacher / admin) | `src/lib/auth.ts`, `src/lib/admin.ts` | reads `users/{uid}.role`, `.status`; admin allowlist is hardcoded (`ADMIN_EMAILS`) |
 | Teacher ID + face-match verification | `/teacher` onboarding · `src/lib/admin.ts`, `src/lib/facematch.ts` | writes `verifications/{uid}` **D7** (downscaled ID + selfie JPEGs as data URLs); admin approval flips `users/{uid}.status` |
 | Admin console (full user + class + school CRUD, verification review) | `/admin` · `src/lib/admin.ts` | reads/writes **D2**, **D4**, **D7**, **D11**; audits to **D14** |
@@ -71,7 +71,7 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 
 | Route | Module | Data touchpoints |
 |---|---|---|
-| /scanner | AR Scanner (MindAR) | camera (E4); AR targets `public/targets.mind` (**D9**); Alche-mix ceremony runs `combine()` → writes `grimoire`, `grimoireScans`, `compounds`, `forged`, `forgedAt`, `badges` |
+| /scanner | AR Scanner (MindAR) | camera (E4); AR targets `public/targets.mind` (**D9**); Alche-mix ceremony (via `profile.ts` helpers `scanCard`/`recordCompound`/`registerForged`) writes `grimoire`, `grimoireScans`, `compounds`, `forged`, `forgedAt`. (`combine()` in `cards.ts` is a pure engine; **badges** are NOT written here — they're awarded by `awardBadge`, e.g. a perfect QuickCheck run.) |
 | /scavenger | AI Scavenger Hunt (COCO-SSD + Gemini deep scan) | camera (E4); Gemini via `aiVerifyMission`/`aiScanFrame` (E3); writes `users/{uid}/evidence/{id}` **D3** + practice counters |
 
 ### 1.4 Arcade (games & rewards — separate hub section by design)
@@ -81,14 +81,14 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 | /duel | Duel the Alchemist (vs AI) | `duelRecord`; engine is pure (`src/lib/duel.ts`) |
 | /duels | Class Duels (async PvP) | `duels/{id}` **D6** (authoritative serialized `DuelState`); reads class roster **D5** for the challenge list; payout-dedupe + seen-bookmark flags in localStorage **D8** |
 | /leaderboard | Hall of Records | reads denormalized stats on roster entries **D5** (written by `syncRosterStats()` in `profile.ts`) |
-| /shop | The Emporium (aurum sink) | catalog is static in `src/routes/shop.tsx` (**D9**); `spendAurum()` → `aurum`, `inventory`, `equipped` |
+| /shop | The Emporium (aurum sink) | catalog is static in `src/routes/shop.tsx` (**D9**); `spendAurum()` → `aurum`, `inventory`; `equipItem()` → `equipped` |
 
 ### 1.5 Assignments & teacher console
 
 | Feature | Route / file | Data touchpoints |
 |---|---|---|
 | Class creation + join codes | `/teacher` · `src/lib/teacher.ts` | creates `classes/{CODE}` **D4** (the join code IS the doc id) |
-| Student joins a class | `/app` join dialog · School Door (`/school-signup`, `/school-login`) | writes roster entry **D5** + stamps `users/{uid}.classId/.className` **and `.schoolId`** (from the class — so the school admin can see them; teacher-accepted joins self-heal `schoolId` on the student's next sign-in via `ensureUserProfile`) |
+| Student joins a class | `/app` join dialog · School Door (`/school-signup`, `/school-login`) | enrolment is **request → teacher accept**: `acceptJoinRequest` writes the roster entry **D5** + stamps `users/{uid}.classId/.className`. `schoolId` is **not** stamped at accept (the teacher can't write it per rules) — the student acquires it via the `ensureUserProfile` **self-heal on their next sign-in** (reads `classes/{classId}.schoolId`), which is what makes them visible to the school admin. (`joinClass()` stamps all three incl. `schoolId` but is currently **unused** — the live path is request/accept.) |
 | Gradebook — DepEd weighted (WW/PT/QA, 4 quarters, auto-computed) | `/teacher` · `src/lib/grading.ts`, `src/components/WeightedGradebook.tsx` | per-class config (component weights + per-quarter score items with optional topic tag) on `classes/{id}.grading` **D4**; per-student raw marks on `users/{uid}.weightedScores[classId][Qn][itemId]` **D2**; quarterly grade (DepEd transmutation, floor 60) + final (avg of quarters) are computed, never stored. Legacy `.grades`/`.mastery` (5 flat topics) retained on **D2** |
 | Class insights (AI analytics — weak areas, at-risk, recommendations) | `/teacher` → Gradebook · `src/lib/ai.ts` `aiClassInsights` | reads the computed grade stats (D2/D4), sends only aggregates to Gemini (**E3**); rule-based keyless fallback over the same numbers; nothing stored |
 | Quiz Builder (+ curriculum seeding, live results) | `/teacher` | quizzes stored as an **array field on the class doc** (`classes/{id}.quizzes[]`); results read from students' `assignmentResults` |
@@ -106,7 +106,7 @@ grades) and most persist best game runs to `users/{uid}.trials.*` via
 | Feature | File | Data touchpoints |
 |---|---|---|
 | Ask the Alchemist (mentor chat, every student page) | `src/lib/ai.ts` → `aiAskAlchemist` | Gemini (E3) with keyless fallback; no persistence |
-| AI plumbing (7 capabilities + status/ping) | `src/lib/ai.ts`, `useAI.ts` | server-only `createServerFn`; `GEMINI_API_KEY` env; every result tagged `source: "gemini" \| "fallback"` |
+| AI plumbing (8 capabilities + status/ping) | `src/lib/ai.ts`, `useAI.ts` | server-only `createServerFn`; `GEMINI_API_KEY` env; every result tagged `source: "gemini" \| "fallback"`. Capabilities: verifyMission, scanFrame, starterQuiz, **classInsights**, identifyItems, generateProblem, gradeAnswer, askAlchemist |
 | Theme (dark/light) | `src/lib/theme.ts` | localStorage `theme` **D8** |
 | Offline shell | `public/sw.js` | Cache Storage **D8** (`alchemix-{version}`, conservative precache) |
 | Badges | `src/lib/profile.ts` | `users/{uid}.badges[]` |
@@ -132,8 +132,9 @@ Owner: `src/lib/profile.ts` (`StudentProfile`). One doc per user, all roles.
 | role | "student" \| "teacher" \| "admin" \| "school_admin" | |
 | status | "pending" \| "approved" \| "rejected" | teachers only |
 | classId, className | string | denormalized from the joined class |
-| grades | map topicId → {score, outOf, feedback?} | **teacher-entered** |
+| grades | map topicId → {score, outOf, feedback?} | **teacher-entered** (legacy 5-topic gradebook) |
 | mastery | map topicId → Mastery | teacher-entered |
+| weightedScores | map classId → quarter → itemId → number | **teacher-entered** raw marks for the DepEd weighted gradebook; the quarterly/final grade is COMPUTED (`lib/grading.ts`), never stored |
 | practice | map key → number (+ lastActiveAt) | engagement counters, never grades |
 | grimoire | string[] (element symbols) | scanned cards |
 | grimoireScans | map symbol → Timestamp | first-obtained times |
@@ -145,9 +146,11 @@ Owner: `src/lib/profile.ts` (`StudentProfile`). One doc per user, all roles.
 | trials | map trialId → {best, outOf, stars, timeSec?, plays} | module game bests |
 | aurum | number | currency |
 | starterStreak | {count, lastDay} | |
-| inventory, equipped | string[], map slot → itemId | Emporium |
+| starterHistory | StarterRunRecord[] (capped 60) | past daily-starter runs (Ledger) |
+| inventory, equipped | string[], map slot → itemId | Emporium (`equipped` written by `equipItem`) |
 | duelRecord | map difficulty → {wins, losses} | |
-| assignmentResults | map assignmentId → {score, outOf} | |
+| assignmentResults | map assignmentId → {score, outOf} | written by the student; read by the teacher |
+| dropVessels | map vesselId → {day, count} | daily-drop claim state (`collectDailyDrop`, 300 cap) |
 | walkthroughDone | boolean | first-login tour offered (taken or declined) |
 | craft | {mastered[], count, tier} | derived mastery ladder, synced by `lib/craft.ts` (trial ≥2★ / study / codex proof) |
 
@@ -168,14 +171,19 @@ expire: **joinCode** (6-char, unique), **joinCodeExpiresAt** (Timestamp —
 codes stop admitting after `CODE_VALID_DAYS` = 30; regenerating issues a new
 code and kills the old one instantly), **archived** (bool — archived classes
 leave the working teacher tabs and refuse joins).
-Other fields: name, teacherId, teacherName, createdAt, **quizzes[]**
+Other fields: name, teacherId, teacherName, createdAt, **schoolId** (the owning
+school — stamped at creation; drives `useSchoolClasses`), **quizzes[]**
 (`QuizDef`: id, title, questions[{prompt, choices×4, answer, hint?}],
 createdAt-ms), **missions[]** (`MissionDef`: id, title, note?,
 targets[{moduleId, label, practiceKey}], createdAt-ms), **announcements[]**
 (`AnnouncementDef`: id, body, pinned?, createdAt-ms — the Bulletin; teacher
 writes via `saveAnnouncement`, students read them at the top of `/assignments`,
-pinned first). Teacher-authored content lives on this doc — there are
-deliberately no separate quiz/mission/announcement collections.
+pinned first), and **grading** (the DepEd weighted-grading config written by
+`saveGradingConfig`, `lib/grading.ts` — `GradingConfig`: `weights{ww,pt,qa}` +
+`items` per Quarter×component of `GradeItem{id, label, total, topic?}`; students'
+raw marks live on `users/{uid}.weightedScores` **D2**, grades are computed).
+Teacher-authored content lives on this doc — there are deliberately no separate
+quiz/mission/announcement/grading collections.
 Code lookup order (`resolveClassByCode`): doc-id get first (works pre-auth
 for original codes), then a signed-in `where("joinCode"==…)` query for
 regenerated codes; "expired" is a distinct result so the UI can say "ask
@@ -214,17 +222,23 @@ reviewedAt. 1:1 with a teacher's user doc.
 ### D10 — Firestore `config/modules` (module visibility)
 Owner: `src/lib/moduleVisibility.ts`. One doc: `hidden: string[]` (route
 paths curated off the student navigation). Written from the public `/modules`
-Curator page (admin-only per rules); read live by every `StudentShell` to
-filter the rail, Table of Contents, pager, and mobile nav. `/app` is never
-filtered (shell anchor).
+Curator page; read live by every `StudentShell` to filter the rail, Table of
+Contents, pager, and mobile nav. `/app` is never filtered (shell anchor).
+> ⚠️ **AUDIT (2026-11-01):** the rule is CURRENTLY `allow write: if true`
+> (`firestore.rules` `match /config/{docId}`) — a **TEMP owner-testing opening
+> so the Curator works without signing in; anyone can rewrite module
+> visibility**. Restore `allow write: if isAdmin();` (and redeploy) before
+> students use the app. Read stays public by design (the nav needs it pre-auth).
 
 ### D11 — Firestore `schools/{schoolId}` (multi-tenant)
 Owner: `src/lib/schools.ts`. One doc per school. Fields: name, **code** (6-char
 shareable SCHOOL code — onboards teachers), logoUrl + brandColor (branding),
 adminEmails[], **teacherEmails[]** (lowercased emails provisioned as teachers,
 maintained by `arrayUnion` alongside the `teacherInvites` docs **D16**),
-createdBy, active. Created by the super admin; a school admin may
-edit only their own school's name/logo/brandColor/code.
+createdBy, active. Created by the super admin; a school admin may edit only
+their own school's `name`/`logoUrl`/`brandColor`/`code`/`teacherEmails` (the
+`teacherEmails` `arrayUnion` happens during teacher provisioning — `firestore.rules`
+`match /schools` `hasOnly([...])`).
 See `docs/SCHOOL_MULTITENANCY.md` for the full hierarchy and flows.
 
 ### D12 — Firestore `schoolAdminInvites/{emailLower}` (multi-tenant)
