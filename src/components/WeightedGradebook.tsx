@@ -110,26 +110,30 @@ function ViewTab({ icon: Icon, label, active, onClick }: { icon: React.Component
 
 // ── Grade entry grid ─────────────────────────────────────────────────────────
 function ScoreCell({ uid, classId, quarter, item, stored }: { uid: string; classId: string; quarter: Quarter; item: GradeItem; stored: number | undefined }) {
-  const [val, setVal] = useState(stored?.toString() ?? "");
+  // When unfocused, the input DISPLAYS the stored value directly (the source of
+  // truth) — no effect copies it into local state, so a cleared/edited cell can't
+  // flash the old value back before the write round-trips, and a failed write
+  // honestly reflects the unchanged stored value. Local `val` is only the live
+  // keystroke buffer while the cell is focused.
+  const [val, setVal] = useState("");
   const [focused, setFocused] = useState(false);
-  useEffect(() => { if (!focused) setVal(stored?.toString() ?? ""); }, [stored, focused]);
+  const display = focused ? val : (stored?.toString() ?? "");
 
   const commit = async () => {
     const t = val.trim();
     if (t === "") { if (stored !== undefined) await setStudentScore(uid, classId, quarter, item.id, null); return; }
     let n = Number(t);
-    if (Number.isNaN(n)) { setVal(stored?.toString() ?? ""); return; }
+    if (Number.isNaN(n)) return; // revert handled by display falling back to stored
     n = Math.max(0, Math.min(item.total, Math.round(n * 100) / 100));
-    setVal(String(n));
     if (n !== stored) await setStudentScore(uid, classId, quarter, item.id, n);
   };
 
-  const over = val !== "" && Number(val) > item.total;
+  const over = focused && val !== "" && Number(val) > item.total;
   return (
     <input
       inputMode="decimal"
-      value={val}
-      onFocus={() => setFocused(true)}
+      value={display}
+      onFocus={() => { setVal(stored?.toString() ?? ""); setFocused(true); }}
       onBlur={() => { setFocused(false); void commit(); }}
       onChange={(e) => setVal(e.target.value)}
       onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
@@ -446,7 +450,7 @@ function buildInsights(className: string, classId: string, config: GradingConfig
   }
   const pct = (a: { raw: number; high: number }) => (a.high > 0 ? Math.round((a.raw / a.high) * 100) : null);
   const componentAverages = COMPONENTS.map((c) => ({ component: c.label, average: pct(classComp[c.key]) }));
-  const topicAverages = Object.entries(topicAcc).map(([topic, a]) => ({ topic, average: Math.round((a.raw / a.high) * 100) }));
+  const topicAverages = Object.entries(topicAcc).filter(([, a]) => a.high > 0).map(([topic, a]) => ({ topic, average: Math.round((a.raw / a.high) * 100) }));
 
   const studentsOut = rows.map((r) => {
     const acc = perStudentComp[r.snap.uid];

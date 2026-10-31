@@ -76,7 +76,8 @@ export async function ensureUserProfile(user: User, opts?: { role?: Role; school
       // it up from their class here, on their own next sign-in. This is what
       // makes them visible to their school admin's directory/analytics.
       let healSchoolId: string | undefined;
-      if (!data.schoolId && (data.role == null || data.role === "student") && data.classId) {
+      if (!promoteAdmin && !promoteSchoolAdmin && !promoteTeacher
+          && !data.schoolId && (data.role == null || data.role === "student") && data.classId) {
         try {
           const c = await getDoc(doc(db, "classes", data.classId));
           const sid = (c.data() as { schoolId?: string } | undefined)?.schoolId;

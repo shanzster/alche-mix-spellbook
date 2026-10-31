@@ -21,6 +21,21 @@
   Dropped UnifrakturMaguntia from the Google Fonts import in `__root.tsx`
   (Cinzel was already loaded). `DESIGN_DIRECTION.md` typography table updated.
 
+### Post-review fixes (gradebook correctness)
+
+- Self-review of the new grading/console code caught + fixed:
+  - **(high)** `componentResult` counted *unentered* score items as zeros, so a
+    partially-graded quarter made every student look failing and disagreed with
+    the entered-only Insights bars. Now entered-only (PS = raw ÷ Σ highest of the
+    *scored* items; component with no scores → `ps: null`). Equals the full
+    grade once every item is entered.
+  - **(med)** `ScoreCell` could flash the old value back on blur/clear and
+    silently revert a failed write — rewrote to display the stored value when
+    unfocused (no stale-state copy).
+  - **(low)** guarded `topicAverages` division against a zero denominator (both
+    builders); stopped the student `schoolId` self-heal from overriding an
+    in-progress teacher/admin promotion in `ensureUserProfile`.
+
 ### School-admin console expanded (6 modules, school-wide data)
 
 - `/school` rebuilt like the super-admin console but school-scoped, with more

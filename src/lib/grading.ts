@@ -106,14 +106,18 @@ export interface QuarterResult {
 type ScoreMap = Record<string, number>; // itemId → raw score
 
 function componentResult(key: ComponentKey, label: string, items: GradeItem[], scores: ScoreMap, weight: number): ComponentResult {
-  if (items.length === 0) return { key, label, rawTotal: 0, highestTotal: 0, ps: null, weight, ws: null };
-  let raw = 0, highest = 0;
+  // Entered-only: a score item that hasn't been graded yet must NOT count as a
+  // zero (that would make every partially-graded quarter look failing, and would
+  // disagree with the Insights "component health" which is entered-only). The
+  // Percentage Score is raw ÷ (sum of highest-possible for the SCORED items).
+  // Once every item has a score, this equals the full-quarter grade.
+  let raw = 0, highest = 0, scored = 0;
   for (const it of items) {
-    highest += it.total;
     const v = scores[it.id];
-    if (typeof v === "number" && !Number.isNaN(v)) raw += v;
+    if (typeof v === "number" && !Number.isNaN(v)) { raw += v; highest += it.total; scored++; }
   }
-  const ps = highest > 0 ? (raw / highest) * 100 : 0;
+  if (scored === 0 || highest === 0) return { key, label, rawTotal: 0, highestTotal: 0, ps: null, weight, ws: null };
+  const ps = (raw / highest) * 100;
   return { key, label, rawTotal: raw, highestTotal: highest, ps, weight, ws: null };
 }
 

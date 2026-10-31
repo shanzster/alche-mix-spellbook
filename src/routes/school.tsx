@@ -489,7 +489,7 @@ function buildSchoolInsights(schoolName: string, students: StudentProfile[], cla
   }
   const pct = (a: { raw: number; high: number }) => (a.high > 0 ? Math.round((a.raw / a.high) * 100) : null);
   const componentAverages = COMPONENTS.map((c) => ({ component: c.label, average: pct(comp[c.key]) }));
-  const topicAverages = Object.entries(topicAcc).map(([topic, a]) => ({ topic, average: Math.round((a.raw / a.high) * 100) }));
+  const topicAverages = Object.entries(topicAcc).filter(([, a]) => a.high > 0).map(([topic, a]) => ({ topic, average: Math.round((a.raw / a.high) * 100) }));
 
   const studentsOut = rows.map(({ s, final }) => {
     const acc = perStudentComp[s.uid];
